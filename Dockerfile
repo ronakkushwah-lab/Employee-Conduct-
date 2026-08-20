@@ -18,8 +18,11 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 # Now copy the rest of the application files
 COPY . /app/
 
+# Set PYTHONPATH to application directory
+ENV PYTHONPATH=/app
+
 # Expose the port
 EXPOSE 8000
 
 # Default command (can be overridden in docker-compose.yml)
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--pythonpath", ".", "-w", "5", "dstt.wsgi:application"]
+CMD ["python", "-m", "gunicorn", "--bind", "0.0.0.0:8000", "--pythonpath", "/app", "-w", "5", "dstt.wsgi:application"]
