@@ -21,6 +21,9 @@ COPY . /app/
 # Set PYTHONPATH to application directory
 ENV PYTHONPATH=/app
 
+# Run Django collectstatic to compile static files during image build
+RUN python manage.py collectstatic --noinput
+
 # Expose the port
 EXPOSE 8000
 
