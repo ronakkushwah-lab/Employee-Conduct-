@@ -25,4 +25,4 @@ ENV PYTHONPATH=/app
 EXPOSE 8000
 
 # Default command (can be overridden in docker-compose.yml)
-CMD ["python", "-m", "gunicorn", "--bind", "0.0.0.0:8000", "--pythonpath", "/app", "-w", "5", "dstt.wsgi:application"]
+CMD ["sh", "-c", "python -m gunicorn --bind 0.0.0.0:${PORT:-8000} --pythonpath /app -w 5 dstt.wsgi:application"]
