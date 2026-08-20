@@ -22,4 +22,4 @@ COPY . /app/
 EXPOSE 8000
 
 # Default command (can be overridden in docker-compose.yml)
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "-w", "5", "dstt.wsgi:application"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--pythonpath", ".", "-w", "5", "dstt.wsgi:application"]

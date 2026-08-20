@@ -3,7 +3,7 @@ services:
     name: hrms-app
     env: python
     buildCommand: pip install --upgrade pip setuptools wheel && pip install -r requirements.txt
-    startCommand: gunicorn dstt.wsgi:application
+    startCommand: gunicorn --pythonpath . dstt.wsgi:application
     envVars:
       - key: PYTHON_VERSION
         value: 3.10.13
