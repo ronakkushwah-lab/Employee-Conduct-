@@ -1,0 +1,202 @@
+{% load static %}
+{% include "administration/header.html" %}
+{% include "administration/sidebar.html" %}
+{% include "administration/topbar.html" %}
+
+{% load employee_filter %}
+      <div class="page_wrapper">
+        <div class="page-content">
+          <div class="page-breadcrumb d-sm-flex align-items-center mb-3">
+            <div class="breadcrumb-title pe-3">Employees</div>
+            <div class="ps-3">
+              <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0 p-0">
+                  <li class="breadcrumb-item">
+                    <a href="{% url 'index' company_id=company_id company_staff_id=company_staff_id %}">
+                      <i class="bx bx-home"></i>
+                    </a>
+                  </li>
+                  <li class="breadcrumb-item active" aria-current="page">Attendance List</li>
+                </ol>
+              </nav>
+            </div>
+          </div>
+          <hr>
+          <form action="{% url 'attendancesearch' company_id=company_id company_staff_id=company_staff_id %}" method="get">
+          <div class="fm-search">
+            <div class="mb-0">
+              <div class="input-group input-group-lg">
+                <span class="input-group-text bg-transparent">
+                  <i class="bx bx-search"></i>
+                </span>
+                <input type="search" class="form-control" placeholder="Search here.." name="q">
+              </div>
+            </div>
+          </div>
+          </form>
+          <div class="row mt-3 text-center">
+            <div class="col mb-1">
+              <a href="{% url 'regularizationlist' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-outline-orangeyellow">Pending regularization</a>
+            </div>
+            <div class="col mb-1">
+              <a href="{% url 'approvedregularizationlist' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-outline-orangeyellow">Approved regularization</a>
+            </div>
+            <div class="col mb-1">
+              <a href="{% url 'cancelregularizationlist' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-outline-orangeyellow">Cancelled regularization</a>
+            </div>
+          </div>
+          <div class="row mt-3">
+            <div class="col-12">
+              <div class="card">
+                <div class="card-body">
+                  <div class="table-responsive">
+                    <table class="table table-fluid table-hover">
+                      <thead>
+                        <tr>
+                          <th>Employee ID</th>
+                          <th>Email</th>
+                          <th>Check In</th>
+                          <th>Check Out</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                         {% for i in attendance %}
+                        <tr>
+                          <td>{{i.employee.employee_id}}</td>
+                          <td>{{i.employee.employee_email}}</td>
+                          <td>{% if i.check_in %}{{ i.check_in|date:"M. d, Y, g:i a" }}{% else %}-{% endif %}</td>
+                          <td>{% if i.check_out %}{{ i.check_out|date:"M. d, Y, g:i a" }}{% else %}-{% endif %}</td>
+                          <td class="dropdown">
+                            <a class="d-flex align-items-center nav-link dropdown-toggle dropdown-toggle-nocaret" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                              <i class="bx bx-dots-vertical-rounded"></i>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                              <li>
+                                <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#updateemployeeModal" id="updateBtn"  onclick="attendance_id_fetch('{{i.pk}}')" >
+                                  Update
+                                </button>
+                              </li>
+                              <li>
+                                <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#deleteemployeeModal" id="deleteBtn" onClick="getId('{{i.id}}')">
+                                  Delete
+                                </button>                              
+                              </li>
+                            </ul>
+                            <div class="modal" id="updateemployeeModal">
+                              <div class="modal-dialog w-80">
+                                <div class="modal-content">
+                                  <div class="modal-header">
+                                    <h5 class="modal-title" id="exampleModalLabel">Update Attendance</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                  </div>
+                                  <div class="modal-body">
+                                    <form method="post" action="{% url 'edit_attendance' company_id=company_id company_staff_id=company_staff_id %}" enctype="multipart/form-data">
+                                        {% csrf_token %}
+                                      <input type="hidden" name="id" id="attendance_id_heading">
+                                      <div class="row mb-2">
+                                        <div class="col">
+                                          <label for="check-in" class="form-label">Check In <span class="text-danger">*</span></label>
+                                          <input type="datetime-local" class="form-control datetimepicker" id="check_in_heading_edit" name="check_in">
+                                        </div>
+                                        <div class="col">
+                                          <label for="check-out" class="form-label">Check Out</label>
+                                          <input type="datetime-local" class="form-control datetimepicker" id="check_out_heading_edit" name="check_out">
+                                        </div>
+                                      </div>
+                                      <div class="mt-4 mb-2 button-right">
+                                        <button type="submit" class="btn btn-outline-orangeyellow">Submit</button>
+                                      </div>
+                                    </form>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <div class="modal" id="deleteemployeeModal">
+                              <div class="modal-dialog">
+                                <div class="modal-content">
+                                  <div class="modal-header">
+                                    <h5 class="modal-title" id="exampleModalLabel">Delete Employee</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                  </div>
+                                  <div class="modal-body text-center">
+                                    <p>Are you sure want to delete?</p>
+                                   <div class="col-12">
+                                  <a href="javascript:void(0);"  id="delete" class="btn btn-outline-orangeyellow w-100 mb-2">Delete</a>
+                                   </div>
+                                    <button type="button" class="btn btn-outline-orangeyellow w-100" data-bs-dismiss="modal">Cancel</button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          {% endfor %}
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <footer class="page-footer">
+          <p class="mb-0">Copyright © 2022. All right reserved.</p>
+        </footer>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/simplebar@latest/dist/simplebar.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/metisMenu/3.0.7/metisMenu.min.js"></script>
+    <script src="https://unpkg.com/boxicons@2.1.2/dist/boxicons.js"></script>
+    <script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/js/all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.5.3/jspdf.debug.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.8.0/html2pdf.bundle.js"></script>
+    <script src="{% static 'asets/js/jquery.sparkline.min.js' %}"></script>
+    <script src="{% static 'asets/js/Chart.min.js' %}"></script>
+    <script src="{% static 'asets/js/Chart.extension.js' %}"></script>
+    <script src="{% static 'asets/js/script.js' %}"></script>
+    
+    
+   <script>
+      
+      function attendance_id_fetch(id){
+
+        var attendance_id_heading = document.getElementById("attendance_id_heading");
+        var check_in_heading_edit = document.getElementById("check_in_heading_edit");
+        var check_out_heading_edit = document.getElementById("check_out_heading_edit");
+        attendance_id_heading.value = id;
+
+        $.ajax({
+          url: '{% url "edit_attendance" company_id=company_id company_staff_id=company_staff_id %}',
+          method: "GET",
+          data: {'id': id},
+          dataType: "json",
+          success: function(res){
+            check_in_heading_edit.value = res['check_in']
+            check_out_heading_edit.value = res['check_out']
+
+          },
+          error: function(xhr, status, error){
+            console.log(error);
+            console.log(status);
+            console.log(xhr);
+          }
+        })
+      }
+     
+   </script>
+
+     <script>
+  	function getId(id) {
+		// alert(id)
+		var a =document.getElementById('delete');
+		a.href = "/administration/attendance_remove/{{company_id}}/{{company_staff_id}}/"+id;
+	}
+
+   </script>
+

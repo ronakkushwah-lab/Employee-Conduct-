@@ -1,0 +1,166 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>Salary Slip</title>
+  <style>
+    body { margin: 0; padding: 10px 12px; font-family: Arial, sans-serif; font-size: 10px; color: #000; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
+    .company-name { font-size: 16px; font-weight: bold; color: #dc143c; }
+    .tagline { font-size: 16px; font-weight: bold; color: #000; }
+    .sub { font-size: 9px; color: #000; margin: 1px 0 0 0; }
+    .logo-box { width: 100px; text-align: right; flex-shrink: 0; }
+    .logo-box img { max-width: 90px; height: auto; display: block; margin-left: auto; }
+    .title-center { text-align: center; font-size: 16px; font-weight: bold; color: #000; margin: 10px 0 2px 0; letter-spacing: 0.5px; }
+    .period { text-align: center; font-size: 10px; color: #333; margin-bottom: 10px; }
+    .info-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 9px; }
+    .info-table td { padding: 5px 8px; border: 1px solid #ddd; vertical-align: middle; }
+    .info-table .label { background-color: #f0f0f0; font-weight: bold; width: 22%; }
+    .info-table .value { background-color: #fff; width: 28%; }
+    .earn-ded { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 9px; }
+    .earn-ded th { padding: 6px 8px; border: 1px solid #1e3a5f; background-color: #1e3a5f; color: #fff; font-weight: bold; text-align: left; font-size: 9px; }
+    .earn-ded th.amt { text-align: right; }
+    .earn-ded td { padding: 5px 8px; border: 1px solid #ddd; background-color: #fff; }
+    .earn-ded td.amt { text-align: right; }
+    .earn-ded tr.total td { background-color: #e8e8e8; font-weight: bold; border: 1px solid #999; padding: 6px 8px; }
+    .earn-ded tr.total td.amt { text-align: right; }
+    .net-box { background-color: #dce8f0; border: 1px solid #b0c4d4; padding: 8px 12px; margin-bottom: 16px; }
+    .net-line { font-size: 13px; font-weight: bold; color: #000; margin: 0 0 2px 0; }
+    .net-words { font-size: 9px; color: #333; margin: 0; }
+    .sign-row { margin-top: 20px; display: flex; justify-content: space-between; padding: 0 30px; }
+    .sign-box { text-align: center; width: 160px; }
+    .sign-line { border-bottom: 1px solid #000; height: 28px; margin-bottom: 4px; }
+    .sign-label { font-size: 9px; color: #555; }
+    /* Top bar with download icon - like reference (dark bar, icon in corner) */
+    .top-bar { position: fixed; top: 0; left: 0; right: 0; height: 40px; background: #1a1a1a; color: #e0e0e0; display: flex; align-items: center; justify-content: flex-end; padding: 0 14px; z-index: 999; font-size: 12px; }
+    .top-bar .download-btn { background: none; border: none; color: #e0e0e0; cursor: pointer; padding: 6px 10px; margin-left: 12px; display: inline-flex; align-items: center; justify-content: center; }
+    .top-bar .download-btn:hover { color: #fff; }
+    .top-bar .download-btn svg { width: 20px; height: 20px; }
+    .top-bar .download-btn { text-decoration: none; }
+    .slip-body { margin-top: 40px; max-width: 210mm; margin-left: auto; margin-right: auto; min-height: 297mm; box-sizing: border-box; }
+    /* Force colors in print/PDF so download looks same as screen */
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    @media print {
+      .no-print { display: none !important; }
+      .slip-body { margin-top: 0 !important; }
+      .company-name { color: #dc143c !important; }
+      .info-table .label { background-color: #f0f0f0 !important; }
+      .earn-ded th { background-color: #1e3a5f !important; color: #fff !important; }
+      .earn-ded tr.total td { background-color: #e8e8e8 !important; }
+      .net-box { background-color: #dce8f0 !important; border: 1px solid #b0c4d4 !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top bar: download icon in corner (like reference - hidden when print) -->
+  <div class="top-bar no-print">
+    <span style="margin-right: auto; padding-left: 10px;">Salary Slip</span>
+    {% if download_url %}
+    <a href="{{ download_url }}" target="_blank" class="download-btn" title="Download PDF">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    </a>
+    {% else %}
+    <button type="button" class="download-btn" onclick="window.print();" title="Download / Print">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    </button>
+    {% endif %}
+  </div>
+
+  <div class="slip-body">
+  <!-- Header: Company + Logo -->
+  <div class="header">
+    <div>
+      <span class="company-name" style="color: #dc143c;">EAGLE IN CLOUD</span>
+      <span class="tagline"> Your Vision, Our Tech</span>
+      <p class="sub">Cloud & IT Solutions</p>
+    </div>
+    <div class="logo-box">
+      {% if logo_base64 %}
+      <img src="data:image/png;base64,{{ logo_base64 }}" alt="Eagle in Cloud Logo">
+      {% else %}
+      <img src="{% static 'asets/images/employee_conduct_logo.png' %}" alt="Employee Conduct Logo">
+      {% endif %}
+      <p class="sub" style="margin-top:2px;">EAGLE IN CLOUD</p>
+    </div>
+  </div>
+
+  <hr style="border: none; border-top: 1px solid #000; margin: 6px 0 8px 0;">
+
+  <!-- Title + Period -->
+  <h1 class="title-center">SALARY SLIP</h1>
+  <p class="period">{{ month|date:"F Y" }}</p>
+
+  <!-- Employee Details: 2 columns (Label-Value pairs) -->
+  <table class="info-table">
+    <tr>
+      <td class="label">Employee Name</td>
+      <td class="value">{{ employee.employee_first_name }} {{ employee.employee_last_name }}</td>
+      <td class="label">Employee ID</td>
+      <td class="value">{% if employee.employee_id %}{{ employee.employee_id }}{% else %}EIC-{{ employee.id|stringformat:"03d" }}{% endif %}</td>
+    </tr>
+    <tr>
+      <td class="label">Department</td>
+      <td class="value">{% if employee.employee_department %}{{ employee.employee_department.department_name }}{% else %}-{% endif %}</td>
+      <td class="label">Designation</td>
+      <td class="value">
+        {% if employee.employee_designation %}
+          {{ employee.employee_designation }}
+        {% elif employee.employee_experience_company_job_position %}
+          {{ employee.employee_experience_company_job_position }}
+        {% else %}
+          Software Executive
+        {% endif %}
+      </td>
+    </tr>
+    <tr>
+      <td class="label">Date of Joining</td>
+      <td class="value">{% if employee.employee_joining_date %}{{ employee.employee_joining_date|date:"d-M-Y" }}{% else %}-{% endif %}</td>
+      <td class="label">Payslip No</td>
+      <td class="value">{% if payslip_number %}{{ payslip_number|stringformat:"03d" }}{% else %}{{ id|stringformat:"03d" }}{% endif %}</td>
+    </tr>
+  </table>
+
+  <!-- Earnings (left) and Deductions (right) - side by side -->
+  <table style="width:100%; border-collapse: collapse;">
+    <tr style="vertical-align: top;">
+      <td style="width:50%; padding-right: 6px;">
+        <table class="earn-ded" style="width:100%;">
+          <thead><tr><th style="background-color: #1e3a5f; color: #fff;">EARNINGS</th><th class="amt" style="background-color: #1e3a5f; color: #fff;">AMOUNT</th></tr></thead>
+          <tbody>
+            <tr><td>Basic Salary</td><td class="amt">{{ basic|intcomma }}</td></tr>
+            <tr><td>HRA</td><td class="amt">{{ hra_percent|intcomma }}</td></tr>
+            <tr><td>Medical Allowance</td><td class="amt">{{ medical_allowance|intcomma }}</td></tr>
+            <tr><td>Bonus</td><td class="amt">{{ bonuses|intcomma }}</td></tr>
+            <tr class="total"><td>Total Earnings</td><td class="amt">{{ total_earnings|intcomma }}</td></tr>
+          </tbody>
+        </table>
+      </td>
+      <td style="width:50%; padding-left: 6px;">
+        <table class="earn-ded" style="width:100%;">
+          <thead><tr><th style="background-color: #1e3a5f; color: #fff;">DEDUCTIONS</th><th class="amt" style="background-color: #1e3a5f; color: #fff;">AMOUNT</th></tr></thead>
+          <tbody>
+            <tr><td>Provident Fund</td><td class="amt">{{ providence_fund|intcomma }}</td></tr>
+            <tr><td>ESI</td><td class="amt">{{ esi|intcomma }}</td></tr>
+            <tr><td>TDS</td><td class="amt">{{ tds|intcomma }}</td></tr>
+            <tr><td>Leave Deduction</td><td class="amt">{{ leave|intcomma }}</td></tr>
+            <tr class="total"><td>Total Deductions</td><td class="amt">{{ total_deductions|intcomma }}</td></tr>
+          </tbody>
+        </table>
+      </td>
+    </tr>
+  </table>
+
+  <!-- Net Salary Payable -->
+  <div class="net-box" style="background-color: #dce8f0; border: 1px solid #b0c4d4;">
+    <p class="net-line">NET SALARY PAYABLE : &#8377; {{ net_pay|intcomma }}</p>
+    <p class="net-words">(Rupees {{ net_pay_words }})</p>
+  </div>
+
+  </div><!-- .slip-body -->
+
+</body>
+</html>

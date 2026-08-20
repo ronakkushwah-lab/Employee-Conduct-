@@ -1,0 +1,183 @@
+{% load static %}
+{% include "administration/header.html" %}
+{% include "administration/sidebar.html" %}
+{% include "administration/topbar.html" %}
+
+
+      <div class="page_wrapper">
+        <div class="page-content">
+          <div class="page-breadcrumb d-sm-flex align-items-center mb-3">
+            <div class="breadcrumb-title pe-3">Leaves</div>
+            <div class="ps-3">
+              <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0 p-0">
+                  <li class="breadcrumb-item">
+                    <a href="{% url 'index' company_id=company_id company_staff_id=company_staff_id %}">
+                      <i class="bx bx-home"></i>
+                    </a>
+                  </li>
+                  <li class="breadcrumb-item active" aria-current="page">Rejected Leaves</li>
+                </ol>
+              </nav>
+            </div>            
+          </div>
+          <hr>
+          <div class="row mt-3">
+            <div class="col-12">
+              <div class="card">
+                <div class="card-body">
+                  <div class="table-responsive">
+                    <table class="table table-fluid table-hover" id="myTable">
+                      <thead>
+                        <tr>
+                          <th>Username</th>
+                          <th>Type</th>
+                          <th>Day(s)</th>
+                          <th>Status</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                      			  	{% for leave in leave_list_rejected %}
+                        <tr>
+                          <td>{{ leave.user }}</td>
+                          <td>{{ leave.leavetype}}</td>
+                          <td>{{ leave.leave_days }}</td>
+                          <td><span class="status-badge status-rejected">REJECTED</span></td>
+                          <td>
+                            <button type="button" class="btn btn-outline-orangeyellow" data-bs-toggle="modal" data-bs-target="#viewpendingleavesModal" id="viewBtn"  onclick="leave_details_fetch('{{leave.pk}}')">
+                              View
+                            </button>
+                            <div class="modal" id="viewpendingleavesModal">
+                              <div class="modal-dialog w-80">
+                                <div class="modal-content">
+                                  <div class="modal-header">
+                                    <h5 class="modal-title" id="exampleModalLabel">View Leaves</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                  </div>
+                                  <div class="modal-body">
+                                    <table class="table table-fluid table-bordered table-hover">
+                                      <tbody>
+                                        <tr>
+                                          <th>Start Date</th>
+                                             <td id="leave_startdate_heading"></td>
+                                        </tr>
+                                        <tr>
+                                          <th>End Date</th>
+                                          <td id="leave_enddate_heading"></td>
+                                        </tr>
+                                        <tr>
+                                          <th>Duration</th>
+                                           <td id="leave_days_heading"></td>
+                                        </tr>
+                                        <tr>
+                                          <th>Type</th>
+                                          <td id="leave_leavetype_heading"></td>
+                                        </tr>
+                                        <tr>
+                                          <th>Reason</th>
+                                          <td id="leave_reason_heading"></td>
+                                        </tr>
+                                        <tr>
+                                          <th>Status</th>
+                                          <td id="leave_status_heading"></td>
+                                        </tr>
+                                        <tr>
+                                          <th>Created</th>
+                                           <td id="leave_created_heading"></td>
+                                        </tr>
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      		    {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <footer class="page-footer">
+          <p class="mb-0">Copyright © 2022. All right reserved.</p>
+        </footer>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/simplebar@latest/dist/simplebar.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/metisMenu/3.0.7/metisMenu.min.js"></script>
+    <script src="https://unpkg.com/boxicons@2.1.2/dist/boxicons.js"></script>
+    <script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/js/all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.5.3/jspdf.debug.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.8.0/html2pdf.bundle.js"></script>
+    <script src="{% static 'asets/js/jquery.sparkline.min.js' %}"></script>
+    <script src="{% static 'asets/js/Chart.min.js' %}"></script>
+    <script src="{% static 'asets/js/Chart.extension.js' %}"></script>
+    <script src="{% static 'asets/js/script.js' %}"></script>
+
+   <script>
+       function leave_details_fetch(id){
+
+
+        // Ajax POST Request
+
+        var leave_reason_heading = document.getElementById("leave_reason_heading");
+        var leave_startdate_heading = document.getElementById("leave_startdate_heading");
+        var leave_enddate_heading = document.getElementById("leave_enddate_heading");
+        var leave_leavetype_heading = document.getElementById("leave_leavetype_heading");
+        var leave_status_heading = document.getElementById("leave_status_heading");
+        var leave_created_heading = document.getElementById("leave_created_heading");
+        var leave_days_heading = document.getElementById("leave_days_heading");
+
+
+        $.ajax({
+                  url: '{% url "leavesrejected" company_id=company_id company_staff_id=company_staff_id %}',
+                  method: "POST",
+                  processData: false,
+                  contentType: 'application/json',
+                  mimeType: "multipart/form-data",
+                  headers: {'X-CSRFToken': "{{csrf_token}}", "Content-Type":"application/json"},
+                  data: JSON.stringify({'id': id}),
+                  dataType: "json",
+                  success: function(res){
+
+
+                  reason = res['reason'];
+                  startdate = res['startdate'];
+                  enddate= res['enddate'];
+                  leavetype = res['leavetype'];
+                  status    = res['status'];
+                  created    = res['created'];
+                  leave_days = res['leave_days'];
+
+
+
+                  leave_reason_heading.textContent = reason;
+                  leave_startdate_heading.textContent = startdate;
+                  leave_enddate_heading.textContent = enddate;
+                  leave_leavetype_heading.textContent = leavetype;
+                  leave_status_heading.textContent = status;
+                  leave_created_heading.textContent = created;
+                  leave_days_heading.textContent    = leave_days;
+
+                },
+                error: function(xhr, status, error){
+                  console.log(error);
+                  console.log(status);
+                  console.log(xhr);
+                }
+        })
+      }
+   </script>
+    
+  </body>
+</html>

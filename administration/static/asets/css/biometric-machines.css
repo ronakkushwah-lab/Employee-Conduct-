@@ -1,0 +1,109 @@
+/*
+ * Responsive layout for the biometric machine administration screen.
+ * This is intentionally page-scoped so the legacy admin screens retain
+ * their existing Bootstrap column and button behaviour.
+ */
+.biometric-machines-page,
+.biometric-machines-page .row > *,
+.biometric-machines-page .card,
+.biometric-machines-page .card-body {
+    min-width: 0;
+}
+
+.biometric-machines-page .machine-form-column,
+.biometric-machines-page .machine-data-column {
+    flex: 0 0 auto;
+    width: 100%;
+}
+
+.biometric-machines-page .machine-form-actions .btn {
+    width: auto;
+    min-width: 150px;
+    white-space: nowrap;
+}
+
+.biometric-machines-page .table-responsive {
+    width: 100%;
+    -webkit-overflow-scrolling: touch;
+}
+
+.biometric-machines-page .registered-machines-table {
+    min-width: 760px;
+}
+
+.biometric-machines-page .recent-events-table {
+    min-width: 640px;
+}
+
+.biometric-machines-page .registered-machines-table th,
+.biometric-machines-page .recent-events-table th {
+    white-space: nowrap;
+}
+
+.biometric-machines-page .machine-network,
+.biometric-machines-page .machine-last-punch,
+.biometric-machines-page .machine-actions {
+    white-space: nowrap;
+}
+
+.biometric-machines-page .machine-status {
+    min-width: 130px;
+}
+
+.biometric-machines-page .machine-actions .btn {
+    width: 38px;
+    height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Keep the two-panel desktop layout only when both panels have useful room. */
+@media (min-width: 1600px) {
+    .biometric-machines-page .machine-form-column {
+        width: 41.66666667%;
+    }
+
+    .biometric-machines-page .machine-data-column {
+        width: 58.33333333%;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .biometric-machines-page .page-content {
+        padding: 1rem 0.75rem 0.7rem;
+    }
+
+    .biometric-machines-page .card-body {
+        padding: 1rem;
+    }
+
+    .biometric-machines-page .machine-form-actions {
+        justify-content: stretch;
+    }
+
+    .biometric-machines-page .machine-form-actions .btn {
+        width: 100% !important;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .biometric-machines-page .page-breadcrumb {
+        text-align: left !important;
+    }
+
+    .biometric-machines-page .page-breadcrumb .breadcrumb-title {
+        float: none;
+        border-right: 0;
+        padding-right: 0 !important;
+    }
+
+    .biometric-machines-page .page-breadcrumb .ps-3 {
+        padding-left: 0 !important;
+    }
+
+    .biometric-machines-page .page-breadcrumb .breadcrumb {
+        justify-content: flex-start;
+        padding-left: 0 !important;
+    }
+}

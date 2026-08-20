@@ -1,0 +1,17 @@
+C:\Users\User\Desktop\Employee-conduct-hrms-1-main\sdk_bridge\bin\Release\net8.0-windows\win-x64\SBXPCDLL64.dll
+C:\Users\User\Desktop\Employee-conduct-hrms-1-main\sdk_bridge\bin\Release\net8.0-windows\win-x64\SBPCCOMM64.dll
+C:\Users\User\Desktop\Employee-conduct-hrms-1-main\sdk_bridge\bin\Release\net8.0-windows\win-x64\GEN_FONT64.dll
+C:\Users\User\Desktop\Employee-conduct-hrms-1-main\sdk_bridge\bin\Release\net8.0-windows\win-x64\HrmsSdkBridge.exe
+C:\Users\User\Desktop\Employee-conduct-hrms-1-main\sdk_bridge\bin\Release\net8.0-windows\win-x64\HrmsSdkBridge.deps.json
+C:\Users\User\Desktop\Employee-conduct-hrms-1-main\sdk_bridge\bin\Release\net8.0-windows\win-x64\HrmsSdkBridge.runtimeconfig.json
+C:\Users\User\Desktop\Employee-conduct-hrms-1-main\sdk_bridge\bin\Release\net8.0-windows\win-x64\HrmsSdkBridge.dll
+C:\Users\User\Desktop\Employee-conduct-hrms-1-main\sdk_bridge\bin\Release\net8.0-windows\win-x64\HrmsSdkBridge.pdb
+C:\Users\User\Desktop\Employee-conduct-hrms-1-main\sdk_bridge\obj\Release\net8.0-windows\win-x64\HrmsSdkBridge.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\User\Desktop\Employee-conduct-hrms-1-main\sdk_bridge\obj\Release\net8.0-windows\win-x64\HrmsSdkBridge.AssemblyInfoInputs.cache
+C:\Users\User\Desktop\Employee-conduct-hrms-1-main\sdk_bridge\obj\Release\net8.0-windows\win-x64\HrmsSdkBridge.AssemblyInfo.cs
+C:\Users\User\Desktop\Employee-conduct-hrms-1-main\sdk_bridge\obj\Release\net8.0-windows\win-x64\HrmsSdkBridge.csproj.CoreCompileInputs.cache
+C:\Users\User\Desktop\Employee-conduct-hrms-1-main\sdk_bridge\obj\Release\net8.0-windows\win-x64\HrmsSdkBridge.dll
+C:\Users\User\Desktop\Employee-conduct-hrms-1-main\sdk_bridge\obj\Release\net8.0-windows\win-x64\refint\HrmsSdkBridge.dll
+C:\Users\User\Desktop\Employee-conduct-hrms-1-main\sdk_bridge\obj\Release\net8.0-windows\win-x64\HrmsSdkBridge.pdb
+C:\Users\User\Desktop\Employee-conduct-hrms-1-main\sdk_bridge\obj\Release\net8.0-windows\win-x64\HrmsSdkBridge.genruntimeconfig.cache
+C:\Users\User\Desktop\Employee-conduct-hrms-1-main\sdk_bridge\obj\Release\net8.0-windows\win-x64\ref\HrmsSdkBridge.dll

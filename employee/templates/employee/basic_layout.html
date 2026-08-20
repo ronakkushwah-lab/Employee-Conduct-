@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+{% load static %}
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/simplebar@latest/dist/simplebar.css"/>
+    <link href='https://unpkg.com/boxicons@2.1.2/css/boxicons.min.css' rel='stylesheet'>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/metisMenu/3.0.7/metisMenu.min.css"/>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.19/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <link rel="stylesheet" type="text/css" href="{% static 'asets/css/style.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'asets/css/responsive.css' %}">
+    
+    <title>Employee Conduct HRMS - Employee Dashboard</title>
+  </head>
+  <body>
+    <div id="preloader"></div>
+    
+    <div class="wrapper">
+      <div class="sidebar_wrapper" data-simplebar>
+        <div class="simplebar-wrapper">
+          <div class="simplebar-height-auto-observer-wrapper">
+            <div class="simplebar-height-auto-observer"></div>
+          </div>
+          <div class="simplebar-mask">
+            <div class="simplebar-offset">
+              <div class="simplebar-content-wrapper">
+                <div class="simplebar-content mm-active">
+                  <div class="sidebar-header">
+                    <div>
+                      <img src="{% static 'asets/images/employee_conduct_logo.png' %}" class="img-fluid">
+                    </div>
+                    <div class="toggle-icon ms-auto">
+                      <i class="bx bx-arrow-to-left" id="btn"></i>
+                    </div>
+                  </div>
+                  <ul class="metisMenu mm-show" id="menu">
+                    <li class="menu-label">Main</li>
+                    <li class="mm-active">
+                      <a href="{% url 'employee_dashboard' %}">
+                        <div class="parent-icon">
+                          <i class="bx bxs-dashboard"></i>
+                        </div>
+                        <div class="menu-title">
+                          <span>Dashboard</span>
+                        </div>
+                      </a>
+                    </li>
+                    <li class="menu-label">Profile</li>
+                    <li>
+                      <a href="{% url 'employee_profile' %}">
+                        <div class="parent-icon">
+                          <i class="bx bx-user"></i>
+                        </div>
+                        <div class="menu-title">
+                          <span>My Profile</span>
+                        </div>
+                      </a>
+                    </li>
+                    <li>
+                      <a href="{% url 'attendance' %}">
+                        <div class="parent-icon">
+                          <i class='bx bxs-hand-up'></i>
+                        </div>
+                        <div class="menu-title">
+                          <span>Attendance Info</span>
+                        </div>
+                      </a>
+                    </li>
+                    <li>
+                      <a href="{% url 'salary-list' %}">
+                        <div class="parent-icon">
+                          <i class='bx bxs-hand-up'></i>
+                        </div>
+                        <div class="menu-title">
+                          <span>Salary</span>
+                        </div>
+                      </a>
+                    </li>
+                    <li>
+                      <a class="has-arrow">
+                        <div class="parent-icon">
+                          <i class="bx bx-copy"></i>
+                        </div>
+                        <div class="menu-title">
+                          <span>Project</span>
+                        </div>
+                      </a>
+                      <ul class="mm-collapse">
+                        <li>
+                          <a href="{% url 'task-list' %}">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            My Project
+                          </a>
+                        </li>
+                        <li>
+                          <a href="{% url 'create_entry' %}">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Create Timesheet
+                          </a>
+                        </li>
+                        <li>
+                          <a href="{% url 'entries-detail' %}">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            View Timesheet
+                          </a>
+                        </li>
+                      </ul>
+                    </li>
+                    <li>
+                      <a class="has-arrow">
+                        <div class="parent-icon">
+                          <i class="bx bx-copy"></i>
+                        </div>
+                        <div class="menu-title">
+                          <span>Leaves</span>
+                        </div>
+                      </a>
+                      <ul class="mm-collapse">
+                        <li>
+                          <a href="{% url 'leave' %}">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Apply Leaves
+                          </a>
+                        </li>
+                        <li>
+                          <a href="{% url 'staffleavetable' %}">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Leave Status
+                          </a>
+                        </li>
+                        <li>
+                          <a href="{% url 'leavebalance' %}">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Leave Balance
+                          </a>
+                        </li>
+                      </ul>
+                    </li>
+                    <li>
+                      <a href="{% url 'notification' %}">
+                        <div class="parent-icon">
+                          <i class='bx bxs-bell'></i>
+                        </div>
+                        <div class="menu-title">
+                          <span>Notifications</span>
+                        </div>
+                      </a>
+                    </li>
+                    <li>
+                      <a href="{% url 'holiday_list' %}">
+                        <div class="parent-icon">
+                          <i class='bx bxs-hand-up'></i>
+                        </div>
+                        <div class="menu-title">
+                          <span>Holiday</span>
+                        </div>
+                      </a>
+                    </li>
+                    <li>
+                      <a class="has-arrow">
+                        <div class="parent-icon">
+                          <i class="bx bx-copy"></i>
+                        </div>
+                        <div class="menu-title">
+                          <span>Resignation</span>
+                        </div>
+                      </a>
+                      <ul class="mm-collapse">
+                        <li>
+                          <a href="{% url 'create_resign' %}">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Apply Resignation
+                          </a>
+                        </li>
+                        <li>
+                          <a href="{% url 'staffresigntable' %}">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Resignation Status
+                          </a>
+                        </li>
+                      </ul>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="simplebar-placeholder"></div>
+        </div>
+        <div class="simplebar-track simplebar-horizontal" style="visibility: hidden;">
+          <div class="simplebar-scrollbar" style="width: 0px; display: none;"></div>
+        </div>
+        <div class="simplebar-track simplebar-vertical" style="visibility: visible;">
+          <div class="simplebar-scrollbar" style="height: 83px; transform: translate3d(0px, 0px, 0px); display: block;"></div>
+        </div>
+      </div>
+      <header>
+        <div class="topbar d-flex align-items-center">
+          <nav class="navbar navbar-expand">
+            <div class="search-bar flex-grow-1">
+              <div class="position-relative search-bar-box">
+                <input type="text" class="form-control search-control" placeholder="Type to search...">
+                <span class="position-absolute top-50 search-show translate-middle-y">
+                  <i class="bx bx-search"></i>
+                </span>
+                <span class="position-absolute top-50 search-close translate-middle-y">
+                  <i class="bx bx-x"></i>
+                </span>
+              </div>
+            </div>
+            <div class="user-box dropdown">
+              <a class="d-flex align-items-center nav-link dropdown-toggle dropdown-toggle-nocaret" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <img src="{% static 'asets/images/avatar-2.png ' %}" class="user-img" alt="user avatar">
+                <div class="user-info ps-3">
+                    {% if user.is_authenticated %}
+                  <p class="user-name mb-0">Hello {{user.full_name}}</p>
+                      	   {% endif %}
+                </div>
+              </a>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li>
+                  <a href="{% url 'employee_profile' %}" class="dropdown-item"><i class='bx bx-user'></i> My Profile</a>
+                </li>
+                <li>
+                  <a href="{% url 'logout' %}" class="dropdown-item"><i class='bx bx-log-out-circle'></i> Logout</a>
+                </li>
+              </ul>
+            </div>
+          </nav>
+        </div>
+      </header>
+      <div class="page_wrapper">
+        <div class="page-content">
+        </div>
+        <footer class="page-footer">
+          <p class="mb-0">Copyright © 2022. All right reserved.</p>
+        </footer>
+      </div>
+    </div>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/simplebar@latest/dist/simplebar.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/metisMenu/3.0.7/metisMenu.min.js"></script>
+    <script src="https://unpkg.com/boxicons@2.1.2/dist/boxicons.js"></script>
+    <script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/js/all.min.js"></script>
+    <script src="{% static 'asets/js/jquery.sparkline.min.js' %}"></script>
+    <script src="{% static 'asets/js/Chart.min.js' %}"></script>
+    <script src="{% static 'asets/js/Chart.extension.js' %}"></script>
+    <script src="{% static 'asets/js/script.js' %}"></script>
+  </body>
+</html>

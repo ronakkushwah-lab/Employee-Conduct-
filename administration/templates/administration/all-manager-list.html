@@ -1,0 +1,936 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/simplebar@latest/dist/simplebar.css"/>
+    <link href='https://unpkg.com/boxicons@2.1.2/css/boxicons.min.css' rel='stylesheet'>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/metisMenu/3.0.7/metisMenu.min.css"/>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.19/css/jquery.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <link rel="stylesheet" type="text/css" href="../css/style.css">
+    <link rel="stylesheet" type="text/css" href="../css/responsive.css">
+    
+    <title>Employee Conduct HRMS - Admin Dashboard</title>
+  </head>
+  <body>
+    <div id="preloader"></div>
+    
+    <div class="wrapper">
+      <div class="sidebar_wrapper" data-simplebar>
+        <div class="simplebar-wrapper">
+          <div class="simplebar-height-auto-observer-wrapper">
+            <div class="simplebar-height-auto-observer"></div>
+          </div>
+          <div class="simplebar-mask">
+            <div class="simplebar-offset">
+              <div class="simplebar-content-wrapper">
+                <div class="simplebar-content mm-active">
+                  <div class="sidebar-header">
+                    <div>
+                      <img src="{% static 'asets/images/employee_conduct_logo.png' %}" class="img-fluid">
+                    </div>
+                    <div class="toggle-icon ms-auto">
+                      <i class="bx bx-arrow-to-left" id="btn"></i>
+                    </div>
+                  </div>
+                  <ul class="metisMenu mm-show" id="menu">
+                    <li>
+                      <a href="{% url 'index' company_id=company_id company_staff_id=company_staff_id %}">
+                        <div class="parent-icon">
+                          <i class="bx bxs-dashboard"></i>
+                        </div>
+                        <div class="menu-title">
+                          <span>Admin Panel</span>
+                        </div>
+                      </a>
+                    </li>
+                    <li class="menu-label">Employees</li>
+                    <li>
+                      <a class="has-arrow">
+                        <div class="parent-icon">
+                          <i class="bx bx-user"></i>
+                        </div>
+                        <div class="menu-title">
+                          <span>Employees</span>
+                        </div>
+                      </a>
+                      <ul class="mm-collapse">
+                        <li>
+                          <a href="all-employees.html">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            All Employees
+                          </a>
+                        </li>
+                        <li>
+                          <a href="employee-attendance-list.html">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Attendance List
+                          </a>
+                        </li>
+                        <li>
+                          <a href="employee-salary.html">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Salary
+                          </a>
+                        </li>
+                        <li>
+                          <a href="employee-all-documents.html">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            All Documents
+                          </a>
+                        </li>
+                      </ul>
+                    </li>
+                    <li class="menu-label">Manager</li>
+                    <li class="mm-active">
+                      <a class="has-arrow">
+                        <div class="parent-icon">
+                          <i class="bx bx-user"></i>
+                        </div>
+                        <div class="menu-title">
+                          <span>Manager</span>
+                        </div>
+                      </a>
+                      <ul class="mm-collapse">
+                        <li>
+                          <a href="all-manager.html">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            All Manager
+                          </a>
+                        </li>
+                        <li>
+                          <a href="manager-salary.html">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Salary
+                          </a>
+                        </li>
+                        <li>
+                          <a href="manager-attendance-list.html">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Attendance List
+                          </a>
+                        </li>
+                        <li>
+                          <a href="assign-employee.html">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Assign Employee
+                          </a>
+                        </li>
+                        <li>
+                          <a href="employee-list.html">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Employee List
+                          </a>
+                        </li>
+                      </ul>
+                    </li>
+                    <li>
+                      <a class="has-arrow">
+                        <div class="parent-icon">
+                          <i class="bx bx-copy"></i>
+                        </div>
+                        <div class="menu-title">
+                          <span>Project</span>
+                        </div>
+                      </a>
+                      <ul class="mm-collapse">
+                        <li>
+                          <a href="add-project.html">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Add Project
+                          </a>
+                        </li>
+                        <li>
+                          <a href="list-project.html">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            List Project
+                          </a>
+                        </li>
+                        <li>
+                          <a href="view-timesheet.html">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            View Timesheet
+                          </a>
+                        </li>
+                      </ul>
+                    </li>
+                    <li>
+                      <a class="has-arrow">
+                        <div class="parent-icon">
+                          <i class="bx bx-copy"></i>
+                        </div>
+                        <div class="menu-title">
+                          <span>Leads</span>
+                        </div>
+                      </a>
+                      <ul class="mm-collapse">
+                        <li>
+                          <a href="clients.html">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Clients
+                          </a>
+                        </li>
+                        <li>
+                          <a href="leads.html">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Leads
+                          </a>
+                        </li>
+                      </ul>
+                    </li>
+                    <li>
+                      <a href="department.html">
+                        <div class="parent-icon">
+                          <i class="bx bxs-coupon"></i>
+                        </div>
+                        <div class="menu-title">
+                          <span>Department</span>
+                        </div>
+                      </a>
+                    </li>
+                    <li>
+                      <a class="has-arrow">
+                        <div class="parent-icon">
+                          <i class="bx bx-copy"></i>
+                        </div>
+                        <div class="menu-title">
+                          <span>Leaves</span>
+                        </div>
+                      </a>
+                      <ul class="mm-collapse">
+                        <li>
+                          <a href="pending-leaves.html">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Pending Leaves
+                          </a>
+                        </li>
+                        <li>
+                          <a href="approved-leaves.html">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Approved Leaves
+                          </a>
+                        </li>
+                        <li>
+                          <a href="cancelled-leaves.html">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Cancelled Leaves
+                          </a>
+                        </li>
+                        <li>
+                          <a href="rejected-leaves.html">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Rejected Leaves
+                          </a>
+                        </li>
+                        <li>
+                          <a href="add-leaves-balance.html">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Add Leaves Balance
+                          </a>
+                        </li>
+                        <li>
+                          <a href="leaves-balance-list.html">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Leaves Balance List
+                          </a>
+                        </li>
+                      </ul>
+                    </li>
+                    <li>
+                      <a class="has-arrow">
+                        <div class="parent-icon">
+                          <i class="bx bx-copy"></i>
+                        </div>
+                        <div class="menu-title">
+                          <span>Holiday</span>
+                        </div>
+                      </a>
+                      <ul class="mm-collapse">
+                        <li>
+                          <a href="add-holiday.html">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Add Holiday
+                          </a>
+                        </li>
+                        <li>
+                          <a href="list-holiday.html">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            List Holiday
+                          </a>
+                        </li>
+                      </ul>
+                    </li>
+                    <li>
+                      <a href="notifications.html">
+                        <div class="parent-icon">
+                          <i class="bx bxs-coupon"></i>
+                        </div>
+                        <div class="menu-title">
+                          <span>Notifications</span>
+                        </div>
+                      </a>
+                    </li>
+                    <li>
+                      <a href="invoices.html">
+                        <div class="parent-icon">
+                          <i class="bx bx-copy"></i>
+                        </div>
+                        <div class="menu-title">
+                          <span>Invoices</span>
+                        </div>
+                      </a>
+                    </li>
+                    <li>
+                      <a class="has-arrow">
+                        <div class="parent-icon">
+                          <i class="bx bx-copy"></i>
+                        </div>
+                        <div class="menu-title">
+                          <span>Resignation</span>
+                        </div>
+                      </a>
+                      <ul class="mm-collapse">
+                        <li>
+                          <a href="pending-resignation.html">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Pending Resignation
+                          </a>
+                        </li>
+                        <li>
+                          <a href="approved-resignation.html">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Approved Resignation
+                          </a>
+                        </li>
+                        <li>
+                          <a href="cancelled-resignation.html">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Cancelled Resignation
+                          </a>
+                        </li>
+                      </ul>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="simplebar-placeholder"></div>
+        </div>
+        <div class="simplebar-track simplebar-horizontal" style="visibility: hidden;">
+          <div class="simplebar-scrollbar" style="width: 0px; display: none;"></div>
+        </div>
+        <div class="simplebar-track simplebar-vertical" style="visibility: visible;">
+          <div class="simplebar-scrollbar" style="height: 83px; transform: translate3d(0px, 0px, 0px); display: block;"></div>
+        </div>
+      </div>
+      <header>
+        <div class="topbar d-flex align-items-center">
+          <nav class="navbar navbar-expand">
+            <div class="search-bar flex-grow-1">
+              <div class="position-relative search-bar-box">
+                <input type="text" class="form-control search-control" placeholder="Type to search...">
+                <span class="position-absolute top-50 search-show translate-middle-y">
+                  <i class="bx bx-search"></i>
+                </span>
+                <span class="position-absolute top-50 search-close translate-middle-y">
+                  <i class="bx bx-x"></i>
+                </span>
+              </div>
+            </div>
+            <div class="user-box dropdown">
+              <a class="d-flex align-items-center nav-link dropdown-toggle dropdown-toggle-nocaret" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <img src="../images/avatar-2.png" class="user-img" alt="user avatar">
+                <div class="user-info ps-3">
+                  <p class="user-name mb-0">Pauline Seitz</p>
+                  <p class="designattion mb-0">Web Designer</p>
+                </div>
+              </a>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li>
+                  <a href="#" class="dropdown-item"><i class='bx bx-log-out-circle'></i> Logout</a>
+                </li>
+              </ul>
+            </div>
+          </nav>
+        </div>
+      </header>
+      <div class="page_wrapper">
+        <div class="page-content">
+          <div class="page-breadcrumb d-sm-flex align-items-center mb-3">
+            <div class="breadcrumb-title pe-3">Manager</div>
+            <div class="ps-3">
+              <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0 p-0">
+                  <li class="breadcrumb-item">
+                    <a href="{% url 'index' company_id=company_id company_staff_id=company_staff_id %}">
+                      <i class="bx bx-home"></i>
+                    </a>
+                  </li>
+                  <li class="breadcrumb-item active" aria-current="page">All Manager</li>
+                </ol>
+              </nav>
+            </div>
+            <div class="ms-auto">
+              <div class="btn-group">
+                <a href="all-manager.html" class="grid-view btn btn-link"><i class="bx bx-grid"></i></a>
+                <a href="all-manager-list.html" class="grid-list btn btn-link active"><i class="bx bx-list-ul"></i></a>
+                <button type="button" class="btn btn-outline-orangeyellow" data-bs-toggle="modal" data-bs-target="#addmanagerModal" id="addmanagerBtn">
+                  <i class="bx bx-plus"></i> Add Manager
+                </button>
+                <div class="modal" id="addmanagerModal">
+                  <div class="modal-dialog w-80">
+                    <div class="modal-content">
+                      <div class="modal-header">
+                        <h5 class="modal-title" id="exampleModalLabel">Add Manager</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                      </div>
+                      <div class="modal-body">
+                        <form>
+                          <div class="row mb-2">
+                            <div class="col-md-6">
+                              <label for="first-name" class="form-label">First Name <span class="text-danger">*</span></label>
+                              <input type="text" class="form-control" placeholder="Joe" id="first-name" required>
+                            </div>
+                            <div class="col-md-6">
+                              <label for="last-name" class="form-label">Last Name</label>
+                              <input type="text" class="form-control" placeholder="West" id="last-name">
+                            </div>
+                          </div>
+                          <div class="row mb-2">
+                            <div class="col-md-6">
+                              <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+                              <input type="email" class="form-control" placeholder="joewest01@gmail.com" id="email" required>
+                            </div>
+                            <div class="col-md-6">
+                              <label for="password" class="form-label">Password</label>
+                              <input type="password" class="form-control" id="password">
+                            </div>
+                          </div>
+                          <div class="row mb-2">
+                            <div class="col-md-6">
+                              <label for="confirm-password" class="form-label">Confirm Password</label>
+                              <input type="password" class="form-control" id="confirm-password">
+                            </div>
+                            <div class="col-md-6">
+                              <label for="manager-id" class="form-label">Manager ID <span class="text-danger">*</span></label>
+                              <input type="text" class="form-control" placeholder="EIC-0003" id="manager-id" required>
+                            </div>
+                          </div>
+                          <div class="row mb-2">
+                            <div class="col-md-6">
+                              <label for="joining-date" class="form-label">Joining Dates <span class="text-danger">*</span></label>
+                              <input type="date" class="form-control datetimepicker" id="joining-date" required>
+                            </div>
+                            <div class="col-md-6">
+                              <label for="phone" class="form-label">Phone</label>
+                              <input type="text" class="form-control" placeholder="9876543210" id="phone">
+                            </div>
+                          </div>
+                          <div class="row mb-2">
+                            <div class="col-md-6">
+                              <label for="department" class="form-label">Department <span class="text-danger">*</span></label>
+                                <select class="form-select" aria-label="Default select example" required>
+                                  <option selected>Select Department</option>
+                                  <option value="Web Development">Web Development</option>
+                                  <option value="IT Management">IT Management</option>
+                                  <option value="Marketing">Marketing</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                              <label for="salary" class="form-label">Salary <span class="text-danger">*</span></label>
+                              <input type="text" class="form-control" placeholder="350000" id="salary" required>
+                            </div>
+                          </div>
+                          <div class="mt-4 mb-2 button-right">
+                            <button type="button" class="btn btn-outline-orangeyellow">Submit</button>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <hr>
+          <div class="row mt-3">
+            <div class="col-12">
+              <div class="card">
+                <div class="card-body">
+                  <div class="table-responsive">
+                    <table class="table table-fluid table-hover" id="myTable">
+                      <thead>
+                        <tr>
+                          <th>Name</th>
+                          <th>Manager ID</th>
+                          <th>Email</th>
+                          <th>Mobile</th>
+                          <th>Join Date</th>
+                          <th>Role</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>Abid</td>
+                          <td>EIC-</td>
+                          <td>abid@gmail.com</td>
+                          <td>987654321</td>
+                          <td>May 2, 2022</td>
+                          <td>Web Designer</td>
+                          <td class="dropdown">
+                            <a class="d-flex align-items-center nav-link dropdown-toggle dropdown-toggle-nocaret" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                              <i class="bx bx-dots-vertical-rounded"></i>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                              <li>
+                                <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#viewmanagerModal" id="viewBtn">View</button>
+                              </li>
+                              <li>
+                                <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#editmanagerModal" id="editBtn">Edit</button>
+                              </li>
+                              <li>
+                                <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#deletemanagerModal" id="deleteBtn">Delete</button>
+                              </li>
+                            </ul>
+                            <div class="modal" id="viewmanagerModal">
+                              <div class="modal-dialog w-80">
+                                <div class="modal-content">
+                                  <div class="modal-header">
+                                    <h5 class="modal-title" id="exampleModalLabel">Manager Profile</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                  </div>
+                                  <div class="modal-body">
+                                    <div class="d-block align-items-center m-auto w-50 text-center">
+                                      <div class="fm-icon-box radius-15">
+                                        <img src="../images/avatar-2.png" class="img-fluid user-img">
+                                        <h5 class="mt-3 mb-0">Abid</h5>
+                                      </div>
+                                    </div>
+                                    <div class="row">
+                                      <div class="col-md-6">
+                                        <table class="table table-fluid table-bordered table-striped caption-top">
+                                          <caption>Professional Information</caption>
+                                          <tr>
+                                            <th>Employee ID</th>
+                                            <td>1</td>
+                                          </tr>
+                                            <th>Department</th>
+                                            <td>Software Developer</td>
+                                          </tr>
+                                          <tr>
+                                            <th>Date of Join</th>
+                                            <td>April 19, 2022</td>
+                                          </tr>
+                                          <tr>
+                                            <th>Phone</th>
+                                            <td>+91 8189787108</td>                               
+                                          </tr>
+                                          <tr>                                
+                                            <th>Email</th>
+                                            <td>abid@gmail.com</td>
+                                          </tr>
+                                          <tr>
+                                            <th>Address</th>
+                                            <td>Patna</td>
+                                          </tr>                              
+                                          <tr>                                
+                                            <th>Gender</th>
+                                            <td>Male</td>
+                                          </tr>
+                                          <tr>
+                                            <th>Birthday</th>
+                                            <td>MArch 23, 1997</td>
+                                          </tr>                            
+                                        </table>
+                                        <table class="table table-fluid table-bordered table-striped caption-top">
+                                          <caption>Education Information</caption>
+                                          <tr>
+                                            <td>
+                                              <ul>
+                                                <li>
+                                                  <div class="education-user">
+                                                    <div class="before-circle"></div>
+                                                  </div>
+                                                  <div class="education-content">
+                                                    <b class="institution-name">Institution</b><br>
+                                                    <span class="subject-name">Subject</span><br>
+                                                    <span class="degree-name">Degree</span><br>
+                                                    <span class="grade-name">Grade</span><br>
+                                                    <sub><span class="start-date">Start Date</span> - <span class="end-date">End Date</span></sub>
+                                                  </div>
+                                                </li>
+                                              </ul>
+                                            </td>
+                                          </tr>
+                                        </table>
+                                      </div>
+                                      <div class="col-md-6">
+                                        <table class="table table-fluid table-bordered caption-top table-striped">
+                                          <caption>Personal Information</caption>
+                                          <tr>
+                                            <th>Name</th>
+                                            <td>Abid Aayan</td>
+                                          </tr>
+                                          <tr>
+                                            <th>Father Name</th>
+                                            <td>Abc</td>
+                                          </tr>
+                                          <tr>
+                                            <th>Mother Name</th>
+                                            <td>Def</td>
+                                          </tr>
+                                          <tr>
+                                            <th>Nationality</th>
+                                            <td>Indian</td>
+                                          </tr>
+                                          <tr>
+                                            <th>Marital Status</th>
+                                            <td>Unmarried</td>
+                                          </tr>
+                                        </table>
+                                        <table class="table table-fluid table-bordered caption-top table-striped">
+                                          <caption>Emergency Contact</caption>
+                                          <tr>
+                                            <th class="w-25">Name</th>
+                                            <td class="w-25">Saquib</td>
+                                          </tr>
+                                          <tr>
+                                            <th class="w-25">Relationship</th>
+                                            <td class="w-25">Brother</td>
+                                          </tr>
+                                          <tr>
+                                            <th class="w-25">Phone</th>
+                                            <td class="w-25">+91 89787108</td>
+                                          </tr>
+                                        </table>
+                                        <table class="table table-fluid table-bordered table-striped caption-top">
+                                          <caption>Experience</caption>
+                                          <tr>
+                                            <td>
+                                              <ul>
+                                                <li>
+                                                  <div class="experience-user">
+                                                    <div class="before-circle"></div>
+                                                  </div>
+                                                  <div class="experience-content">
+                                                    <b class="institution-name">Company Name</b><br>
+                                                    <span class="subject-name">Position</span><br>
+                                                    <sub><span class="start-date">Start Date</span> - <span class="end-date">End Date</span></sub>
+                                                  </div>
+                                                </li>
+                                              </ul>
+                                            </td>
+                                          </tr>
+                                        </table>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <div class="modal" id="editmanagerModal">
+                              <div class="modal-dialog w-80">
+                                <div class="modal-content">
+                                  <div class="modal-header">
+                                    <h5 class="modal-title" id="exampleModalLabel">Edit Manager</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                  </div>
+                                  <div class="modal-body">
+                                    <form>
+                                      <div class="accordion" id="accordionExample">
+                                        <div class="accordion-item">
+                                          <h2 class="accordion-header" id="profile">
+                                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#profile-img" aria-expanded="true" aria-controls="profile-img">
+                                              Profile Picture
+                                            </button>
+                                          </h2>
+                                          <div id="profile-img" class="accordion-collapse collapse show" aria-labelledby="profile" data-bs-parent="#accordionExample">
+                                            <div class="accordion-body">
+                                              <div class="row mb-2">
+                                                <div class="col">
+                                                  <div class="d-block align-items-center m-auto text-center edit-profile">
+                                                    <div class="fm-icon-box radius-50 m-auto">
+                                                      <img src="" class="img-fluid user-img">
+                                                      <input type="file" class="profile-img" required>
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div class="accordion-item">
+                                          <h2 class="accordion-header" id="professional">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#professional-information" aria-expanded="true" aria-controls="professional-information">
+                                              Professional Information
+                                            </button>
+                                          </h2>
+                                          <div id="professional-information" class="accordion-collapse collapse" aria-labelledby="professional" data-bs-parent="#accordionExample">
+                                            <div class="accordion-body">
+                                              <div class="row mb-2">
+                                                <div class="col-md-6">
+                                                  <label for="birth-date" class="form-label">Birth Date</label>
+                                                  <input type="date" class="form-control" id="birth-date">
+                                                </div>
+                                                <div class="col-md-6">
+                                                  <label for="gender" class="form-label">Gender</label>
+                                                  <select class="form-select" aria-label="Default select example">
+                                                    <option selected>Select Gender</option>
+                                                    <option value="Female">Female</option>
+                                                    <option value="Male">Male</option>
+                                                  </select>
+                                                </div>
+                                              </div>
+                                              <div class="row mb-2">
+                                                <div class="col-md-6">
+                                                  <label for="address" class="form-label">Address</label>
+                                                  <textarea class="form-control" id="address" rows="3"></textarea>
+                                                </div>
+                                              </div>
+                                              <div class="row mb-2">
+                                                <div class="col-md-6">
+                                                  <label for="state" class="form-label">State</label>
+                                                  <input type="text" class="form-control" id="state">
+                                                </div>
+                                                <div class="col-md-6">
+                                                  <label for="country" class="form-label">Country</label>
+                                                  <input type="text" class="form-control" id="country">
+                                                </div>
+                                              </div>
+                                              <div class="row mb-2">
+                                                <div class="col-md-6">
+                                                  <label for="pin code" class="form-label">Pin Code</label>
+                                                  <input type="text" class="form-control" id="pin code">
+                                                </div>
+                                                <div class="col-md-6">
+                                                  <label for="phone-number" class="form-label">Phone Number</label>
+                                                  <input type="text" class="form-control" id="phone-number">
+                                                </div>
+                                              </div>
+                                              <div class="row mb-2">
+                                                <div class="col-md-6">
+                                                  <label for="status" class="form-label">Status <span class="text-danger">*</span></label>
+                                                  <select class="form-select" aria-label="Default select example" required>
+                                                    <option selected>Select Status</option>
+                                                    <option value="Active">Active</option>
+                                                    <option value="Inactive">Inactive</option>
+                                                  </select>
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div class="accordion-item">
+                                          <h2 class="accordion-header" id="personal">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#personal-information" aria-expanded="false" aria-controls="personal-information">
+                                              Personal Information
+                                            </button>
+                                          </h2>
+                                          <div id="personal-information" class="accordion-collapse collapse" aria-labelledby="personal" data-bs-parent="#accordionExample">
+                                            <div class="accordion-body">
+                                              <div class="row mb-2">
+                                                <div class="col-md-6">
+                                                  <label for="name" class="form-label">Name</label>
+                                                  <input type="text" class="form-control" id="name">
+                                                </div>
+                                                <div class="col-md-6">
+                                                  <label for="father-name" class="form-label">Father Name</label>
+                                                  <input type="text" class="form-control" id="father-name">
+                                                </div>
+                                              </div>
+                                              <div class="row mb-2">
+                                                <div class="col-md-6">
+                                                  <label for="mother-name" class="form-label">Mother Name</label>
+                                                  <input type="text" class="form-control" id="mother-name">
+                                                </div>
+                                                <div class="col-md-6">
+                                                  <label for="nationality" class="form-label">Nationality <span class="text-danger">*</span></label>
+                                                  <input type="text" class="form-control" id="nationality" required>
+                                                </div>
+                                              </div>
+                                              <div class="row mb-2">
+                                                <div class="col-md-6">
+                                                  <label for="status" class="form-label">Marital Status <span class="text-danger">*</span></label>
+                                                  <select class="form-select" aria-label="Default select example" required>
+                                                    <option selected>Select Marital Status</option>
+                                                    <option value="Active">Single</option>
+                                                    <option value="Inactive">Married</option>
+                                                  </select>
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div class="accordion-item">
+                                          <h2 class="accordion-header" id="emergency">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#emergency-contact" aria-expanded="false" aria-controls="emergency-contact">
+                                              Emergency Contact
+                                            </button>
+                                          </h2>
+                                          <div id="emergency-contact" class="accordion-collapse collapse" aria-labelledby="emergency" data-bs-parent="#accordionExample">
+                                            <div class="accordion-body">
+                                              <div class="row mb-2">
+                                                <div class="col-md-6">
+                                                  <label for="name" class="form-label">Name <span class="text-danger">*</span></label>
+                                                  <input type="text" class="form-control" id="name" required>
+                                                </div>
+                                                <div class="col-md-6">
+                                                  <label for="relationship" class="form-label">Relationship <span class="text-danger">*</span></label>
+                                                  <input type="text" class="form-control" id="relationship" required>
+                                                </div>
+                                              </div>
+                                              <div class="row mb-2">
+                                                <div class="col-md-6">
+                                                  <label for="phone-number" class="form-label">Phone Number <span class="text-danger">*</span></label>
+                                                  <input type="text" class="form-control" id="phone-number" required>
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div class="accordion-item">
+                                          <h2 class="accordion-header" id="education">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#education-information" aria-expanded="false" aria-controls="education-information">
+                                              Education Informations
+                                            </button>
+                                          </h2>
+                                          <div id="education-information" class="accordion-collapse collapse" aria-labelledby="education" data-bs-parent="#accordionExample">
+                                            <div class="accordion-body">
+                                              <div class="row mb-2">
+                                                <div class="col-md-6">
+                                                  <label for="institution-name" class="form-label">Instiution</label>
+                                                  <input type="text" class="form-control" id="institution-name">
+                                                </div>
+                                                <div class="col-md-6">
+                                                  <label for="subject-name" class="form-label">Subject</label>
+                                                  <input type="text" class="form-control" id="subject-name">
+                                                </div>
+                                              </div>
+                                              <div class="row mb-2">
+                                                <div class="col-md-6">
+                                                  <label for="start-date" class="form-label">Starting Date</label>
+                                                  <input type="date" class="form-control" id="start-date">
+                                                </div>
+                                                <div class="col-md-6">
+                                                  <label for="complete-date" class="form-label">Complete Date</label>
+                                                  <input type="date" class="form-control" id="complete-date">
+                                                </div>
+                                              </div>
+                                              <div class="row mb-2">
+                                                <div class="col-md-6">
+                                                  <label for="degree-name" class="form-label">Degree</label>
+                                                  <input type="text" class="form-control" id="degree-name">
+                                                </div>
+                                                <div class="col-md-6">
+                                                  <label for="grade" class="form-label">Grade</label>
+                                                  <input type="text" class="form-control" id="grade" required>
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div class="accordion-item">
+                                          <h2 class="accordion-header" id="experience">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#experience-information" aria-expanded="false" aria-controls="experience-information">
+                                              Experience
+                                            </button>
+                                          </h2>
+                                          <div id="experience-information" class="accordion-collapse collapse" aria-labelledby="experience" data-bs-parent="#accordionExample">
+                                            <div class="accordion-body">
+                                              <div class="row mb-2">
+                                                <div class="col-md-6">
+                                                  <label for="company-name" class="form-label">Company Name</label>
+                                                  <input type="text" class="form-control" id="company-name">
+                                                </div>
+                                                <div class="col-md-6">
+                                                  <label for="location" class="form-label">Location</label>
+                                                  <input type="text" class="form-control" id="location">
+                                                </div>
+                                              </div>
+                                              <div class="row mb-2">
+                                                <div class="col-md-6">
+                                                  <label for="job-position" class="form-label">Job Position</label>
+                                                  <input type="text" class="form-control" id="job-position">
+                                                </div>
+                                                <div class="col-md-6">
+                                                  <label for="period-from" class="form-label">Period From</label>
+                                                  <input type="date" class="form-control" id="period-from">
+                                                </div>                                        
+                                              </div>
+                                              <div class="row mb-2">
+                                                <div class="col-md-6">
+                                                  <label for="period-to" class="form-label">Period To</label>
+                                                  <input type="date" class="form-control" id="period-to">
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>                              
+                                      <div class="mt-4 mb-2 button-right">
+                                        <button type="button" class="btn btn-outline-orangeyellow">Submit</button>
+                                      </div>
+                                    </form>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <div class="modal" id="deletemanagerModal">
+                              <div class="modal-dialog">
+                                <div class="modal-content">
+                                  <div class="modal-header">
+                                    <h5 class="modal-title" id="exampleModalLabel">Delete Manager</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                  </div>
+                                  <div class="modal-body text-center">
+                                    <p>Are you sure want to delete?</p>
+                                    <button type="button" class="btn btn-outline-orangeyellow w-100 mb-2">Delete</button>
+                                    <button type="button" class="btn btn-outline-orangeyellow w-100" data-bs-dismiss="modal">Cancel</button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>                      
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <footer class="page-footer">
+          <p class="mb-0">Copyright © 2022. All right reserved.</p>
+        </footer>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/simplebar@latest/dist/simplebar.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/metisMenu/3.0.7/metisMenu.min.js"></script>
+    <script src="https://unpkg.com/boxicons@2.1.2/dist/boxicons.js"></script>
+    <script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/js/all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.5.3/jspdf.debug.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.8.0/html2pdf.bundle.js"></script>
+    <script src="../js/jquery.sparkline.min.js"></script>
+    <script src="../js/Chart.min.js"></script>
+    <script src="../js/Chart.extension.js"></script>
+    <script src="../js/script.js"></script>
+    
+  </body>
+</html>

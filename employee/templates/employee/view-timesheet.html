@@ -1,0 +1,262 @@
+{% load static %}
+{% include "employee/header.html" %}
+{% include "employee/sidebar.html" %}
+{% include "employee/topbar.html" %}
+
+      <div class="page_wrapper">
+        <div class="page-content">
+          <div class="page-breadcrumb d-sm-flex align-items-center mb-3">
+            <div class="breadcrumb-title pe-3">Project</div>
+            <div class="ps-3">
+              <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0 p-0">
+                  <li class="breadcrumb-item">
+                    <a href="{% url 'employee_dashboard' company_id=company_id company_staff_id=company_staff_id %}">
+                      <i class="bx bx-home"></i>
+                    </a>
+                  </li>
+                  <li class="breadcrumb-item active" aria-current="page">View Timesheet</li>
+                </ol>
+              </nav>
+            </div>
+          </div>
+          <hr>
+          <div class="row mt-3">
+            <div class="col">
+              <div class="card shadow-none border radius-15">
+                <div class="card-body">
+                  <!-- Total Summary Banner -->
+                  <div class="alert alert-purple border-0 bg-light-purple alert-dismissible fade show py-2 mb-4">
+                    <div class="d-flex align-items-center">
+                      <div class="font-35 text-purple"><i class='bx bx-time-five'></i>
+                      </div>
+                      <div class="ms-3">
+                        <h6 class="mb-0 text-purple">Total Timesheet Duration</h6>
+                        <div>You have logged a total of <strong>{{ total_time }}</strong> hours across all projects.</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Project-wise Accordion -->
+                  <div class="accordion" id="projectTimesheetAccordion">
+                    {% for project in project_list %}
+                    <div class="accordion-item mb-3 border radius-15">
+                      <h2 class="accordion-header" id="heading{{ forloop.counter }}">
+                        <button class="accordion-button collapsed font-weight-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ forloop.counter }}" aria-expanded="false" aria-controls="collapse{{ forloop.counter }}">
+                          <span class="text-purple"><i class='bx bx-folder me-2'></i>{{ project.name }}</span>
+                          <span class="badge bg-light-purple text-purple ms-3">{{ project.entries|length }} Entries</span>
+                        </button>
+                      </h2>
+                      <div id="collapse{{ forloop.counter }}" class="accordion-collapse collapse" aria-labelledby="heading{{ forloop.counter }}" data-bs-parent="#projectTimesheetAccordion">
+                        <div class="accordion-body">
+                          <div class="table-responsive">
+                            <table class="table table-fluid table-hover mb-0">
+                              <thead>
+                                <tr>
+                                  <th>Start Time</th>
+                                  <th>End Time</th>
+                                  <th>Total Time</th>
+                                  <th>Action</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {% for obj in project.entries %}
+                                <tr>
+                                  <td>{{ obj.start_time }}</td>
+                                  <td>{{ obj.end_time }}</td>
+                                  <td>{{ obj.total_duration }}</td>
+                                  <td>
+                                    <button type="button" class="btn btn-outline-orangeyellow btn-sm me-1" data-bs-toggle="modal" data-bs-target="#viewprojectModal" id="viewBtn" onclick="entry_details_fetch('{{obj.pk}}')">View</button>
+                                    <button type="button" class="btn btn-outline-orangeyellow btn-sm" data-bs-toggle="modal" data-bs-target="#deleteprojectModal" id="deleteBtn" onClick="getId('{{obj.id}}')">Delete</button>
+                                  </td>
+                                </tr>
+                                {% endfor %}
+                                <tr class="table-light">
+                                  <td colspan="2"><strong>Total</strong></td>
+                                  <td><strong>{{ project.total_time }}</strong></td>
+                                  <td></td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center py-4">
+                      <p class="text-muted mb-0">No timesheet entries found.</p>
+                    </div>
+                    {% endfor %}
+                  </div>
+
+                  <!-- Shareable Modals (Defined once outside loops) -->
+                  <!-- View Modal -->
+                  <div class="modal fade" id="viewprojectModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog w-80">
+                      <div class="modal-content">
+                        <div class="modal-header">
+                          <h5 class="modal-title" id="exampleModalLabel">View Timesheet Details</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                          <table class="table table-fluid table-bordered table-hover">
+                            <tbody>
+                              <tr>
+                                <th>Start Time</th>
+                                <td id="employee_start_time_heading"></td>
+                              </tr>
+                              <tr>
+                                <th>End Time</th>
+                                <td id="employee_end_time_heading"></td>
+                              </tr>
+                              <tr>
+                                <th>Total Time</th>
+                                <td id="employee_total_duration_heading"></td>
+                              </tr>
+                              <tr>
+                                <th>Project</th>
+                                <td id="employee_project_heading"></td>
+                              </tr>
+                              <tr>
+                                <th>Task</th>
+                                <td id="employee_task_heading"></td>
+                              </tr>
+                              <tr>
+                                <th>Blockers</th>
+                                <td id="employee_blocker_name_heading"></td>
+                              </tr>
+                              <tr>
+                                <th>Attachment</th>
+                                <td id="employee_attachment_heading">
+                                  <a href="#" id="employee_attachment_link" target="_blank">View Attachment</a>
+                                </td>
+                              </tr>
+                              <tr>
+                                <th>Reporting To</th>
+                                <td id="employee_assigned_to_heading"></td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Delete Modal -->
+                  <div class="modal fade" id="deleteprojectModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog">
+                      <div class="modal-content">
+                        <div class="modal-header">
+                          <h5 class="modal-title">Delete Project Entry</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body text-center">
+                          <p>Are you sure want to delete this timesheet entry?</p>
+                          <div class="col-12">
+                            <a href="javascript:void(0);" id="delete" class="btn btn-outline-orangeyellow w-100 mb-2">Delete</a>
+                          </div>
+                          <button type="button" class="btn btn-outline-orangeyellow w-100" data-bs-dismiss="modal">Cancel</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <footer class="page-footer">
+          <p class="mb-0">Copyright © 2022. All right reserved.</p>
+        </footer>
+      </div>
+    </div>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/simplebar@latest/dist/simplebar.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/metisMenu/3.0.7/metisMenu.min.js"></script>
+    <script src="https://unpkg.com/boxicons@2.1.2/dist/boxicons.js"></script>
+    <script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/js/all.min.js"></script>
+    <script src="{% static 'asets/js/jquery.sparkline.min.js' %}"></script>
+    <script src="{% static 'asets/js/Chart.min.js' %}"></script>
+    <script src="{% static 'asets/js/Chart.extension.js' %}"></script>
+    <script src="{% static 'asets/js/script.js' %}"></script>
+
+
+          <script>
+       function entry_details_fetch(id){
+
+
+        // Ajax POST Request
+        var employee_attachment_heading = document.getElementById("employee_attachment_heading");
+        var employee_start_time_heading = document.getElementById("employee_start_time_heading");
+        var employee_end_time_heading = document.getElementById("employee_end_time_heading");
+        var employee_task_heading = document.getElementById("employee_task_heading");        var employee_project_heading = document.getElementById("employee_project_heading");
+        var employee_total_duration_heading = document.getElementById("employee_total_duration_heading");
+        var employee_assigned_to_heading = document.getElementById("employee_assigned_to_heading");
+
+
+        $.ajax({
+                  url: '{% url "All_entry" company_id=company_id company_staff_id=company_staff_id %}',
+                  method: "POST",
+                  processData: false,
+                  contentType: 'application/json',
+                  mimeType: "multipart/form-data",
+                  headers: {'X-CSRFToken': "{{csrf_token}}", "Content-Type":"application/json"},
+                  data: JSON.stringify({'id': id}),
+                  dataType: "json",
+                  success: function(res){
+
+                  start_time = res['start_time'];
+                  end_time = res['end_time'];
+                  task = res['task'];
+                  blocker_name = res['blocker_name'];
+                  project = res['project'];
+                  total_duration = res['total_duration'];
+                  attachment_url = res['attachment_url'];
+                  attachment_name = res['attachment_name'];
+                  assigned_to = res['assigned_to'];
+                  
+
+
+                  employee_start_time_heading.textContent = start_time;
+                  employee_end_time_heading.textContent = end_time;
+                  employee_task_heading.textContent = task;
+                  employee_blocker_name_heading.textContent = blocker_name;
+                  employee_project_heading.textContent = project;
+                  employee_total_duration_heading.textContent = total_duration;
+                  employee_assigned_to_heading.textContent = assigned_to;
+                 
+
+                  if (attachment_url) {
+                    employee_attachment_heading.innerHTML = '<a href="' + attachment_url + '" target="_blank">' + attachment_name + '</a>';
+                  } else {
+                    employee_attachment_heading.textContent = 'No file attached';
+                  }
+
+                },
+                error: function(xhr, status, error){
+                  console.log(error);
+                  console.log(status);
+                  console.log(xhr);
+                }
+        })
+      }
+    </script>
+
+
+   <script>
+  	function getId(id) {
+		// alert(id)
+		var a =document.getElementById('delete');
+		a.href = "/employee/entry_remove/{{company_id}}/{{company_staff_id}}/"+id;
+	}
+
+   </script>
+
+
+
+  </body>
+</html>

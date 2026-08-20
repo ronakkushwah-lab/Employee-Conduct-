@@ -1,0 +1,60 @@
+E:\1study drive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\bin\x86\Debug\datEnrollDat.mdb
+E:\1study drive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\bin\x86\Debug\GEN_FONT.dll
+E:\1study drive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\bin\x86\Debug\GEN_FONT64.dll
+E:\1study drive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\bin\x86\Debug\SBPCCOMM.dll
+E:\1study drive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\bin\x86\Debug\SBPCCOMM64.dll
+E:\1study drive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\bin\x86\Debug\SBXPCDLL.dll
+E:\1study drive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\bin\x86\Debug\SBXPCDLL64.dll
+E:\1study drive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\bin\x86\Debug\SBXPCSampleCSharp.exe.config
+E:\1study drive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\bin\x86\Debug\SBXPCSampleCSharp.exe
+E:\1study drive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\bin\x86\Debug\SBXPCSampleCSharp.pdb
+E:\1study drive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCDLLSampleCSharp.frmAccessTz.resources
+E:\1study drive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCDLLSampleCSharp.frmBellInfo.resources
+E:\1study drive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCDLLSampleCSharp.frmDaigong.resources
+E:\1study drive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCDLLSampleCSharp.frmDepartment.resources
+E:\1study drive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCDLLSampleCSharp.frmEnroll.resources
+E:\1study drive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCDLLSampleCSharp.frmEvent.resources
+E:\1study drive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCDLLSampleCSharp.frmLockCtrl.resources
+E:\1study drive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCDLLSampleCSharp.frmLog.resources
+E:\1study drive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCDLLSampleCSharp.frmLogServerSetting.resources
+E:\1study drive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCDLLSampleCSharp.frmMain.resources
+E:\1study drive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCDLLSampleCSharp.frmPrtCode.resources
+E:\1study drive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCDLLSampleCSharp.frmCommParam.resources
+E:\1study drive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCDLLSampleCSharp.frmSystemInfo.resources
+E:\1study drive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCDLLSampleCSharp.frmTrMode.resources
+E:\1study drive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCDLLSampleCSharp.frmTrString.resources
+E:\1study drive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCSampleCSharp.Properties.Resources.resources
+E:\1study drive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCDLLSampleCSharp.csproj.GenerateResource.Cache
+E:\1study drive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCSampleCSharp.exe
+E:\1study drive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCSampleCSharp.pdb
+E:\1study drive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCDLLSampleCSharp.csprojResolveAssemblyReference.cache
+E:\1studydrive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\bin\x86\Debug\SBXPCSampleCSharp.exe.config
+E:\1studydrive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCSampleCSharp.exe
+E:\1studydrive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCSampleCSharp.pdb
+E:\1studydrive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\bin\x86\Debug\datEnrollDat.mdb
+E:\1studydrive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\bin\x86\Debug\GEN_FONT.dll
+E:\1studydrive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\bin\x86\Debug\GEN_FONT64.dll
+E:\1studydrive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\bin\x86\Debug\SBPCCOMM.dll
+E:\1studydrive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\bin\x86\Debug\SBPCCOMM64.dll
+E:\1studydrive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\bin\x86\Debug\SBXPCDLL.dll
+E:\1studydrive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\bin\x86\Debug\SBXPCDLL64.dll
+E:\1studydrive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\bin\x86\Debug\SBXPCSampleCSharp.exe
+E:\1studydrive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\bin\x86\Debug\SBXPCSampleCSharp.pdb
+E:\1studydrive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCDLLSampleCSharp.csprojResolveAssemblyReference.cache
+E:\1studydrive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCDLLSampleCSharp.frmAccessTz.resources
+E:\1studydrive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCDLLSampleCSharp.frmBellInfo.resources
+E:\1studydrive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCDLLSampleCSharp.frmDaigong.resources
+E:\1studydrive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCDLLSampleCSharp.frmDepartment.resources
+E:\1studydrive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCDLLSampleCSharp.frmEnroll.resources
+E:\1studydrive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCDLLSampleCSharp.frmEvent.resources
+E:\1studydrive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCDLLSampleCSharp.frmLockCtrl.resources
+E:\1studydrive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCDLLSampleCSharp.frmLog.resources
+E:\1studydrive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCDLLSampleCSharp.frmLogServerSetting.resources
+E:\1studydrive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCDLLSampleCSharp.frmMain.resources
+E:\1studydrive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCDLLSampleCSharp.frmPrtCode.resources
+E:\1studydrive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCDLLSampleCSharp.frmCommParam.resources
+E:\1studydrive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCDLLSampleCSharp.frmSystemInfo.resources
+E:\1studydrive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCDLLSampleCSharp.frmTrMode.resources
+E:\1studydrive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCDLLSampleCSharp.frmTrString.resources
+E:\1studydrive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCSampleCSharp.Properties.Resources.resources
+E:\1studydrive\chip\AMS Version\china\MAY\new_sdk_5_7_2018\SDK20180628\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\obj\x86\Debug\SBXPCDLLSampleCSharp.csproj.GenerateResource.Cache

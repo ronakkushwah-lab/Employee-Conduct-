@@ -1,0 +1,121 @@
+{% load static %}
+{% include "administration/header.html" %}
+{% include "administration/sidebar.html" %}
+{% include "administration/topbar.html" %}
+
+{% load crispy_forms_tags %}
+{% load humanize %}
+
+      <div class="page_wrapper">
+        <div class="page-content">
+          <div class="row mt-3">
+            <div class="col-12">
+              <div class="card">
+                <div class="card-body" id="print-salary">
+                  <h5 class="text-center text-uppercase">Payslip for the Month of {{month|date:"F Y " }}</h5>
+                  <div class="d-flex align-items-center mt-5 mb-5">
+                    <div class="logo">
+                      <img src="{% static 'asets/images/employee_conduct_logo.png' %}" alt="Company Logo" class="img-fluid" style="max-width: 200px; height: auto; display: block;">
+                    </div>
+                    <div class="ms-auto text-right">
+                      <h6 class="mb-0">PAYSLIP #{{id}}</h6>
+                      <span class="font-14">Salary Month: {{ month|date:"F Y " }}</span>
+                    </div>
+                  </div>
+                  <div class="align-items-center employee-details mb-5">
+                    <h6 class="name">{{ employee.employee_first_name}} {{employee.employee_last_name}}</h6>
+                    <span class="role">{{employee.employee_department}}</span><br>
+                    <span class="employee-id">Employee ID: {{employee.employee_id}}</span><br>
+                    <span class="joining-date">Joining Date: {{employee.employee_joining_date}}</span>
+                  </div>
+                  <div class="salary-details">
+                    <div class="row">
+                      <div class="col-md-6">
+                        <span>Earnings</span>
+                        <table class="table table-bordered mt-2">
+                          <tbody>
+                            <tr>
+                              <th>Basic Salary</th>
+                              <td>{{ basic }}</td>
+                            </tr>
+                            <tr>
+                              <th>House Rent Allowance (H.R.A.)</th>
+                              <td>{{ hra_percent }}</td>
+                            </tr>
+                            <tr>
+                              <th>Bonuses</th>
+                              <td>{{ bonuses }}</td>
+                            </tr>
+                            <tr>
+                              <th>Medical Allowance</th>
+                              <td>{{ medical_allowance }}</td>
+                            </tr>
+                            <tr>
+                              <th>Total Earning</th>
+                              <th>{{ total_earnings|intcomma}}</th>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                      <div class="col-md-6">
+                        <span>Deductions</span>
+                        <table class="table table-bordered mt-2">
+                          <tbody>
+                            <tr>
+                              <th>Tax Deducted at Source (T.D.S.)</th>
+                              <td>{{ tds|intcomma}}</td>
+                            </tr>
+                            <tr>
+                              <th>Provident Fund</th>
+                              <td>{{ providence_fund|intcomma}}</td>
+                            </tr>
+                            <tr>
+                              <th>ESI</th>
+                              <td>{{ esi|intcomma}}</td>
+                            </tr>
+                            <tr>
+                              <th>Leave</th>
+                              <td>{{ leave|intcomma}}</td>
+                            </tr>
+                            <tr>
+                              <th>Total Deductions</th>
+                              <tH>{{ total_deductions|intcomma}}</th>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="net-salary mt-3">
+                    <h6>Net Salary: {{ net_pay|intcomma}}</h6>
+                  </div>
+                </div>
+              </div>
+              <a href="{% url 'salary-download' company_id=company_id company_staff_id=company_staff_id id=id %}" class="btn btn-outline-orangeyellow mb-3 float-end me-2" target="_blank">Download Salary Slip</a>
+              <button id="download-salary-pdf" class="btn btn-outline-orangeyellow mb-3 float-end">Download as PDF (browser)</button>
+            </div>
+          </div>
+        </div>
+        <footer class="page-footer">
+          <p class="mb-0">Copyright © 2022. All right reserved.</p>
+        </footer>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/simplebar@latest/dist/simplebar.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/metisMenu/3.0.7/metisMenu.min.js"></script>
+    <script src="https://unpkg.com/boxicons@2.1.2/dist/boxicons.js"></script>
+    <script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/js/all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.5.3/jspdf.debug.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.8.0/html2pdf.bundle.js"></script>
+    <script src="{% static 'asets/js/jquery.sparkline.min.js' %}"></script>
+    <script src="{% static 'asets/js/Chart.min.js' %}"></script>
+    <script src="{% static 'asets/js/Chart.extension.js' %}"></script>
+    <script src="{% static 'asets/js/script.js' %}"></script>
+
+  </body>
+</html>

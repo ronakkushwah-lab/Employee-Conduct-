@@ -1,0 +1,58 @@
+{% extends "administration/emails/base_email.html" %}
+
+{% block content %}
+<h2>Welcome to {{ company_name }}!</h2>
+
+<p>Dear {{ recipient_name }},</p>
+
+<p>We are pleased to welcome you to {{ company_name }}. Your account has been successfully created.</p>
+
+<div class="info-box">
+    <div class="detail-row">
+        <span class="detail-label">Name:</span>
+        <span class="detail-value">{{ user_name }}</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Email:</span>
+        <span class="detail-value">{{ user_email }}</span>
+    </div>
+    {% if employee_id and employee_id != 'N/A' %}
+    <div class="detail-row">
+        <span class="detail-label">{{ user_type }} ID:</span>
+        <span class="detail-value">{{ employee_id }}</span>
+    </div>
+    {% endif %}
+    {% if department and department != 'N/A' %}
+    <div class="detail-row">
+        <span class="detail-label">Department:</span>
+        <span class="detail-value">{{ department }}</span>
+    </div>
+    {% endif %}
+    {% if designation and designation != 'N/A' %}
+    <div class="detail-row">
+        <span class="detail-label">Designation:</span>
+        <span class="detail-value">{{ designation }}</span>
+    </div>
+    {% endif %}
+    <div class="detail-row">
+        <span class="detail-label">Account Type:</span>
+        <span class="detail-value">{{ user_type }}</span>
+    </div>
+</div>
+
+{% if has_password %}
+<div class="info-box" style="background-color: #fff3cd; border-left-color: #ffc107;">
+    <p><strong>Important:</strong> Your temporary login credentials are:</p>
+    <p><strong>Email:</strong> {{ user_email }}<br>
+    <strong>Password:</strong> {{ password }}</p>
+    <p><em>Please change your password after your first login for security purposes.</em></p>
+</div>
+{% endif %}
+
+<p>You can now access the HRMS system using your credentials. If you have any questions or need assistance, please don't hesitate to contact the HR department.</p>
+
+<p>We look forward to working with you!</p>
+
+<p>Best regards,<br>
+{{ company_name }} Team</p>
+{% endblock %}

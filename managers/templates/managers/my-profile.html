@@ -1,0 +1,775 @@
+{% load static %}
+{% include "managers/header.html" %}
+{% include "managers/sidebar.html" %}
+{% include "managers/topbar.html" %}
+
+      <div class="page_wrapper">
+        <div class="page-content">
+          <div class="page-breadcrumb d-sm-flex align-items-center mb-3">
+            <div class="breadcrumb-title pe-3">My Profile</div>
+            <div class="ps-3">
+              <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0 p-0">
+                  <li class="breadcrumb-item">
+                    <a href="{% url 'dashboard' company_id company_staff_id %}">
+                      <i class="bx bx-home"></i>
+                    </a>
+                  </li>
+                  <li class="breadcrumb-item active" aria-current="page">My Profile</li>
+                </ol>
+              </nav>
+            </div>
+            <div class="ms-auto">
+              <div class="btn-group">
+                <button type="button" class="btn btn-outline-orangeyellow" data-bs-toggle="modal" data-bs-target="#updateprofileModal" id="updateprofileBtn">
+                  <i class="bx bx-plus"></i> Update Profile
+                </button>
+                <button type="button" class="btn btn-outline-orangeyellow ms-2" data-bs-toggle="modal" data-bs-target="#uploaddocumentsModal" id="uploaddocumentsBtn">
+                  <i class="bx bx-plus"></i> Upload Documents
+                </button>
+                <div class="modal" id="updateprofileModal">
+                  <div class="modal-dialog w-80">
+                    <div class="modal-content">
+                      <div class="modal-header">
+                        <h5 class="modal-title" id="exampleModalLabel">Update Profile</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                      </div>
+                      <div class="modal-body">
+                        <form method="post" action="{% url 'manager_profile' company_id=company_id company_staff_id=company_staff_id %}" enctype="multipart/form-data" id="manager-profile-form">
+                                    {% csrf_token %}
+                          <div class="accordion" id="accordionExample">
+                            <div class="accordion-item">
+                              <h2 class="accordion-header" id="profile">
+                                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#profile-img" aria-expanded="true" aria-controls="profile-img">Profile Picture</button>
+                              </h2>
+                              <div id="profile-img" class="accordion-collapse collapse show" aria-labelledby="profile" data-bs-parent="#accordionExample">
+                                <div class="accordion-body">
+                                  <div class="row mb-2">
+                                    <div class="col-12">
+                                      <div class="text-center">
+                                        <div class="mb-3 d-inline-block">
+                                          <div style="width: 200px; height: 200px; border-radius: 50%; border: 4px solid #ff6b35; padding: 4px; display: inline-block;">
+                                            <img src="{% if profile.manager_image %}{{ profile.manager_image.url }}{% endif %}" id="manager-profile-preview-img" class="img-fluid" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%; {% if not profile.manager_image %}display: none;{% endif %}">
+                                          </div>
+                                        </div>
+                                        <input type="file" id="manager-profile-image-input" name="manager_image" accept="image/*" style="display: none;">
+                                        <input type="hidden" name="cropped-image-input" id="manager-cropped-image-input">
+                                        <div class="mb-3">
+                                          <button type="button" class="btn btn-outline-orangeyellow" onclick="document.getElementById('manager-profile-image-input').click()">Upload Photo</button>
+                                          {% if profile and profile.manager_image %}
+                                          <button type="button" class="btn btn-outline-danger ms-2" id="manager-remove-photo-btn">Remove Photo</button>
+                                          {% endif %}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              <!-- Crop Modal for Manager Profile -->
+                              <div class="modal fade" id="managerCropImageModal" tabindex="-1" aria-labelledby="managerCropImageModalLabel" aria-hidden="true">
+                                <div class="modal-dialog modal-lg">
+                                  <div class="modal-content">
+                                    <div class="modal-header">
+                                      <h5 class="modal-title" id="managerCropImageModalLabel">Crop Photo</h5>
+                                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                      <div class="img-container">
+                                        <img id="manager-crop-image" src="" alt="Crop" style="max-width: 100%;">
+                                      </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                      <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                      <button type="button" class="btn btn-outline-orangeyellow" id="manager-crop-btn">Save</button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <div class="accordion-item">
+                              <h2 class="accordion-header" id="professional">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#professional-information" aria-expanded="true" aria-controls="professional-information">Professional Information</button>
+                              </h2>
+                              <div id="professional-information" class="accordion-collapse collapse" aria-labelledby="professional" data-bs-parent="#accordionExample">
+                                <div class="accordion-body">
+                                  <div class="row mb-2">
+                                    <div class="col-md-6">
+                                      <label for="birth-date" class="form-label">Birth Date</label>
+                                      <input  class="form-control" id="birth-date" type="text" name="manager_birth_date" value="{{profile.manager_birth_date}}">
+                                    </div>
+                                    <div class="col-md-6">
+                                      <label for="gender" class="form-label">Gender</label>
+                                      <select class="form-select" aria-label="Default select example" value="{{profile.manager_gender}}" name="manager_gender">
+                                        <option selected>Select Gender</option>
+                                        {% if profile.manager_gender == "Male" %}
+                                        <option value="Male" selected>Male</option>
+                                        {% else %}
+                                        <option value="Male">Male</option>
+                                        {% endif %}
+                                        {% if profile.manager_gender == "Female" %}
+                                        <option value="Female" selected>Female</option>
+                                        {% else %}
+                                        <option value="Female">Female</option>
+                                        {% endif %}
+                                      </select>
+                                    </div>
+                                  </div>
+                                  <div class="row mb-2">
+                                    <div class="col-md-6">
+                                      <label for="address" class="form-label">Address</label>
+                                   <input type="text" class="form-control" id="address" rows="3" name="manager_address" value="{{profile.manager_address}}">
+                                    </div>
+                                  </div>
+                                  <div class="row mb-2">
+                                    <div class="col-md-6">
+                                      <label for="state" class="form-label">State</label>
+                                      <input type="text" class="form-control" id="state" name="manager_state" value="{{profile.manager_state}}">
+                                    </div>
+                                    <div class="col-md-6">
+                                      <label for="country" class="form-label">Country</label>
+                                      <select class="form-select" id="country" name="manager_country">
+                                        <option value="India" {% if not profile.manager_country or profile.manager_country == "India" %}selected{% endif %}>India</option>
+                                        <option value="USA" {% if profile.manager_country == "USA" %}selected{% endif %}>USA</option>
+                                        <option value="UK" {% if profile.manager_country == "UK" %}selected{% endif %}>UK</option>
+                                        <option value="Canada" {% if profile.manager_country == "Canada" %}selected{% endif %}>Canada</option>
+                                        <option value="Australia" {% if profile.manager_country == "Australia" %}selected{% endif %}>Australia</option>
+                                        <option value="UAE" {% if profile.manager_country == "UAE" %}selected{% endif %}>UAE</option>
+                                        <option value="Other" {% if profile and profile.manager_country and profile.manager_country != "India" and profile.manager_country != "USA" and profile.manager_country != "UK" and profile.manager_country != "Canada" and profile.manager_country != "Australia" and profile.manager_country != "UAE" %}selected{% endif %}>Other</option>
+                                      </select>
+                                    </div>
+                                  </div>
+                                  <div class="row mb-2">
+                                    <div class="col-md-6">
+                                      <label for="pin code" class="form-label">Pin Code</label>
+                                      <input type="text" class="form-control" id="pin code"  name="manager_pin_code" value="{{profile.manager_pin_code}}">
+                                    </div>
+                                    <div class="col-md-6">
+                                      <label for="phone-number" class="form-label">Phone Number</label>
+                                      <input type="text" class="form-control phone-input" id="phone-number" name="manager_phone" value="{{profile.manager_phone}}" maxlength="17" placeholder="+91 98765 43210">
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <div class="accordion-item">
+                              <h2 class="accordion-header" id="personal">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#personal-information" aria-expanded="false" aria-controls="personal-information">Personal Information</button>
+                              </h2>
+                              <div id="personal-information" class="accordion-collapse collapse" aria-labelledby="personal" data-bs-parent="#accordionExample">
+                                <div class="accordion-body">
+                                  <div class="row mb-2">
+                                    <div class="col-md-6">
+                                      <label for="name" class="form-label">Name</label>
+                                      <input type="text" class="form-control" id="name" name="fullname" value="{{profile.manager_first_name}} {{profile.manager_last_name}}">
+                                    </div>
+                                    <div class="col-md-6">
+                                      <label for="father-name" class="form-label">Father Name</label>
+                                      <input type="text" class="form-control" id="father-name" name="manager_father" value="{{profile.manager_father}}">
+                                    </div>
+                                  </div>
+                                  <div class="row mb-2">
+                                    <div class="col-md-6">
+                                      <label for="mother-name" class="form-label">Mother Name</label>
+                                      <input type="text" class="form-control" id="mother-name"  name="manager_mother" value="{{profile.manager_mother}}">
+                                    </div>
+                                    <div class="col-md-6">
+                                      <label for="nationality" class="form-label">Nationality</label>
+                                      <input type="text" class="form-control" id="nationality" name="manager_nationality" value="{{profile.manager_nationality}}">
+                                    </div>
+                                  </div>
+                                  <div class="row mb-2">
+                                    <div class="col-md-6">
+                                      <label for="status" class="form-label">Marital Status</label>
+                                      <select class="form-select" aria-label="Default select example" name="manager_marital_status">
+                                        <option selected>Select Marital Status</option>
+                                        {% if profile.manager_marital_status == "Single" %}
+                                        <option value="Single" selected>Single</option>
+                                        {% else %}
+                                        <option value="Single">Single</option>
+                                        {% endif %}
+                                        {% if profile.manager_marital_status == "Married" %}
+                                        <option value="Married" selected>Married</option>
+                                        {% else %}
+                                        <option value="Married">Married</option>
+                                        {% endif %}
+                                      </select>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <div class="accordion-item">
+                              <h2 class="accordion-header" id="emergency">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#emergency-contact" aria-expanded="false" aria-controls="emergency-contact">Emergency Contact</button>
+                              </h2>
+                              <div id="emergency-contact" class="accordion-collapse collapse" aria-labelledby="emergency" data-bs-parent="#accordionExample">
+                                <div class="accordion-body">
+                                  <div class="row mb-2">
+                                    <div class="col-md-6">
+                                      <label for="name" class="form-label">Name</label>
+                                      <input type="text" class="form-control" id="name" name="manager_emergency_primary_name" value="{{profile.manager_emergency_primary_name}}">
+                                    </div>
+                                    <div class="col-md-6">
+                                      <label for="relationship" class="form-label">Relationship</label>
+                                      <input type="text" class="form-control" id="relationship"  name="manager_emergency_primary_relationship" value="{{profile.manager_emergency_primary_relationship}}">
+                                    </div>
+                                  </div>
+                                  <div class="row mb-2">
+                                    <div class="col-md-6">
+                                      <label for="emergency-phone" class="form-label">Phone Number</label>
+                                      <input type="text" class="form-control phone-input" id="emergency-phone" name="manager_emergency_primary_phone1" value="{{profile.manager_emergency_primary_phone1}}" maxlength="17" placeholder="+91 98765 43210">
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <div class="accordion-item">
+                              <h2 class="accordion-header" id="education">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#education-information" aria-expanded="false" aria-controls="education-information">Education Informations</button>
+                              </h2>
+                              <div id="education-information" class="accordion-collapse collapse" aria-labelledby="education" data-bs-parent="#accordionExample">
+                                <div class="accordion-body">
+                                  <div class="row mb-2">
+                                    <div class="col-md-6">
+                                      <label for="institution-name" class="form-label">Instiution</label>
+                                      <input type="text" class="form-control" id="institution-name" name="manager_education_institution" value="{{profile.manager_education_institution}}">
+                                    </div>
+                                    <div class="col-md-6">
+                                      <label for="subject-name" class="form-label">Subject</label>
+                                      <input type="text" class="form-control" id="subject-name" name="manager_education_subject" value="{{profile.manager_education_subject}}">
+                                    </div>
+                                  </div>
+                                  <div class="row mb-2">
+                                    <div class="col-md-6">
+                                      <label for="start-date" class="form-label">Starting Date</label>
+                                      <input  class="form-control" id="start-date"  type="text" name="manager_education_starting_date" value="{{profile.manager_education_starting_date}}">
+                                    </div>
+                                    <div class="col-md-6">
+                                      <label for="complete-date" class="form-label">Complete Date</label>
+                                      <input  class="form-control" id="complete-date" type="text" name="manager_education_complete_date" value="{{profile.manager_education_complete_date}}">
+                                    </div>
+                                  </div>
+                                  <div class="row mb-2">
+                                    <div class="col-md-6">
+                                      <label for="degree-name" class="form-label">Degree</label>
+                                      <input type="text" class="form-control" id="degree-name" name="manager_education_degree" value="{{profile.manager_education_degree}}">
+                                    </div>
+                                    <div class="col-md-6">
+                                      <label for="grade" class="form-label">Grade</label>
+                                      <input type="text" class="form-control" id="grade" name="manager_education_grade" value="{{profile.manager_education_grade}}">
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <div class="accordion-item">
+                              <h2 class="accordion-header" id="experience">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#experience-information" aria-expanded="false" aria-controls="experience-information">Experience</button>
+                              </h2>
+                              <div id="experience-information" class="accordion-collapse collapse" aria-labelledby="experience" data-bs-parent="#accordionExample">
+                                <div class="accordion-body">
+                                  <div class="row mb-2">
+                                    <div class="col-md-6">
+                                      <label for="company-name" class="form-label">Company Name</label>
+                                      <input type="text" class="form-control" id="company-name" name="manager_experience_company_name" value="{{profile.manager_experience_company_name}}">
+                                    </div>
+                                    <div class="col-md-6">
+                                      <label for="location" class="form-label">Location</label>
+                                      <input type="text" class="form-control" id="location" name="manager_experience_company_location" value="{{profile.manager_experience_company_location}}">
+                                    </div>
+                                  </div>
+                                  <div class="row mb-2">
+                                    <div class="col-md-6">
+                                      <label for="job-position" class="form-label">Job Position</label>
+                                      <input type="text" class="form-control" id="job-position" name="manager_experience_company_job_position" value="{{profile.manager_experience_company_job_position}}">
+                                    </div>
+                                    <div class="col-md-6">
+                                      <label for="period-from" class="form-label">Period From</label>
+                                      <input type="text" class="form-control" id="period-from"  name="manager_experience_company_period_from" value="{{profile.manager_experience_company_period_from}}">
+                                    </div>                                        
+                                  </div>
+                                  <div class="row mb-2">
+                                    <div class="col-md-6">
+                                      <label for="period-to" class="form-label">Period To</label>
+                                      <input type="text" class="form-control" id="period-to" name="manager_experience_company_period_to" value="{{profile.manager_experience_company_period_to}}">
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>                              
+                          <div class="submit-section">
+                            <button  class="btn btn-outline-orangeyellow">Submit</button>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="modal" id="uploaddocumentsModal">
+                  <div class="modal-dialog w-80">
+                    <div class="modal-content">
+                      <div class="modal-header">
+                        <h5 class="modal-title" id="exampleModalLabel">Upload Documents</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                      </div>
+                      <div class="modal-body">
+                        <form method="POST" action="{% url 'create_ducument' company_id=company_id company_staff_id=company_staff_id %}">
+                {% csrf_token %}
+                          <div class="row mb-2">
+                            <div class="col-md-6">
+                              <label for="experience-letter" class="form-label">Experience Letter <span class="text-danger">*</span></label>
+                              <input class="form-control" type="file"  id="experience-letter" name="experience_letter" required>
+                            </div>
+                            <div class="col-md-6">
+                              <label for="offer-letter" class="form-label">Offer Letter <span class="text-danger">*</span></label>
+                              <input class="form-control" type="file"  id="offer-letter" name="offer_letter" required>
+                            </div>
+                          </div>
+                          <div class="row mb-2">
+                            <div class="col-md-6">
+                              <label for="education-certificate" class="form-label">Education Certificate <span class="text-danger">*</span></label>
+                              <input class="form-control" type="file"  id="education-certificate" name="education_certificate" required>
+                            </div>
+                            <div class="col-md-6">
+                              <label for="skill-certificate" class="form-label">Skill Certificate <span class="text-danger">*</span></label>
+                              <input class="form-control" type="file"  id="skill-certificate" name="skill_certificate" required>
+                            </div>
+                          </div>
+                          <div class="mt-4 mb-2 button-right">
+                            <button type="submit" class="btn btn-outline-orangeyellow">Upload</button>
+<!--                            <button type="button" class="btn btn-outline-orangeyellow ms-2" data-bs-toggle="modal" data-bs-target="#uploadeddocumentsModal" id="uploadeddocumentsBtn" onclick="document_details_fetch('{{post.pk}}')">Uploaded Files</button>-->
+                            <a href="{% url 'document_View' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-outline-orangeyellow ms-2">Uploaded Files</a>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="modal" id="uploadeddocumentsModal">
+                  <div class="modal-dialog w-80">
+                    <div class="modal-content">
+                      <div class="modal-header">
+                        <h5 class="modal-title" id="exampleModalLabel">Uploaded Documents</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                      </div>
+                      <div class="modal-body">
+                        <table class="table table-fluid table-bordered table-hover">
+                          <tbody>
+                            <tr>
+                              <th>Experience Letter</th>
+                               <td><a href="{{ post.experience_letter.url }}"  download ><img src="" id="employee_experience_heading" class="img-fluid user-img"></a></td>
+                            </tr>
+                            <tr>
+                              <th>Offer Letter</th>
+                              <td><a href="#">Offer Letter Document</a></td>
+                            </tr>
+                            <tr>
+                              <th>Education Certificate</th>
+                              <td><a href="#">Education Certificate Document</a></td>
+                            </tr>
+                            <tr>
+                              <th>Skill Certificate</th>
+                              <td><a href="#" class="">Skill Certificate Document</a></td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <hr>
+          <div class="row mt-3">
+            <div class="col">
+              <div class="card shadow-none border radius-15">
+                <div class="card-body profile-info">
+                  <div class="d-block align-items-center m-auto w-50 text-center">
+                    <div class="fm-icon-box radius-15">
+                      	{% if profile.manager_image  %}
+                      <img
+                        src="{{profile.manager_image.url}}"
+                        class="img-fluid user-img manager-profile-photo-trigger"
+                        id="manager_image"
+                        data-bs-toggle="modal"
+                        data-bs-target="#managerProfilePhotoModal"
+                        data-image-url="{{profile.manager_image.url}}"
+                        style="cursor: pointer;"
+                        alt="Manager Profile Photo"
+                      >
+                         {% endif %}
+                      <h5 class="mt-3 mb-0">{{profile.manager_first_name}} {{profile.manager_last_name}}</h5>
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="col-md-6">
+                      <div class="profile-section-card">
+                        <div class="profile-section-header">Professional Information</div>
+                        <table class="table table-fluid table-bordered table-striped mb-0">
+                          <tr>
+                            <th>Manager ID</th>
+                            <td>{{ profile.formatted_manager_id }}</td>
+                          </tr>
+                          <tr>
+                            <th>Department</th>
+                            <td>{{profile.manager_department}}</td>
+                          </tr>
+                          <tr>
+                            <th>Date of Join</th>
+                            <td>{{profile.manager_joining_date}}</td>
+                          </tr>
+                          <tr>
+                            <th>Phone</th>
+                            <td>{{profile.manager_phone}}</td>
+                          </tr>
+                          <tr>
+                            <th>Email</th>
+                            <td>{{profile.manager_email}}</td>
+                          </tr>
+                          <tr>
+                            <th>Birthday</th>
+                            <td>{{profile.manager_birth_date}}</td>
+                          </tr>
+                          <tr>
+                            <th>Address</th>
+                            <td>{{profile.manager_address}}</td>
+                          </tr>                              
+                          <tr>                                
+                            <th>Gender</th>
+                            <td>{{profile.manager_gender}}</td>
+                          </tr>                                                                       
+                        </table>
+                      </div>
+                      <div class="profile-section-card">
+                        <div class="profile-section-header">Education Information</div>
+                        <table class="table table-fluid table-bordered table-striped mb-0">
+                          <tr>
+                            <td>
+                              <ul>
+                                <li>
+                                  <div class="education-user">
+                                    <div class="before-circle"></div>
+                                  </div>
+                                  <div class="education-content">
+                                    {% if profile.manager_education_institution and profile.manager_education_institution != 'None' %}
+                                      <b class="institution-name">{{profile.manager_education_institution}}</b><br>
+                                    {% endif %}
+                                    {% if profile.manager_education_subject and profile.manager_education_subject != 'None' %}
+                                      <span class="subject-name">{{profile.manager_education_subject}}</span><br>
+                                    {% endif %}
+                                    {% if profile.manager_education_degree and profile.manager_education_degree != 'None' %}
+                                      <span class="degree-name">{{profile.manager_education_degree}}</span><br>
+                                    {% endif %}
+                                    {% if profile.manager_education_grade and profile.manager_education_grade != 'None' %}
+                                      <span class="grade-name">{{profile.manager_education_grade}}</span><br>
+                                    {% endif %}
+                                    {% if profile.manager_education_starting_date and profile.manager_education_starting_date != 'None' or profile.manager_education_complete_date and profile.manager_education_complete_date != 'None' %}
+                                      <sub>
+                                        {% if profile.manager_education_starting_date and profile.manager_education_starting_date != 'None' %}
+                                          <span class="start-date">{{profile.manager_education_starting_date}}</span>
+                                        {% endif %}
+                                        {% if profile.manager_education_complete_date and profile.manager_education_complete_date != 'None' %}
+                                          - <span class="end-date">{{profile.manager_education_complete_date}}</span>
+                                        {% endif %}
+                                      </sub>
+                                    {% endif %}
+                                  </div>
+                                </li>
+                              </ul>
+                            </td>
+                          </tr>
+                        </table>
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="profile-section-card">
+                        <div class="profile-section-header">Personal Information</div>
+                        <table class="table table-fluid table-bordered caption-top table-striped mb-0">
+                          <tr>
+                            <th>Name</th>
+                            <td>{{profile.manager_first_name}} {{profile.manager_last_name}}</td>
+                          </tr>
+                          <tr>
+                            <th>Father Name</th>
+                            <td>{{profile.manager_father}}</td>
+                          </tr>
+                          <tr>
+                            <th>Mother Name</th>
+                            <td>{{profile.manager_mother}}</td>
+                          </tr>
+                          <tr>
+                            <th>Nationality</th>
+                            <td>{{profile.manager_nationality}}</td>
+                          </tr>
+                          <tr>
+                            <th>Marital Status</th>
+                            <td>{{profile.manager_marital_status}}</td>
+                          </tr>
+                        </table>
+                      </div>
+                      <div class="profile-section-card">
+                        <div class="profile-section-header">Emergency Contact</div>
+                        <table class="table table-fluid table-bordered caption-top table-striped mb-0">
+                          <tr>
+                            <th class="w-25">Name</th>
+                            <td class="w-25">{{profile.manager_emergency_primary_name}}</td>
+                          </tr>
+                          <tr>
+                            <th class="w-25">Relationship</th>
+                            <td class="w-25">{{profile.manager_emergency_primary_relationship}}</td>
+                          </tr>
+                          <tr>
+                            <th class="w-25">Phone</th>
+                            <td class="w-25">{{profile.manager_emergency_primary_phone1}}</td>
+                          </tr>
+                        </table>
+                      </div>
+                      <div class="profile-section-card">
+                        <div class="profile-section-header">Experience</div>
+                        <table class="table table-fluid table-bordered table-striped mb-0">
+                          <tr>
+                            <td>
+                              <ul>
+                                <li>
+                                  <div class="experience-user">
+                                    <div class="before-circle"></div>
+                                  </div>
+                                  <div class="experience-content">
+                                    {% if profile.manager_experience_company_name and profile.manager_experience_company_name != 'None' %}
+                                      <b class="institution-name">{{ profile.manager_experience_company_name }}</b><br>
+                                    {% endif %}
+                                    {% if profile.employee_designation and profile.employee_designation != 'None' %}
+                                      <span class="subject-name">Designation: {{ profile.employee_designation }}</span><br>
+                                    {% elif profile.manager_experience_company_job_position and profile.manager_experience_company_job_position != 'None' %}
+                                      <span class="subject-name">Designation: {{ profile.manager_experience_company_job_position }}</span><br>
+                                    {% endif %}
+                                    {% if profile.manager_experience_company_period_from and profile.manager_experience_company_period_from != 'None' or profile.manager_experience_company_period_to and profile.manager_experience_company_period_to != 'None' %}
+                                      <sub>
+                                        {% if profile.manager_experience_company_period_from and profile.manager_experience_company_period_from != 'None' %}
+                                          <span class="start-date">{{ profile.manager_experience_company_period_from }}</span>
+                                        {% endif %}
+                                        {% if profile.manager_experience_company_period_to and profile.manager_experience_company_period_to != 'None' %}
+                                          - <span class="end-date">{{ profile.manager_experience_company_period_to }}</span>
+                                        {% endif %}
+                                      </sub>
+                                    {% endif %}
+                                  </div>
+                                </li>
+                              </ul>
+                            </td>
+                          </tr>
+                        </table>
+                      </div>
+                    </div>
+                  </div>                  
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      <!-- Profile photo fullscreen modal (WhatsApp-style) -->
+      <div class="modal fade" id="managerProfilePhotoModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+          <div class="modal-content" style="background: rgba(0,0,0,0.85); border: none;">
+            <div class="modal-body p-2 position-relative">
+              <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3" data-bs-dismiss="modal" aria-label="Close" style="opacity: 1;"></button>
+              <img
+                id="managerProfilePhotoModalImg"
+                src=""
+                alt="Manager Photo"
+                style="max-height: 85vh; width: auto; max-width: 100%; object-fit: contain; display: block; margin: 0 auto;"
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <footer class="page-footer">
+          <p class="mb-0">Copyright © 2021. All right reserved.</p>
+        </footer>
+      </div>
+    </div>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/simplebar@latest/dist/simplebar.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/metisMenu/3.0.7/metisMenu.min.js"></script>
+    <script src="https://unpkg.com/boxicons@2.1.2/dist/boxicons.js"></script>
+    <script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/js/all.min.js"></script>
+    <script src="{% static 'asets/js/jquery.sparkline.min.js' %}"></script>
+    <script src="{% static 'asets/js/Chart.min.js' %}"></script>
+    <script src="{% static 'asets/js/Chart.extension.js' %}"></script>
+    <script src="{% static 'asets/js/script.js' %}"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
+    <script>
+      // Manager profile image cropper
+      (function() {
+        let managerCropper;
+        const imageInput = document.getElementById('manager-profile-image-input');
+        const cropImage = document.getElementById('manager-crop-image');
+        const cropBtn = document.getElementById('manager-crop-btn');
+        const croppedInput = document.getElementById('manager-cropped-image-input');
+        const previewImg = document.getElementById('manager-profile-preview-img');
+        const cropModalEl = document.getElementById('managerCropImageModal');
+        if (!cropModalEl || !imageInput) return;
+        const cropModal = new bootstrap.Modal(cropModalEl);
+        imageInput.addEventListener('change', function(e) {
+          const file = e.target.files[0];
+          if (file) {
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+              cropImage.src = ev.target.result;
+              cropModal.show();
+              setTimeout(function() {
+                if (managerCropper) managerCropper.destroy();
+                managerCropper = new Cropper(cropImage, { aspectRatio: 1, viewMode: 1, autoCropArea: 0.8, responsive: true, restore: false, guides: true, center: true, highlight: false, cropBoxMovable: true, cropBoxResizable: true, toggleDragModeOnDblclick: false });
+              }, 300);
+            };
+            reader.readAsDataURL(file);
+          }
+        });
+        if (cropBtn) {
+          cropBtn.addEventListener('click', function() {
+            if (managerCropper) {
+              const canvas = managerCropper.getCroppedCanvas({ width: 400, height: 400, imageSmoothingEnabled: true, imageSmoothingQuality: 'high' });
+              canvas.toBlob(function(blob) {
+                const reader = new FileReader();
+                reader.onload = function() {
+                  croppedInput.value = reader.result;
+                  previewImg.src = reader.result;
+                  previewImg.style.display = 'block';
+                  const file = new File([blob], 'profile.jpg', { type: 'image/jpeg' });
+                  const dt = new DataTransfer();
+                  dt.items.add(file);
+                  document.querySelector('input[name="manager_image"]').files = dt.files;
+                  cropModal.hide();
+                  if (managerCropper) { managerCropper.destroy(); managerCropper = null; }
+                };
+                reader.readAsDataURL(blob);
+              }, 'image/jpeg', 0.9);
+            }
+          });
+        }
+        cropModalEl.addEventListener('hidden.bs.modal', function() {
+          if (managerCropper) { managerCropper.destroy(); managerCropper = null; }
+        });
+      })();
+    </script>
+
+    <script>
+      // Click photo => open in fullscreen modal
+      document.addEventListener('DOMContentLoaded', function() {
+        var modalEl = document.getElementById('managerProfilePhotoModal');
+        var modalImg = document.getElementById('managerProfilePhotoModalImg');
+        if (!modalEl || !modalImg) return;
+
+        modalEl.addEventListener('show.bs.modal', function(event) {
+          var trigger = event.relatedTarget;
+          if (!trigger) return;
+          var imgUrl = trigger.getAttribute('data-image-url');
+          if (imgUrl) modalImg.src = imgUrl;
+        });
+      });
+    </script>
+    <script>
+      // Remove manager profile photo
+      document.addEventListener('DOMContentLoaded', function() {
+        var btn = document.getElementById('manager-remove-photo-btn');
+        if (btn) {
+          btn.addEventListener('click', function() {
+            if (!confirm('Are you sure you want to remove your profile photo?')) return;
+            var form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '{% url "remove_manager_profile_image" company_id=company_id company_staff_id=company_staff_id %}';
+            var csrf = document.querySelector('input[name="csrfmiddlewaretoken"]');
+            if (csrf) { var i = document.createElement('input'); i.type = 'hidden'; i.name = 'csrfmiddlewaretoken'; i.value = csrf.value; form.appendChild(i); }
+            document.body.appendChild(form);
+            form.submit();
+          });
+        }
+      });
+    </script>
+
+     <script>
+            function document_details_fetch(id){
+
+
+        // Ajax POST Request
+           var employee_experience_heading = document.getElementById("employee_experience_heading");
+           var employee_offer_letter_heading = document.getElementById("employee_offer_letter_heading");
+           var employee_education_certificate_heading = document.getElementById("employee_education_certificate_heading");
+           var employee_skill_certificate_heading = document.getElementById("employee_skill_certificate_heading");
+
+
+        $.ajax({
+                  url: '{% url "all_document_View"  company_id=company_id company_staff_id=company_staff_id  %}',
+                  method: "POST",
+                  processData: false,
+                  contentType: 'application/json',
+                  mimeType: "multipart/form-data",
+                  headers: {'X-CSRFToken': "{{csrf_token}}", "Content-Type":"application/json"},
+                  data: JSON.stringify({'id': id}),
+                  dataType: "json",
+                  success: function(res){
+
+
+                  employee_experience_heading.src = res['experience_letter'];
+                  employee_offer_letter_heading.src = res['offer_letter'];
+                  employee_education_certificate_heading.src = res['education_certificate'];
+                  employee_skill_certificate_heading.src = res['skill_certificate'];
+
+                },
+                error: function(xhr, status, error){
+                  console.log(error);
+                  console.log(status);
+                  console.log(xhr);
+                }
+        })
+      }
+    </script>
+    <script>
+      // Phone number formatting similar to employee profile (+91 XXXXX XXXXX)
+      function formatManagerPhone(input) {
+        let value = input.value.replace(/[^\d+]/g, '');
+        if (!value.startsWith('+91')) {
+          value = '+91' + value.replace(/^\+91/, '');
+        }
+        let digits = value.replace('+91', '').replace(/\D/g, '');
+        if (digits.length > 10) {
+          digits = digits.substring(0, 10);
+        }
+        if (digits.length > 0) {
+          if (digits.length <= 5) {
+            value = '+91 ' + digits;
+          } else {
+            value = '+91 ' + digits.substring(0, 5) + ' ' + digits.substring(5, 10);
+          }
+        } else {
+          value = '+91 ';
+        }
+        input.value = value;
+      }
+
+      document.addEventListener('DOMContentLoaded', function() {
+        const phoneInputs = document.querySelectorAll('.phone-input');
+        phoneInputs.forEach(function(input) {
+          input.addEventListener('input', function() {
+            formatManagerPhone(this);
+          });
+          input.addEventListener('blur', function() {
+            formatManagerPhone(this);
+          });
+          if (input.value) {
+            formatManagerPhone(input);
+          }
+        });
+      });
+    </script>
+    
+  </body>
+</html>

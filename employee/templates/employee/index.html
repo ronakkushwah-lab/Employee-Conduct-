@@ -1,0 +1,268 @@
+{% load static %}
+{% include "employee/header.html" %}
+{% include "employee/sidebar.html" %}
+{% include "employee/topbar.html" %}
+
+      <div class="page_wrapper">
+        <div class="page-content">
+          {% for message in messages  %}
+              <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                  <strong>Message : </strong> {{ message }}
+          <!--        <button type="button" class="close" data-dismiss="alert" aria-label="Close">-->
+          <!--            <span aria-hidden="true">&times;</span>-->
+          <!--        </button>-->
+              </div>
+                {% endfor %}
+          <div class="row">
+            <div class="col">
+              <div class="card message">
+                <div class="card-body">
+                  <div class="d-flex align-items-center">
+                    <div class="message-content">
+                       <script type="text/javascript">
+                        document.write("<h1 class='wish'>");
+                        var day = new Date();
+                        var hr = day.getHours();
+                        if (hr >= 0 && hr < 12){
+                          document.write("Good Morning!");
+                        }
+                        else if (hr == 12) {
+                          document.write("Good Noon!");
+                        }
+                        else if (hr >= 12 && hr <= 17) {
+                          document.write("Good Afternoon!");
+                        }
+                        else {
+                          document.write("Good Evening!");
+                        }
+                        document.write("</h1>");
+                      </script>
+                      <h4>Welcome to the Employee Dashboard</h4>
+                      <p>Your attendance, leaves, tasks and notifications</p>
+                    </div>
+                    <div class="ms-auto">
+                      <div class="message-img">
+                        <img src="{% static 'asets/images/message-image.png' %}" class="img-fluid">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- My Attendance card -->
+          <div class="row row-cols-1 row-cols-lg-3">
+            <div class="col d-flex">
+              <div class="card radius-10 w-100 employee-timing-info">
+                <div class="card-header bg-transparent">
+                  <h6 class="mb-0">{% if employee %}{{ employee.employee_first_name }} {{ employee.employee_last_name }}{% else %}Employee{% endif %}</h6>
+                </div>
+                <div class="card-body">
+                  <div class="chart-container">
+                    <div class="working-time">
+                      <span class="time-spend-today">{{ hours_num }} hrs</span>
+                    </div>
+                  </div>
+                </div>
+                <ul class="list-group list-group-flush">
+                  <li class="list-group-item d-flex bg-transparent justify-content-between align-items-center">Today: <span class="badge bg-gradient-quepal rounded-pill">{% now "jS F Y " %}</span></li>
+                  <li class="list-group-item d-flex bg-transparent justify-content-between align-items-center">Check In: <span class="badge bg-gradient-ibiza rounded-pill">{% if attendance.check_in %}{{ attendance.check_in|date:"M. d, Y, g:i a" }}{% else %}-{% endif %}</span></li>
+                  <li class="list-group-item d-flex bg-transparent justify-content-between align-items-center">Check Out: <span class="badge bg-gradient-deepblue rounded-pill">{% if attendance.check_out %}{{ attendance.check_out|date:"M. d, Y, g:i a" }}{% else %}-{% endif %}</span></li>
+                </ul>
+                <div class="card-footer bg-transparent m-auto">
+                  {% if not is_complete_attendance %}
+                  <button class="btn btn-outline-orangeyellow" id="check_in" type="button" onclick="attend()">{{ is_check_in }}</button>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- My Leave Requests -->
+          <div class="row mt-3">
+            <div class="col-12">
+              <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                  <h6 class="mb-0">My Leave Requests ({{ my_leaves|length }})</h6>
+                  <a href="{% url 'staffleavetable' company_id company_staff_id %}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                  {% if my_leaves %}
+                  <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                      <thead><tr><th>Type</th><th>Start</th><th>End</th><th>Status</th></tr></thead>
+                      <tbody>
+                        {% for leave in my_leaves %}
+                        <tr>
+                          <td>{{ leave.leavetype }}</td>
+                          <td>{{ leave.startdate|date:"d M Y" }}</td>
+                     	  <td>{{ leave.enddate|date:"d M Y" }}</td>
+                          <td>
+                            <span class="badge bg-{% if leave.status == 'approved' %}success{% elif leave.status == 'rejected' or leave.status == 'cancelled' %}danger{% else %}warning{% endif %}">
+                              {{ leave.status }}
+                            </span>
+                          </td>
+                        </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                  {% else %}
+                  <p class="text-muted mb-0">No leave requests yet.</p>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- My Resignation Requests -->
+          <div class="row mt-3">
+            <div class="col-12">
+              <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                  <h6 class="mb-0">My Resignation Requests</h6>
+                  <a href="{% url 'staffresigntable' company_id company_staff_id %}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                  {% if my_resignations %}
+                  <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                      <thead><tr><th>Date</th><th>Reason</th><th>Status</th></tr></thead>
+                      <tbody>
+                        {% for resign in my_resignations %}
+                        <tr>
+                          <td>{{ resign.startdate|date:"d M Y" }}</td>
+                          <td>{{ resign.reason|truncatewords:8|default:"No reason" }}</td>
+                          <td>
+                            <span class="badge bg-{% if resign.status == 'approved' %}success{% elif resign.status == 'rejected' or resign.status == 'cancelled' %}danger{% else %}warning{% endif %}">
+                              {{ resign.status }}
+                            </span>
+                          </td>
+                        </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                  {% else %}
+                  <p class="text-muted mb-0">No resignation requests.</p>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Notifications -->
+          <div class="row mt-3">
+            <div class="col-12">
+              <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                  <h6 class="mb-0">Notifications</h6>
+                  <a href="{% url 'mynotifications' company_id company_staff_id %}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                  {% if my_notifications %}
+                  <ul class="list-group list-group-flush">
+                    {% for notif in my_notifications %}
+                    <li class="list-group-item px-0">{{ notif.notifications }}</li>
+                    {% endfor %}
+                  </ul>
+                  {% else %}
+                  <p class="text-muted mb-0">No notifications.</p>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <form id="hddfields" name="hddfields">
+        {% csrf_token %}
+        <input id="is_check_in" name="is_check_in" type="hidden" value="{{ is_check_in }}">
+        <input id="attendance_id" name="attendance_id" type="hidden" value="{{ attendance.id }}">
+      </form>
+      <footer class="page-footer">
+        <p class="mb-0">Copyright © 2022. All right reserved.</p>
+      </footer>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/simplebar@latest/dist/simplebar.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/metisMenu/3.0.7/metisMenu.min.js"></script>
+    <script src="https://unpkg.com/boxicons@2.1.2/dist/boxicons.js"></script>
+    <script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/js/all.min.js"></script>
+    <script src="{% static 'asets/js/jquery.sparkline.min.js' %}"></script>
+    <script src="{% static 'asets/js/Chart.min.js' %}"></script>
+    <script src="{% static 'asets/js/Chart.extension.js' %}"></script>
+    <script src="{% static 'asets/js/script.js' %}"></script>
+    <script src="{% static 'asets/js/jquery-confirm.min.js' %}"></script>
+    <script>
+
+        function attend() {
+            $.confirm({
+                title: 'Attendance!',
+                content: 'Do you want to continue?',
+                buttons: {
+                    Ok: function () {
+                        $.ajax({
+                            url: "{% url 'attendance_post' company_id=company_id company_staff_id=company_staff_id %}",
+                            type: "POST",
+                            data: $("#hddfields").serialize(),
+                            dataType: 'json',
+                            success: function (response) {
+                                var status = (typeof response === 'string') ? (JSON.parse(response)).status : (response && response.status);
+                                if (status === "SUCCESS") {
+                                    $.confirm({
+                                        title: 'Success!',
+                                        content: 'Data Saved!',
+                                        buttons: {
+                                            Ok: function () {
+                                                location.reload();
+                                            },
+                                        }
+                                    });
+                                } else {
+                                    $.confirm({
+                                        title: 'Error',
+                                        content: (response && response.error) || 'Could not save attendance.',
+                                        buttons: { Ok: function () {} }
+                                    });
+                                }
+                            },
+                            error: function (xhr, status, error) {
+                                $.confirm({
+                                    title: 'Error',
+                                    content: 'Could not save attendance. Please try again.',
+                                    buttons: { Ok: function () {} }
+                                });
+                            }
+                        });
+                    },
+                    close: function () {}
+                }
+            });
+        }
+
+        $(document).ready(function () {
+            if ($('#attendanceTable').length) {
+                $('#attendanceTable').DataTable({
+                    "ajax": "{% url 'attendance_grid_Data' company_id=company_id company_staff_id=company_staff_id %}",
+                    "processing": true,
+                    "serverSide": true,
+                    "info": true,
+                    "stateSave": true,
+                    "sDom": 'lrtip',
+                    "lengthMenu": [[10, 20, 50], [10, 20, 50]],
+                    "columns": [
+                        {"data": "check_in"},
+                        {"data": "check_out"},
+                        {"data": "working_hours", 'orderable': false},
+                    ],
+                });
+            }
+        });
+
+    </script>
+  </body>
+</html>

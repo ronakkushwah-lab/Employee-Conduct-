@@ -1,0 +1,404 @@
+{% load static %}
+{% include "managers/header.html" %}
+{% include "managers/sidebar.html" %}
+{% include "managers/topbar.html" %}
+
+<div class="page_wrapper">
+  <div class="page-content">
+    <div class="page-breadcrumb d-sm-flex align-items-center mb-3">
+      <div class="breadcrumb-title pe-3">Attendance Info</div>
+      <div class="ps-3">
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb mb-0 p-0">
+            <li class="breadcrumb-item">
+              <a href="{% url 'dashboard' company_id=company_id company_staff_id=company_staff_id %}">
+                <i class="bx bx-home"></i>
+              </a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">Attendance Info</li>
+          </ol>
+        </nav>
+      </div>
+      <div class="ms-auto">
+        <div class="btn-group">
+          <a href="{% url 'mstaffregularizationstable' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-outline-orangeyellow">
+            <i class="bx bx-list-ul"></i> Status
+          </a>
+          <a href="{% url 'mregularization_required' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-outline-orangeyellow">
+            <i class="bx bx-edit"></i> Regularization
+          </a>
+        </div>
+      </div>
+    </div>
+    <hr>
+
+    <style>
+      .attendance-view-shell {
+        display: grid;
+        gap: 1.25rem;
+      }
+
+      .attendance-view-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+      }
+
+      .attendance-tab-button {
+        border: 1px solid #dbe2ea;
+        background: #fff;
+        color: #111827;
+        border-radius: 12px;
+        padding: 0.9rem 1.4rem;
+        font-size: 1rem;
+        font-weight: 800;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        box-shadow: 0 6px 14px rgba(15, 23, 42, 0.04);
+      }
+
+      .attendance-tab-button.active {
+        background: #2563eb;
+        border-color: #2563eb;
+        color: #fff;
+      }
+
+      .attendance-panel {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: 0 12px 28px rgba(15, 23, 42, 0.08);
+      }
+
+      .attendance-panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-bottom: 1.25rem;
+      }
+
+      .attendance-month-title {
+        margin: 0;
+        font-weight: 900;
+        font-size: 1.35rem;
+        color: #111827;
+      }
+
+      .attendance-month-nav {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+
+      .attendance-month-nav a {
+        text-decoration: none;
+        border: 1px solid #dbe2ea;
+        color: #1f2937;
+        background: #fff;
+        border-radius: 10px;
+        padding: 0.55rem 0.9rem;
+        font-weight: 800;
+      }
+
+      .attendance-summary-strip {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.75rem;
+        margin-bottom: 1.25rem;
+      }
+
+      .attendance-summary-card {
+        border: 1px solid #edf0f4;
+        border-radius: 12px;
+        padding: 0.85rem;
+        background: #f8fafc;
+      }
+
+      .attendance-summary-card span {
+        display: block;
+        color: #64748b;
+        font-weight: 800;
+        font-size: 0.8rem;
+      }
+
+      .attendance-summary-card strong {
+        color: #0f172a;
+        font-size: 1.35rem;
+      }
+
+      .attendance-calendar-weekdays,
+      .attendance-calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(80px, 1fr));
+        gap: 0.45rem;
+      }
+
+      .attendance-calendar-weekday {
+        text-align: center;
+        color: #64748b;
+        font-weight: 900;
+        padding: 0.4rem;
+      }
+
+      .attendance-day {
+        min-height: 62px;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        background: #f8fafc;
+        color: #94a3b8;
+        padding: 0.55rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        font-size: 1.05rem;
+        font-weight: 900;
+      }
+
+      .attendance-day.empty {
+        visibility: hidden;
+      }
+
+      .attendance-day.present {
+        background: #dcfce7;
+        border-color: #86efac;
+        color: #16a34a;
+      }
+
+      .attendance-day.late {
+        background: #fef3c7;
+        border-color: #f59e0b;
+        color: #d97706;
+      }
+
+      .attendance-day.absent {
+        background: #fee2e2;
+        border-color: #ef4444;
+        color: #dc2626;
+      }
+
+      .attendance-day.today {
+        outline: 2px solid #2563eb;
+        outline-offset: 2px;
+      }
+
+      .attendance-day-check {
+        position: absolute;
+        right: 0.55rem;
+        bottom: 0.35rem;
+        font-size: 1rem;
+      }
+
+      .attendance-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-top: 1.15rem;
+        color: #64748b;
+        font-weight: 800;
+      }
+
+      .attendance-legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+      }
+
+      .attendance-legend-swatch {
+        width: 18px;
+        height: 18px;
+        border-radius: 5px;
+        border: 2px solid #94a3b8;
+      }
+
+      .attendance-legend-swatch.present { border-color: #16a34a; background: #dcfce7; }
+      .attendance-legend-swatch.absent { border-color: #ef4444; background: #fee2e2; }
+      .attendance-legend-swatch.late { border-color: #f59e0b; background: #fef3c7; }
+
+      .attendance-table-panel {
+        display: none;
+      }
+
+      .attendance-table-panel.active,
+      .attendance-calendar-panel.active {
+        display: block;
+      }
+
+      .attendance-calendar-panel:not(.active) {
+        display: none;
+      }
+
+      .attendance-status-pill {
+        border-radius: 999px;
+        padding: 0.35rem 0.65rem;
+        display: inline-flex;
+        font-weight: 900;
+        font-size: 0.82rem;
+      }
+
+      .attendance-status-pill.present {
+        background: #dcfce7;
+        color: #16a34a;
+      }
+
+      @media (max-width: 991.98px) {
+        .attendance-summary-strip {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .attendance-calendar-wrap {
+          overflow-x: auto;
+          padding-bottom: 0.25rem;
+        }
+
+        .attendance-calendar-weekdays,
+        .attendance-calendar-grid {
+          min-width: 720px;
+        }
+      }
+
+      @media (max-width: 575.98px) {
+        .attendance-panel {
+          padding: 1rem;
+          border-radius: 12px;
+        }
+
+        .attendance-tab-button {
+          width: 100%;
+          justify-content: center;
+        }
+
+        .attendance-summary-strip {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+
+    <div class="attendance-view-shell">
+      <div class="attendance-view-tabs" role="tablist" aria-label="Attendance views">
+        <button type="button" class="attendance-tab-button active" data-attendance-tab="calendar">📅 Calendar View</button>
+        <button type="button" class="attendance-tab-button" data-attendance-tab="table">📋 Table View</button>
+      </div>
+
+      <div class="attendance-summary-strip">
+        <div class="attendance-summary-card"><span>Present</span><strong>{{ attendance_summary.present }}</strong></div>
+        <div class="attendance-summary-card"><span>Absent</span><strong>{{ attendance_summary.absent }}</strong></div>
+        <div class="attendance-summary-card"><span>Late</span><strong>{{ attendance_summary.late }}</strong></div>
+        <div class="attendance-summary-card"><span>Not Marked</span><strong>{{ attendance_summary.not_marked }}</strong></div>
+      </div>
+
+      <section class="attendance-panel attendance-calendar-panel active" data-attendance-panel="calendar">
+        <div class="attendance-panel-header">
+          <h2 class="attendance-month-title">{{ attendance_month_name }} {{ attendance_year }}</h2>
+          <div class="attendance-month-nav">
+            <a href="{% url 'attendanc' company_id=company_id company_staff_id=company_staff_id %}?month={{ attendance_previous.month }}&year={{ attendance_previous.year }}">Previous</a>
+            <a href="{% url 'attendanc' company_id=company_id company_staff_id=company_staff_id %}">This Month</a>
+            <a href="{% url 'attendanc' company_id=company_id company_staff_id=company_staff_id %}?month={{ attendance_next.month }}&year={{ attendance_next.year }}">Next</a>
+          </div>
+        </div>
+        <div class="attendance-calendar-wrap">
+          <div class="attendance-calendar-weekdays">
+            {% for weekday in attendance_weekdays %}
+              <div class="attendance-calendar-weekday">{{ weekday }}</div>
+            {% endfor %}
+          </div>
+          <div class="attendance-calendar-grid">
+            {% for week in attendance_calendar_weeks %}
+              {% for day in week %}
+                {% if day %}
+                  <div class="attendance-day {{ day.status }}{% if day.is_today %} today{% endif %}" title="{{ day.label }} - {{ day.date|date:'d M Y' }}">
+                    {{ day.day }}
+                    {% if day.status == 'present' %}<span class="attendance-day-check">✓</span>{% endif %}
+                  </div>
+                {% else %}
+                  <div class="attendance-day empty"></div>
+                {% endif %}
+              {% endfor %}
+            {% endfor %}
+          </div>
+        </div>
+        <div class="attendance-legend">
+          <span class="attendance-legend-item"><span class="attendance-legend-swatch present"></span> Present</span>
+          <span class="attendance-legend-item"><span class="attendance-legend-swatch absent"></span> Absent</span>
+          <span class="attendance-legend-item"><span class="attendance-legend-swatch late"></span> Late</span>
+          <span class="attendance-legend-item"><span class="attendance-legend-swatch"></span> Not Marked</span>
+        </div>
+      </section>
+
+      <section class="attendance-panel attendance-table-panel" data-attendance-panel="table">
+        <div class="attendance-panel-header">
+          <h2 class="attendance-month-title">Attendance Records</h2>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Day</th>
+                <th>Status</th>
+                <th>Check In</th>
+                <th>Check Out</th>
+                <th>Working Hours</th>
+                <th>Source</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in attendance_table_rows %}
+                <tr>
+                  <td>{{ row.date }}</td>
+                  <td>{{ row.day }}</td>
+                  <td><span class="attendance-status-pill {{ row.status_class }}">{{ row.status }}</span></td>
+                  <td>{{ row.check_in }}</td>
+                  <td>{{ row.check_out }}</td>
+                  <td>{{ row.working_hours }}</td>
+                  <td>{{ row.source|title }}</td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="7" class="text-center text-muted py-4">No attendance records found for {{ attendance_month_name }} {{ attendance_year }}.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <form id="hddfields" name="hddfields">
+    {% csrf_token %}
+    <input id="is_check_in" name="is_check_in" type="hidden" value="{{ is_check_in }}">
+    <input id="attendance_id" name="attendance_id" type="hidden" value="{{ attendance.id }}">
+  </form>
+
+  <footer class="page-footer">
+    <p class="mb-0">Copyright © 2022. All right reserved.</p>
+  </footer>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/simplebar@latest/dist/simplebar.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/metisMenu/3.0.7/metisMenu.min.js"></script>
+<script src="https://unpkg.com/boxicons@2.1.2/dist/boxicons.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/js/all.min.js"></script>
+<script src="{% static 'asets/js/script.js' %}"></script>
+<script>
+  document.querySelectorAll('[data-attendance-tab]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const tab = button.dataset.attendanceTab;
+      document.querySelectorAll('[data-attendance-tab]').forEach((item) => {
+        item.classList.toggle('active', item === button);
+      });
+      document.querySelectorAll('[data-attendance-panel]').forEach((panel) => {
+        panel.classList.toggle('active', panel.dataset.attendancePanel === tab);
+      });
+    });
+  });
+</script>
+</body>
+</html>

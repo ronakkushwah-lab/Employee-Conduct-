@@ -1,0 +1,259 @@
+{% load static %}
+{% include "managers/header.html" %}
+{% include "managers/sidebar.html" %}
+{% include "managers/topbar.html" %}
+
+<div class="page_wrapper">
+  <div class="page-content">
+    <div class="page-breadcrumb d-sm-flex align-items-center mb-3">
+      <div class="breadcrumb-title pe-3">Timesheet</div>
+      <div class="ps-3">
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb mb-0 p-0">
+            <li class="breadcrumb-item">
+              <a href="{% url 'dashboard' company_id company_staff_id %}">
+                <i class="bx bx-home"></i>
+              </a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">Time Sheet</li>
+          </ol>
+        </nav>
+      </div>
+    </div>
+    <hr>
+    <div class="row mt-3">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-body">
+            <!-- Filters Bar (Search & Date Range) -->
+            <form method="GET" action="" id="filterForm">
+              <div class="row mb-4 align-items-center">
+                <div class="col-lg-4 col-md-12 mb-2 mb-lg-0">
+                  <div class="input-group">
+                    <span class="input-group-text bg-transparent"><i class='bx bx-search'></i></span>
+                    <input type="text" id="employeeSearchInput" class="form-control border-start-0" placeholder="Search employee email or name...">
+                  </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-2 mb-lg-0">
+                  <div class="input-group">
+                    <span class="input-group-text bg-transparent">From</span>
+                    <input type="date" name="start_date" id="startDateInput" class="form-control border-start-0" value="{{ start_date }}">
+                  </div>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-2 mb-lg-0">
+                  <div class="input-group">
+                    <span class="input-group-text bg-transparent">To</span>
+                    <input type="date" name="end_date" id="endDateInput" class="form-control border-start-0" value="{{ end_date }}">
+                  </div>
+                </div>
+                <div class="col-lg-2 col-md-12 mb-2 mb-lg-0 d-flex gap-2">
+                  <button type="submit" class="btn btn-outline-orangeyellow w-100">Filter</button>
+                  {% if start_date or end_date %}
+                  <a href="{% url 'entry-list' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-outline-danger w-100 text-nowrap">Clear</a>
+                  {% endif %}
+                </div>
+              </div>
+            </form>
+
+            <!-- Employee-wise Accordion (Main Level) -->
+            <div class="accordion" id="employeeTimesheetAccordion">
+              {% for emp in employee_list %}
+              <div class="accordion-item mb-3 border radius-15">
+                <h2 class="accordion-header" id="empHeading{{ forloop.counter }}">
+                  <button class="accordion-button collapsed font-weight-bold" type="button" data-bs-toggle="collapse" data-bs-target="#empCollapse{{ forloop.counter }}" aria-expanded="false" aria-controls="empCollapse{{ forloop.counter }}">
+                    <span class="text-purple"><i class='bx bx-user me-2'></i>{{ emp.email }} ({{ emp.name }})</span>
+                    <span class="badge bg-light-purple text-purple ms-3">Total: {{ emp.total_time }}</span>
+                  </button>
+                </h2>
+                <div id="empCollapse{{ forloop.counter }}" class="accordion-collapse collapse" aria-labelledby="empHeading{{ forloop.counter }}" data-bs-parent="#employeeTimesheetAccordion">
+                  <div class="accordion-body">
+                    <div class="table-responsive">
+                      <table class="table table-fluid table-hover mb-0">
+                        <thead>
+                          <tr>
+                            <th>Project</th>
+                            <th>Start Time</th>
+                            <th>End Time</th>
+                            <th>Total Time</th>
+                            <th>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {% for obj in emp.entries %}
+                          <tr>
+                            <td>{{ obj.project }}</td>
+                            <td>{{ obj.start_time }}</td>
+                            <td>{{ obj.end_time }}</td>
+                            <td>{{ obj.total_duration }}</td>
+                            <td>
+                              <button type="button" class="btn btn-outline-orangeyellow btn-sm" data-bs-toggle="modal"
+                                data-bs-target="#viewempolyeelistModal" id="viewBtn"
+                                onclick="entry_details_fetch('{{obj.pk}}')">View</button>
+                            </td>
+                          </tr>
+                          {% endfor %}
+                          <tr class="table-light">
+                            <td colspan="3"><strong>Total Duration</strong></td>
+                            <td><strong>{{ emp.total_time }}</strong></td>
+                            <td></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {% empty %}
+              <div class="text-center py-4">
+                <p class="text-muted mb-0">No timesheet entries found.</p>
+              </div>
+              {% endfor %}
+            </div>
+
+            <!-- Shareable Modal (Defined once outside loops) -->
+            <div class="modal fade" id="viewempolyeelistModal" tabindex="-1" aria-hidden="true">
+              <div class="modal-dialog w-80">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Employee Project Timesheet Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body">
+                    <div class="row">
+                      <div class="col">
+                        <table class="table table-fluid table-bordered">
+                          <tr>
+                            <th>Project</th>
+                            <td id="employee_project_heading"></td>
+                          </tr>
+                          <tr>
+                            <th>Task</th>
+                            <td id="employee_activity_heading"></td>
+                          </tr>
+                          <tr>
+                            <th>Start Time</th>
+                            <td id="employee_start_time_heading"></td>
+                          </tr>
+                          <tr>
+                            <th>End Time</th>
+                            <td id="employee_end_time_heading"></td>
+                          </tr>
+                          <tr>
+                            <th>Total Time</th>
+                            <td id="employee_total_duration_heading"></td>
+                          </tr>
+                          <tr>
+                            <th>Blockers</th>
+                            <td id="employee_blockers_heading"></td>
+                          </tr>
+                          <tr>
+                            <th>Attachment</th>
+                            <td id="employee_attachment_heading"></td>
+                          </tr>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <footer class="page-footer">
+    <p class="mb-0">Copyright © 2022. All right reserved.</p>
+  </footer>
+</div>
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/simplebar@latest/dist/simplebar.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/metisMenu/3.0.7/metisMenu.min.js"></script>
+<script src="https://unpkg.com/boxicons@2.1.2/dist/boxicons.js"></script>
+<script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/js/all.min.js"></script>
+<script src="{% static 'asets/js/jquery.sparkline.min.js' %}"></script>
+<script src="{% static 'asets/js/Chart.min.js' %}"></script>
+<script src="{% static 'asets/js/Chart.extension.js' %}"></script>
+<script src="{% static 'asets/js/script.js' %}"></script>
+
+
+<script>
+  function entry_details_fetch(id) {
+    // 1. Get references to the DOM elements (including the new ones)
+    var employee_start_time_heading = document.getElementById("employee_start_time_heading");
+    var employee_end_time_heading = document.getElementById("employee_end_time_heading");
+    var employee_activity_heading = document.getElementById("employee_activity_heading");
+    var employee_project_heading = document.getElementById("employee_project_heading");
+    var employee_total_duration_heading = document.getElementById("employee_total_duration_heading");
+    var employee_blockers_heading = document.getElementById("employee_blockers_heading");
+    var employee_attachment_heading = document.getElementById("employee_attachment_heading");
+
+    // 2. Perform the Ajax POST request
+    $.ajax({
+      url: '{% url "entry-list" company_id=company_id company_staff_id=company_staff_id %}',
+      method: "POST",
+      processData: false,
+      contentType: 'application/json',
+      mimeType: "multipart/form-data",
+      headers: { 'X-CSRFToken': "{{csrf_token}}", "Content-Type": "application/json" },
+      data: JSON.stringify({ 'id': id }),
+      dataType: "json",
+      success: function (res) {
+        // Extract fields from the response dictionary
+        var start_time = res['start_time'];
+        var end_time = res['end_time'];
+        var task = res['task']; // FIX: Changed from 'activity' to 'task' to match models.py to_json()
+        var project = res['project'];
+        var total_duration = res['total_duration'];
+        var blocker_name = res['blocker_name'];
+        var attachment_url = res['attachment_url'];
+        var attachment_name = res['attachment_name'];
+
+        // 3. Inject the values into the modal table
+        employee_start_time_heading.textContent = start_time;
+        employee_end_time_heading.textContent = end_time;
+        employee_activity_heading.textContent = task; // Injects the fixed task/activity
+        employee_project_heading.textContent = project;
+        employee_total_duration_heading.textContent = total_duration;
+
+        // Inject Blocker (default to "None" if empty)
+        employee_blockers_heading.textContent = blocker_name ? blocker_name : "None";
+
+        // Inject Attachment (create an HTML link if file exists, otherwise show "No file")
+        if (attachment_url) {
+          employee_attachment_heading.innerHTML = `<a href="${attachment_url}" target="_blank" class="btn btn-sm btn-outline-primary" download>${attachment_name}</a>`;
+        } else {
+          employee_attachment_heading.textContent = "No attachment";
+        }
+      },
+      error: function (xhr, status, error) {
+        console.log(error);
+      }
+    });
+  }
+
+  // Real-time client-side Employee Search Filtering
+  document.getElementById('employeeSearchInput').addEventListener('keyup', function() {
+    var searchQuery = this.value.toLowerCase().trim();
+    var accordionItems = document.querySelectorAll('#employeeTimesheetAccordion .accordion-item');
+    
+    accordionItems.forEach(function(item) {
+      var buttonText = item.querySelector('.accordion-button').textContent.toLowerCase();
+      if (buttonText.includes(searchQuery)) {
+        item.style.display = '';
+      } else {
+        item.style.display = 'none';
+      }
+    });
+  });
+</script>
+
+
+</body>
+
+</html>

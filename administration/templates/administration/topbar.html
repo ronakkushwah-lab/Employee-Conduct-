@@ -1,0 +1,103 @@
+     {% comment %} {% load static %}
+      <header>
+        <div class="topbar d-flex align-items-center">
+          <nav class="navbar navbar-expand">
+            <div class="search-bar flex-grow-1">
+              <div class="position-relative search-bar-box">
+                <input type="text" class="form-control search-control" placeholder="Type to search...">
+                <span class="position-absolute top-50 search-show translate-middle-y">
+                  <i class="bx bx-search"></i>
+                </span>
+                <span class="position-absolute top-50 search-close translate-middle-y">
+                  <i class="bx bx-x"></i>
+                </span>
+              </div>
+            </div>
+            <div class="user-box dropdown">
+              <a class="d-flex align-items-center nav-link dropdown-toggle dropdown-toggle-nocaret" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <img src="{% static 'asets/images/dummy-man.png' %}" class="user-img" alt="user avatar">
+                <div class="user-info ps-3">
+                  	{% if user.is_authenticated %}
+                  <p class="user-name mb-0">Hello Admin</p>
+                     {% endif %}
+                </div>
+              </a>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li>
+                  <a href="{% url 'logout' %}" class="dropdown-item"><i class='bx bx-log-out-circle'></i> Logout</a>
+                </li>
+              </ul>
+            </div>
+          </nav>
+        </div>
+      </header>  {% endcomment %}
+
+
+
+
+{%load static %}
+<header>
+  <div class="topbar d-flex align-items-center">
+    <nav class="navbar navbar-expand">
+
+      <div class="search-bar flex-grow-1">
+        <div class="position-relative search-bar-box">
+          <input type="text" id="search" name="search" class="form-control search-control" placeholder="Type to search...">
+
+          {% comment %} <input type="text" class="form-control search-control" placeholder="Type to search..."> {% endcomment %}
+          <span class="position-absolute top-50 search-show translate-middle-y">
+            <i class="bx bx-search"></i>
+          </span>
+          <span class="position-absolute top-50 search-close translate-middle-y">
+            <i class="bx bx-x"></i>
+          </span>
+        </div>
+      </div>
+
+      <div class="user-box dropdown">
+        <a class="d-flex align-items-center nav-link dropdown-toggle dropdown-toggle-nocaret"
+           href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+          
+          {% if employee and employee.employee_image %}
+            <img src="{{ employee.employee_image.url }}" class="user-img" alt="user avatar">
+          {% elif employee %}
+            <div class="avatar-initials" style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-size: 16px; font-weight: bold;">
+              {{ employee.employee_first_name|first|upper }}{{ employee.employee_last_name|first|upper }}
+            </div>
+          {% elif user_initials %}
+            <div class="avatar-initials" style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-size: 16px; font-weight: bold;">
+              {{ user_initials }}
+            </div>
+          {% else %}
+          <img src="{% static 'asets/images/dummy-man.png' %}" class="user-img" alt="user avatar">
+          {% endif %}
+
+          <div class="user-info ps-3">
+            {% if user.is_authenticated or company_staff_authenticated %}
+                <p class="user-name mb-0">
+                  Hello 
+                  {% if employee %}
+                      {{ employee.employee_first_name|capfirst }}
+                  {% elif user.full_name %}
+                      {{ user.full_name|truncatewords:1|capfirst }}
+                  {% else %}
+                      Admin
+                  {% endif %}
+                </p>
+            {% endif %}
+          </div>
+
+        </a>
+
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li>
+            <a href="{% url 'logout' %}" class="dropdown-item">
+              <i class='bx bx-log-out-circle'></i> Logout
+            </a>
+          </li>
+        </ul>
+      </div>
+
+    </nav>
+  </div>
+</header> 

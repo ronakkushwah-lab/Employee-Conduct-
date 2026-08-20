@@ -1,0 +1,46 @@
+{% extends "administration/emails/base_email.html" %}
+
+{% block content %}
+<h2>Employee Attendance Notification</h2>
+
+<p>Dear {{ recipient_name }},</p>
+
+<p>This is to notify you that your team member has recorded their attendance.</p>
+
+<div class="info-box">
+    <div class="detail-row">
+        <span class="detail-label">Employee Name:</span>
+        <span class="detail-value">{{ employee_name }}</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Employee ID:</span>
+        <span class="detail-value">{{ employee_id }}</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Date:</span>
+        <span class="detail-value">{{ date }}</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Action:</span>
+        <span class="detail-value">{% if action == 'check_in' %}Check-In{% else %}Check-Out{% endif %}</span>
+    </div>
+    {% if action == 'check_out' %}
+    <div class="detail-row">
+        <span class="detail-label">Check-In Time:</span>
+        <span class="detail-value">{{ check_in_time }}</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Check-Out Time:</span>
+        <span class="detail-value">{{ check_out_time }}</span>
+    </div>
+    {% else %}
+    <div class="detail-row">
+        <span class="detail-label">Check-In Time:</span>
+        <span class="detail-value">{{ check_in_time }}</span>
+    </div>
+    {% endif %}
+</div>
+
+<p>Best regards,<br>
+{{ company_name }} Team</p>
+{% endblock %}

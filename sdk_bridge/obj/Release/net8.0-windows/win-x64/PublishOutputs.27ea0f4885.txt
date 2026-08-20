@@ -1,0 +1,8 @@
+C:\Users\User\Desktop\Employee-conduct-hrms-1-main\sdk_bridge\bin\Release\net8.0-windows\win-x64\publish\HrmsSdkBridge.exe
+C:\Users\User\Desktop\Employee-conduct-hrms-1-main\sdk_bridge\bin\Release\net8.0-windows\win-x64\publish\SBXPCDLL64.dll
+C:\Users\User\Desktop\Employee-conduct-hrms-1-main\sdk_bridge\bin\Release\net8.0-windows\win-x64\publish\SBPCCOMM64.dll
+C:\Users\User\Desktop\Employee-conduct-hrms-1-main\sdk_bridge\bin\Release\net8.0-windows\win-x64\publish\GEN_FONT64.dll
+C:\Users\User\Desktop\Employee-conduct-hrms-1-main\sdk_bridge\bin\Release\net8.0-windows\win-x64\publish\HrmsSdkBridge.dll
+C:\Users\User\Desktop\Employee-conduct-hrms-1-main\sdk_bridge\bin\Release\net8.0-windows\win-x64\publish\HrmsSdkBridge.deps.json
+C:\Users\User\Desktop\Employee-conduct-hrms-1-main\sdk_bridge\bin\Release\net8.0-windows\win-x64\publish\HrmsSdkBridge.runtimeconfig.json
+C:\Users\User\Desktop\Employee-conduct-hrms-1-main\sdk_bridge\bin\Release\net8.0-windows\win-x64\publish\HrmsSdkBridge.pdb

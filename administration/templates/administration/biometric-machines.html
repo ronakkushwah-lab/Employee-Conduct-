@@ -1,0 +1,326 @@
+{% load static %}
+{% include "administration/header.html" %}
+{% include "administration/sidebar.html" %}
+{% include "administration/topbar.html" %}
+<link rel="stylesheet" type="text/css" href="{% static 'asets/css/biometric-machines.css' %}">
+
+<div class="page_wrapper biometric-machines-page">
+  <div class="page-content">
+    <div class="page-breadcrumb d-sm-flex align-items-center mb-3">
+      <div class="breadcrumb-title pe-3">Attendance</div>
+      <div class="ps-3">
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb mb-0 p-0">
+            <li class="breadcrumb-item">
+              <a href="{% url 'index' company_id=company_id company_staff_id=company_staff_id %}">
+                <i class="bx bx-home"></i>
+              </a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">Biometric Machines</li>
+          </ol>
+        </nav>
+      </div>
+    </div>
+    <hr>
+
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <div class="row g-3">
+      <div class="col-xl-4 col-md-6">
+        <div class="card h-100">
+          <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <h6 class="mb-0">Bridge Pull</h6>
+              <i class="bx bx-transfer-alt fs-4"></i>
+            </div>
+            <p class="mb-2 text-muted small">Local bridge polls the machine and posts punches.</p>
+            <input class="form-control form-control-sm" value="{{ bridge_url }}" readonly>
+            <div class="small text-muted mt-2">Use device TCP port 4370 for most ZKTeco/Secureye bridge-pull machines.</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-4 col-md-6">
+        <div class="card h-100">
+          <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <h6 class="mb-0">HTTP/HTTPS Push</h6>
+              <i class="bx bx-cloud-upload fs-4"></i>
+            </div>
+            <p class="mb-2 text-muted small">Machine posts JSON/HTTP punches directly.</p>
+            <input class="form-control form-control-sm" value="{{ http_push_url }}" readonly>
+          </div>
+        </div>
+      </div>
+      <div class="col-xl-4 col-md-12">
+        <div class="card h-100">
+          <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <h6 class="mb-0">TCP XML Push</h6>
+              <i class="bx bx-broadcast fs-4"></i>
+            </div>
+            <p class="mb-2 text-muted small">Run listener for raw TCP/XML machine packets.</p>
+            <input class="form-control form-control-sm" value="python manage.py run_biometric_tcp_server --host 0.0.0.0 --port {{ tcp_default_port }}" readonly>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row g-3 mt-1">
+      <div class="machine-form-column">
+        <div class="card">
+          <div class="card-body">
+            <div class="d-flex align-items-center justify-content-between mb-3">
+              <h5 class="mb-0">{% if edit_device %}Edit Machine{% else %}Add Machine{% endif %}</h5>
+              {% if edit_device %}
+                <a class="btn btn-sm btn-outline-secondary" href="{% url 'biometric_machines' company_id=company_id company_staff_id=company_staff_id %}">
+                  <i class="bx bx-plus"></i> New
+                </a>
+              {% endif %}
+            </div>
+            <form method="POST" action="{% url 'biometric_machines' company_id=company_id company_staff_id=company_staff_id %}{% if edit_device %}?edit={{ edit_device.id }}{% endif %}">
+              {% csrf_token %}
+              {% if form.non_field_errors %}
+                <div class="alert alert-danger">
+                  {{ form.non_field_errors }}
+                </div>
+              {% endif %}
+              {% if edit_device %}
+                <input type="hidden" name="device_pk" value="{{ edit_device.id }}">
+              {% endif %}
+              <div class="row g-2">
+                <div class="col-md-6">
+                  <label class="form-label">Machine Name <span class="text-danger">*</span></label>
+                  {{ form.name }}
+                  {{ form.name.errors }}
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Device ID <span class="text-danger">*</span></label>
+                  {{ form.device_id }}
+                  {{ form.device_id.errors }}
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Integration Mode</label>
+                  {{ form.integration_mode }}
+                  {{ form.integration_mode.errors }}
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Device Type</label>
+                  {{ form.device_type }}
+                  {{ form.device_type.errors }}
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">IP Address</label>
+                  {{ form.ip_address }}
+                  {{ form.ip_address.errors }}
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Port</label>
+                  {{ form.port }}
+                  {{ form.port.errors }}
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Serial Number</label>
+                  {{ form.serial_number }}
+                  {{ form.serial_number.errors }}
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Terminal ID</label>
+                  {{ form.terminal_id }}
+                  {{ form.terminal_id.errors }}
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Allowed Source IP</label>
+                  {{ form.allowed_source_ip }}
+                  {{ form.allowed_source_ip.errors }}
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Machine Number</label>
+                  {{ form.machine_number }}
+                  {{ form.machine_number.errors }}
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Device Password</label>
+                  {{ form.device_password }}
+                  {{ form.device_password.errors }}
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Site Label</label>
+                  {{ form.site_label }}
+                  {{ form.site_label.errors }}
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Location</label>
+                  {{ form.location }}
+                  {{ form.location.errors }}
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Bridge Server URL Override</label>
+                  {{ form.bridge_server_url }}
+                  {{ form.bridge_server_url.errors }}
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Notes</label>
+                  {{ form.notes }}
+                  {{ form.notes.errors }}
+                </div>
+                <div class="col-12">
+                  <div class="form-check">
+                    {{ form.is_active }}
+                    <label class="form-check-label">Active</label>
+                  </div>
+                </div>
+              </div>
+              <div class="mt-4 button-right machine-form-actions">
+                <button type="submit" class="btn btn-outline-orangeyellow">
+                  <i class="bx bx-save"></i> Save Machine
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <div class="machine-data-column">
+        <div class="card">
+          <div class="card-body">
+            <h5 class="mb-3">Registered Machines</h5>
+            <div class="table-responsive">
+              <table class="table table-hover align-middle registered-machines-table">
+                <thead>
+                  <tr>
+                    <th>Machine</th>
+                    <th>Mode</th>
+                    <th>Network</th>
+                    <th>Status</th>
+                    <th>Last Punch</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for device in devices %}
+                    <tr>
+                      <td>
+                        <strong>{{ device.name }}</strong><br>
+                        <span class="text-muted small">{{ device.device_id }}</span>
+                      </td>
+                      <td>{{ device.get_integration_mode_display }}</td>
+                      <td class="machine-network">
+                        {% if device.ip_address %}{{ device.ip_address }}:{{ device.port }}{% else %}-{% endif %}
+                      </td>
+                      <td class="machine-status">
+                        <span class="badge {{ device.runtime_status_class }}">{{ device.runtime_status_label }}</span>
+                        {% if device.latest_activity_at %}
+                          <div class="small text-muted">Seen {{ device.latest_activity_at }}</div>
+                        {% endif %}
+                        {% if device.last_test_status %}
+                          <div class="small text-muted">Last test: {{ device.last_test_status }}</div>
+                        {% endif %}
+                      </td>
+                      <td class="machine-last-punch">{{ device.last_punch_at|default:"-" }}</td>
+                      <td class="machine-actions">
+                        <div class="d-flex flex-nowrap gap-1">
+                          <a class="btn btn-sm btn-outline-primary" href="{% url 'biometric_machines' company_id=company_id company_staff_id=company_staff_id %}?edit={{ device.id }}">
+                            <i class="bx bx-edit"></i>
+                          </a>
+                          <form method="POST" action="{% url 'biometric_machines' company_id=company_id company_staff_id=company_staff_id %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="test">
+                            <input type="hidden" name="device_pk" value="{{ device.id }}">
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">
+                              <i class="bx bx-pulse"></i>
+                            </button>
+                          </form>
+                          <form method="POST" action="{% url 'biometric_machines' company_id=company_id company_staff_id=company_staff_id %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="open_logs">
+                            <input type="hidden" name="device_pk" value="{{ device.id }}">
+                            <button type="submit" class="btn btn-sm btn-outline-success" title="Open live bridge logs">
+                              <i class="bx bx-terminal"></i>
+                            </button>
+                          </form>
+                          <form method="POST" action="{% url 'biometric_machines' company_id=company_id company_staff_id=company_staff_id %}" onsubmit="return confirm('Delete this biometric machine?');">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="delete">
+                            <input type="hidden" name="device_pk" value="{{ device.id }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                              <i class="bx bx-trash"></i>
+                            </button>
+                          </form>
+                        </div>
+                      </td>
+                    </tr>
+                  {% empty %}
+                    <tr>
+                      <td colspan="6" class="text-center text-muted">No biometric machines added yet.</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="card mt-3">
+          <div class="card-body">
+            <h5 class="mb-3">Recent Biometric Events</h5>
+            <div class="table-responsive">
+              <table class="table table-sm table-hover align-middle recent-events-table">
+                <thead>
+                  <tr>
+                    <th>User ID</th>
+                    <th>Person</th>
+                    <th>Protocol</th>
+                    <th>Status</th>
+                    <th>Punch Time</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for event in recent_events %}
+                    <tr>
+                      <td>{{ event.biometric_user_id }}</td>
+                      <td>
+                        {% if event.employee %}
+                          {{ event.employee.employee_first_name }} {{ event.employee.employee_last_name }}
+                        {% elif event.manager %}
+                          {{ event.manager.manager_first_name }} {{ event.manager.manager_last_name }}
+                        {% else %}
+                          <span class="text-muted">Unmatched</span>
+                        {% endif %}
+                      </td>
+                      <td>{{ event.get_protocol_display }}</td>
+                      <td>{{ event.get_status_display }}</td>
+                      <td>{{ event.punch_time }}</td>
+                    </tr>
+                  {% empty %}
+                    <tr>
+                      <td colspan="5" class="text-center text-muted">No biometric events received yet.</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <footer class="page-footer">
+    <p class="mb-0">Copyright © 2022. All right reserved.</p>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/simplebar@latest/dist/simplebar.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/metisMenu/3.0.7/metisMenu.min.js"></script>
+<script src="https://unpkg.com/boxicons@2.1.2/dist/boxicons.js"></script>
+<script src="{% static 'asets/js/script.js' %}"></script>
+</body>
+</html>

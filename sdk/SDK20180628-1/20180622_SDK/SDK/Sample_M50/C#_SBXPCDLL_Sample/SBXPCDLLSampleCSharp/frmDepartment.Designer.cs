@@ -1,0 +1,188 @@
+﻿namespace SBXPCDLLSampleCSharp
+{
+    partial class frmDepartment
+    {
+        /// <summary>
+        /// Required designer variable.
+        /// </summary>
+        private System.ComponentModel.IContainer components = null;
+
+        /// <summary>
+        /// Clean up any resources being used.
+        /// </summary>
+        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && (components != null))
+            {
+                components.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+
+        #region Windows Form Designer generated code
+
+        /// <summary>
+        /// Required method for Designer support - do not modify
+        /// the contents of this method with the code editor.
+        /// </summary>
+        private void InitializeComponent()
+        {
+            this.lblMessage = new System.Windows.Forms.Label();
+            this.txtDeparmtmentName = new System.Windows.Forms.TextBox();
+            this.lblEnrollData = new System.Windows.Forms.Label();
+            this.cmdUpdate = new System.Windows.Forms.Button();
+            this.lstDepartment = new System.Windows.Forms.ListBox();
+            this.cmdRead = new System.Windows.Forms.Button();
+            this.cmdWrite = new System.Windows.Forms.Button();
+            this.cmdExit = new System.Windows.Forms.Button();
+            this.SuspendLayout();
+            // 
+            // lblMessage
+            // 
+            this.lblMessage.BackColor = System.Drawing.SystemColors.Control;
+            this.lblMessage.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
+            this.lblMessage.Cursor = System.Windows.Forms.Cursors.Default;
+            this.lblMessage.Font = new System.Drawing.Font("Times New Roman", 14.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblMessage.ForeColor = System.Drawing.SystemColors.ControlText;
+            this.lblMessage.Location = new System.Drawing.Point(12, 9);
+            this.lblMessage.Name = "lblMessage";
+            this.lblMessage.RightToLeft = System.Windows.Forms.RightToLeft.No;
+            this.lblMessage.Size = new System.Drawing.Size(632, 28);
+            this.lblMessage.TabIndex = 29;
+            this.lblMessage.Text = "Message";
+            this.lblMessage.TextAlign = System.Drawing.ContentAlignment.TopCenter;
+            // 
+            // txtDeparmtmentName
+            // 
+            this.txtDeparmtmentName.AcceptsReturn = true;
+            this.txtDeparmtmentName.BackColor = System.Drawing.SystemColors.Window;
+            this.txtDeparmtmentName.Cursor = System.Windows.Forms.Cursors.IBeam;
+            this.txtDeparmtmentName.Font = new System.Drawing.Font("Times New Roman", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.txtDeparmtmentName.ForeColor = System.Drawing.SystemColors.WindowText;
+            this.txtDeparmtmentName.Location = new System.Drawing.Point(154, 55);
+            this.txtDeparmtmentName.MaxLength = 12;
+            this.txtDeparmtmentName.Name = "txtDeparmtmentName";
+            this.txtDeparmtmentName.RightToLeft = System.Windows.Forms.RightToLeft.No;
+            this.txtDeparmtmentName.Size = new System.Drawing.Size(248, 26);
+            this.txtDeparmtmentName.TabIndex = 41;
+            // 
+            // lblEnrollData
+            // 
+            this.lblEnrollData.AutoSize = true;
+            this.lblEnrollData.BackColor = System.Drawing.SystemColors.Control;
+            this.lblEnrollData.Cursor = System.Windows.Forms.Cursors.Default;
+            this.lblEnrollData.Font = new System.Drawing.Font("Times New Roman", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblEnrollData.ForeColor = System.Drawing.SystemColors.ControlText;
+            this.lblEnrollData.Location = new System.Drawing.Point(12, 58);
+            this.lblEnrollData.Name = "lblEnrollData";
+            this.lblEnrollData.RightToLeft = System.Windows.Forms.RightToLeft.No;
+            this.lblEnrollData.Size = new System.Drawing.Size(124, 19);
+            this.lblEnrollData.TabIndex = 40;
+            this.lblEnrollData.Text = "Department Name:";
+            // 
+            // cmdUpdate
+            // 
+            this.cmdUpdate.BackColor = System.Drawing.SystemColors.Control;
+            this.cmdUpdate.Cursor = System.Windows.Forms.Cursors.Default;
+            this.cmdUpdate.Font = new System.Drawing.Font("Times New Roman", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.cmdUpdate.ForeColor = System.Drawing.SystemColors.ControlText;
+            this.cmdUpdate.Location = new System.Drawing.Point(540, 100);
+            this.cmdUpdate.Name = "cmdUpdate";
+            this.cmdUpdate.RightToLeft = System.Windows.Forms.RightToLeft.No;
+            this.cmdUpdate.Size = new System.Drawing.Size(104, 46);
+            this.cmdUpdate.TabIndex = 56;
+            this.cmdUpdate.Text = "Update";
+            this.cmdUpdate.UseVisualStyleBackColor = false;
+            this.cmdUpdate.Click += new System.EventHandler(this.cmdUpdate_Click);
+            // 
+            // lstDepartment
+            // 
+            this.lstDepartment.Font = new System.Drawing.Font("Times New Roman", 12F);
+            this.lstDepartment.FormattingEnabled = true;
+            this.lstDepartment.ItemHeight = 19;
+            this.lstDepartment.Location = new System.Drawing.Point(12, 100);
+            this.lstDepartment.Name = "lstDepartment";
+            this.lstDepartment.Size = new System.Drawing.Size(510, 422);
+            this.lstDepartment.TabIndex = 57;
+            this.lstDepartment.SelectedIndexChanged += new System.EventHandler(this.lstDepartment_SelectedIndexChanged);
+            // 
+            // cmdRead
+            // 
+            this.cmdRead.BackColor = System.Drawing.SystemColors.Control;
+            this.cmdRead.Cursor = System.Windows.Forms.Cursors.Default;
+            this.cmdRead.Font = new System.Drawing.Font("Times New Roman", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.cmdRead.ForeColor = System.Drawing.SystemColors.ControlText;
+            this.cmdRead.Location = new System.Drawing.Point(540, 336);
+            this.cmdRead.Name = "cmdRead";
+            this.cmdRead.RightToLeft = System.Windows.Forms.RightToLeft.No;
+            this.cmdRead.Size = new System.Drawing.Size(104, 46);
+            this.cmdRead.TabIndex = 58;
+            this.cmdRead.Text = "Read";
+            this.cmdRead.UseVisualStyleBackColor = false;
+            this.cmdRead.Click += new System.EventHandler(this.cmdRead_Click);
+            // 
+            // cmdWrite
+            // 
+            this.cmdWrite.BackColor = System.Drawing.SystemColors.Control;
+            this.cmdWrite.Cursor = System.Windows.Forms.Cursors.Default;
+            this.cmdWrite.Font = new System.Drawing.Font("Times New Roman", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.cmdWrite.ForeColor = System.Drawing.SystemColors.ControlText;
+            this.cmdWrite.Location = new System.Drawing.Point(540, 401);
+            this.cmdWrite.Name = "cmdWrite";
+            this.cmdWrite.RightToLeft = System.Windows.Forms.RightToLeft.No;
+            this.cmdWrite.Size = new System.Drawing.Size(104, 46);
+            this.cmdWrite.TabIndex = 59;
+            this.cmdWrite.Text = "Write";
+            this.cmdWrite.UseVisualStyleBackColor = false;
+            this.cmdWrite.Click += new System.EventHandler(this.cmdWrite_Click);
+            // 
+            // cmdExit
+            // 
+            this.cmdExit.BackColor = System.Drawing.SystemColors.Control;
+            this.cmdExit.Cursor = System.Windows.Forms.Cursors.Default;
+            this.cmdExit.Font = new System.Drawing.Font("Times New Roman", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.cmdExit.ForeColor = System.Drawing.SystemColors.ControlText;
+            this.cmdExit.Location = new System.Drawing.Point(540, 465);
+            this.cmdExit.Name = "cmdExit";
+            this.cmdExit.RightToLeft = System.Windows.Forms.RightToLeft.No;
+            this.cmdExit.Size = new System.Drawing.Size(104, 46);
+            this.cmdExit.TabIndex = 60;
+            this.cmdExit.Text = "Exit";
+            this.cmdExit.UseVisualStyleBackColor = false;
+            this.cmdExit.Click += new System.EventHandler(this.cmdExit_Click);
+            // 
+            // frmDepartment
+            // 
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.ClientSize = new System.Drawing.Size(656, 540);
+            this.Controls.Add(this.cmdExit);
+            this.Controls.Add(this.cmdWrite);
+            this.Controls.Add(this.cmdRead);
+            this.Controls.Add(this.lstDepartment);
+            this.Controls.Add(this.cmdUpdate);
+            this.Controls.Add(this.txtDeparmtmentName);
+            this.Controls.Add(this.lblEnrollData);
+            this.Controls.Add(this.lblMessage);
+            this.Name = "frmDepartment";
+            this.Text = "frmDepartment";
+            this.Load += new System.EventHandler(this.frmDepartment_Load);
+            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.frmDepartment_FormClosing);
+            this.ResumeLayout(false);
+            this.PerformLayout();
+
+        }
+
+        #endregion
+
+        public System.Windows.Forms.Label lblMessage;
+        public System.Windows.Forms.TextBox txtDeparmtmentName;
+        public System.Windows.Forms.Label lblEnrollData;
+        public System.Windows.Forms.Button cmdUpdate;
+        private System.Windows.Forms.ListBox lstDepartment;
+        public System.Windows.Forms.Button cmdRead;
+        public System.Windows.Forms.Button cmdWrite;
+        public System.Windows.Forms.Button cmdExit;
+    }
+}

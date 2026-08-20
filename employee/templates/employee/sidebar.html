@@ -1,0 +1,193 @@
+{% load static %}
+
+      <div class="sidebar_wrapper" data-simplebar>
+        <div class="simplebar-wrapper">
+          <div class="simplebar-height-auto-observer-wrapper">
+            <div class="simplebar-height-auto-observer"></div>
+          </div>
+          <div class="simplebar-mask">
+            <div class="simplebar-offset">
+              <div class="simplebar-content-wrapper">
+                <div class="simplebar-content mm-active">
+                  <div class="sidebar-header">
+                    <div>
+                      <img src="{% static 'asets/images/employee_conduct_logo.png' %}" class="img-fluid">
+                    </div>
+                    <div class="toggle-icon ms-auto">
+                      <i class="bx bx-arrow-to-left" id="btn"></i>
+                    </div>
+                  </div>
+                  <ul class="metisMenu mm-show" id="menu">
+                    <li class="menu-label">Main</li>
+                    <li class="{% if request.resolver_match.url_name == 'employee_dashboard' %}mm-active{% endif %}">
+                      <a href="{% url 'employee_dashboard' company_id=company_id company_staff_id=company_staff_id %}">
+                        <div class="parent-icon">
+                          <i class="bx bxs-dashboard"></i>
+                        </div>
+                        <div class="menu-title">
+                          <span>Dashboard</span>
+                        </div>
+                      </a>
+                    </li>
+                    <li class="menu-label">Profile</li>
+                    <li class="{% if request.resolver_match.url_name == 'employee_profile' %}mm-active{% endif %}">
+                      <a href="{% url 'employee_profile' company_id=company_id company_staff_id=company_staff_id  %}">
+                        <div class="parent-icon">
+                          <i class="bx bx-user"></i>
+                        </div>
+                        <div class="menu-title">
+                          <span>My Profile</span>
+                        </div>
+                      </a>
+                    </li>
+                    <li class="{% if request.resolver_match.url_name == 'attendance' or request.resolver_match.url_name == 'regularization_required' or request.resolver_match.url_name == 'staffregularizationtable' %}mm-active{% endif %}">
+                      <a href="{% url 'attendance' company_id=company_id company_staff_id=company_staff_id %}">
+                        <div class="parent-icon">
+                          <i class='bx bxs-hand-up'></i>
+                        </div>
+                        <div class="menu-title">
+                          <span>Attendance Info</span>
+                        </div>
+                      </a>
+                    </li>
+                    <li class="{% if request.resolver_match.url_name == 'salary-list' %}mm-active{% endif %}">
+                      <a href="{% url 'salary-list' company_id=company_id company_staff_id=company_staff_id %}">
+                        <div class="parent-icon">
+                          <i class='bx bxs-hand-up'></i>
+                        </div>
+                        <div class="menu-title">
+                          <span>Salary</span>
+                        </div>
+                      </a>
+                    </li>
+                    <li class="{% if request.resolver_match.url_name == 'task-list' or request.resolver_match.url_name == 'create_entry' or request.resolver_match.url_name == 'entries-detail' %}mm-active{% endif %}">
+                      <a class="has-arrow">
+                        <div class="parent-icon">
+                          <i class="bx bx-copy"></i>
+                        </div>
+                        <div class="menu-title">
+                          <span>Project</span>
+                        </div>
+                      </a>
+                      <ul class="mm-collapse {% if request.resolver_match.url_name == 'task-list' or request.resolver_match.url_name == 'create_entry' or request.resolver_match.url_name == 'entries-detail' %}mm-show{% endif %}">
+                        <li>
+                          <a href="{% url 'task-list'  company_id=company_id company_staff_id=company_staff_id   %}" class="{% if request.resolver_match.url_name == 'task-list' %}active{% endif %}">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            My Project
+                          </a>
+                        </li>
+                        <li>
+                          <a href="{% url 'create_entry' company_id=company_id company_staff_id=company_staff_id %}" class="{% if request.resolver_match.url_name == 'create_entry' %}active{% endif %}">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Create Timesheet
+                          </a>
+                        </li>
+                        <li>
+                          <a href="{% url 'entries-detail' company_id=company_id company_staff_id=company_staff_id %}" class="{% if request.resolver_match.url_name == 'entries-detail' %}active{% endif %}">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            View Timesheet
+                          </a>
+                        </li>
+                      </ul>
+                    </li>
+                    <li class="{% if request.resolver_match.url_name == 'create_leave' or request.resolver_match.url_name == 'staffleavetable' or request.resolver_match.url_name == 'leavebalance' %}mm-active{% endif %}">
+                      <a class="has-arrow">
+                        <div class="parent-icon">
+                          <i class="bx bx-copy"></i>
+                        </div>
+                        <div class="menu-title">
+                          <span>Leaves</span>
+                        </div>
+                      </a>
+                      <ul class="mm-collapse {% if request.resolver_match.url_name == 'create_leave' or request.resolver_match.url_name == 'staffleavetable' or request.resolver_match.url_name == 'leavebalance' %}mm-show{% endif %}">
+                        <li>
+                          <a href="{% url 'create_leave' company_id=company_id company_staff_id=company_staff_id %}" class="{% if request.resolver_match.url_name == 'create_leave' %}active{% endif %}">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Apply Leaves
+                          </a>
+                        </li>
+                        <li>
+                          <a href="{% url 'staffleavetable' company_id=company_id company_staff_id=company_staff_id %}" class="{% if request.resolver_match.url_name == 'staffleavetable' %}active{% endif %}">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Leave Status
+                          </a>
+                        </li>
+                        <li>
+                          <a href="{% url 'leavebalance' company_id=company_id company_staff_id=company_staff_id %}" class="{% if request.resolver_match.url_name == 'leavebalance' %}active{% endif %}">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Leave Balance
+                          </a>
+                        </li>
+                      </ul>
+                    </li>
+                    <li class="{% if request.resolver_match.url_name == 'notification' or request.resolver_match.url_name == 'mynotifications' %}mm-active{% endif %}">
+                      <a href="{% url 'notification' company_id=company_id company_staff_id=company_staff_id  %}">
+                        <div class="parent-icon position-relative">
+                          {% if request.session.new_notification or unread_notification_count > 0 %}
+                            <i class="fa-solid fa-bell fa-shake"></i>
+                          {% else %}
+                            <i class='bx bxs-bell'></i>
+                          {% endif %}
+                          {% if unread_notification_count > 0 %}
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 9px; padding: 2px 5px; min-width: 18px;">
+                              {{ unread_notification_count }}
+                            </span>
+                          {% endif %}
+                        </div>
+                        <div class="menu-title">
+                          <span>Notifications
+                            {% if unread_notification_count > 0 %}
+                              <span class="badge bg-danger ms-1">{{ unread_notification_count }}</span>
+                            {% endif %}
+                          </span>
+                        </div>
+                      </a>
+                    </li>
+                    <li class="{% if request.resolver_match.url_name == 'holiday_list' %}mm-active{% endif %}">
+                      <a href="{% url 'holiday_list' company_id=company_id company_staff_id=company_staff_id  %}">
+                        <div class="parent-icon">
+                          <i class='bx bxs-hand-up'></i>
+                        </div>
+                        <div class="menu-title">
+                          <span>Holiday</span>
+                        </div>
+                      </a>
+                    </li>
+                    <li class="{% if request.resolver_match.url_name == 'create_resign' or request.resolver_match.url_name == 'staffresigntable' %}mm-active{% endif %}">
+                      <a class="has-arrow">
+                        <div class="parent-icon">
+                          <i class="bx bx-copy"></i>
+                        </div>
+                        <div class="menu-title">
+                          <span>Resignation</span>
+                        </div>
+                      </a>
+                      <ul class="mm-collapse {% if request.resolver_match.url_name == 'create_resign' or request.resolver_match.url_name == 'staffresigntable' %}mm-show{% endif %}">
+                        <li>
+                          <a href="{% url 'create_resign' company_id=company_id company_staff_id=company_staff_id  %}" class="{% if request.resolver_match.url_name == 'create_resign' %}active{% endif %}">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Apply Resignation
+                          </a>
+                        </li>
+                        <li>
+                          <a href="{% url 'staffresigntable' company_id=company_id company_staff_id=company_staff_id %}" class="{% if request.resolver_match.url_name == 'staffresigntable' %}active{% endif %}">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Resignation Status
+                          </a>
+                        </li>
+                      </ul>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="simplebar-placeholder"></div>
+        </div>
+        <div class="simplebar-track simplebar-horizontal" style="visibility: hidden;">
+          <div class="simplebar-scrollbar" style="width: 0px; display: none;"></div>
+        </div>
+        <div class="simplebar-track simplebar-vertical" style="visibility: visible;">
+          <div class="simplebar-scrollbar" style="height: 83px; transform: translate3d(0px, 0px, 0px); display: block;"></div>
+        </div>
+      </div>      

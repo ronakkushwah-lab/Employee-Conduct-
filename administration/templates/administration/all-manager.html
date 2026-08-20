@@ -1,0 +1,861 @@
+{% load static %}
+{% include "administration/header.html" %}
+{% include "administration/sidebar.html" %}
+{% include "administration/topbar.html" %}
+
+       <div class="page_wrapper">
+        <div class="page-content">
+          <div class="page-breadcrumb d-sm-flex align-items-center mb-3">
+            <div class="breadcrumb-title pe-3">Managers</div>
+            <div class="ps-3">
+              <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0 p-0">
+                  <li class="breadcrumb-item">
+                    <a href="{% url 'index' company_id=company_id company_staff_id=company_staff_id %}">
+                      <i class="bx bx-home"></i>
+                    </a>
+                  </li>
+                  <li class="breadcrumb-item active" aria-current="page">All Managers</li>
+                </ol>
+              </nav>
+            </div>
+            <div class="ms-auto">
+              <div class="btn-group">
+                <a href="{% url 'all_manager' company_id=company_id company_staff_id=company_staff_id %}" class="grid-view btn btn-link active"><i class="bx bx-grid"></i></a>
+                <a href="" class="grid-list btn btn-link"><i class="bx bx-list-ul"></i></a>
+                <button type="button" class="btn btn-outline-orangeyellow" data-bs-toggle="modal" data-bs-target="#addmanagerModal" id="addmanagerBtn">
+                  <i class="bx bx-plus"></i> Add Manager
+                </button>
+                <div class="modal" id="addmanagerModal">
+                  <div class="modal-dialog w-80">
+                    <div class="modal-content">
+                      <div class="modal-header">
+                        <h5 class="modal-title" id="addModalLabel">Add Manager</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                      </div>
+                      <div class="modal-body">
+
+                        <form method="POST" action="{% url 'registermanager' company_id=company_id company_staff_id=company_staff_id %}">
+									{% csrf_token %}
+                          <div class="row mb-2">
+                            <div class="col-md-6">
+                              <label for="first-name" class="form-label">First Name <span class="text-danger">*</span></label>
+                              <input type="text" name="manager_first_name"class="form-control" placeholder="Joe" id="first-name" required>
+                            </div>
+                            <div class="col-md-6">
+                              <label for="last-name" class="form-label">Last Name</label>
+                              <input type="text" name="manager_last_name" class="form-control" placeholder="West" id="last-name">
+                            </div>
+                          </div>
+                          <div class="row mb-2">
+                            <div class="col-md-6">
+                              <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+                              <input type="email"  name="manager_email" class="form-control" placeholder="joewest01@gmail.com" id="email" required>
+                            </div>
+                            <div class="col-md-6">
+                              <label for="password" class="form-label">Password</label>
+                              <input type="password" name="manager_password" class="form-control" id="password">
+                            </div>
+                          </div>
+                          <div class="row mb-2">
+                            <div class="col-md-6">
+                              <label for="confirm-password" class="form-label">Confirm Password</label>
+                              <input type="password" name="manager_confirm_password" class="form-control" id="confirm-password">
+                            </div>
+                            <div class="col-md-6">
+                              <label for="manager-id" class="form-label">manager ID <span class="text-danger">*</span></label>
+                              <div class="input-group">
+                                <span class="input-group-text">EIC-</span>
+                                <input type="text" class="form-control" name="manager_id" id="id_manager_id" placeholder="Enter ID digits" required>
+                              </div>
+                            </div>
+                          </div>
+                          <div class="row mb-2">
+                            <div class="col-md-6">
+                              <label for="joining-date" class="form-label">Joining Dates <span class="text-danger">*</span></label>
+                              <input type="date" name="manager_joining_date" class="form-control" id="joining-date" required>
+                            </div>
+                            <div class="col-md-6">
+                              <label for="phone" class="form-label">Phone</label>
+                              <input type="text" name="manager_phone" class="form-control phone-input" placeholder="+91 XXXXX XXXXX" aria-label="phone" id="phone" maxlength="17">
+                            </div>
+                          </div>
+                          <div class="row mb-2">
+                            <div class="col-md-6">
+                              <label for="department" class="form-label">Department <span class="text-danger">*</span></label>
+                               <select class="form-select" name="id" id="id_departments" aria-label="Default select example" >
+                                <option selected>Select Department</option>
+                                {% for i in departments %}
+                                <option value={{i.id}}>{{i.department_name}}</option>
+                                {% endfor %}
+                              </select>
+                            </div>
+                            <div class="col-md-6">
+                              <label for="salary" class="form-label">Salary <span class="text-danger">*</span></label>
+                              <input type="text" name="manager_salary" class="form-control" placeholder="350000" aria-label="Salary" id="salary" required>
+                            </div>
+                          </div>
+
+                        	<div class="mt-4 mb-2 button-right">
+                              <button type="submit" value="submit" class="btn btn-outline-orangeyellow">submit</button>
+                            </div>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <hr>
+          <form action=" {% url 'manager_search' %}" method="get">
+            <div class="fm-search">
+              <div class="mb-0">
+                <div class="input-group input-group-lg">
+                  <span class="input-group-text bg-transparent">
+                    <i class="bx bx-search"></i>
+                  </span>
+                  <input type="search" class="form-control" placeholder="Search here.." name="q">
+                </div>
+              </div>
+            </div>
+          </form>
+               {% for message in messages  %}
+              <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                  <strong>Message : </strong> {{ message }}
+          <!--        <button type="button" class="close" data-dismiss="alert" aria-label="Close">-->
+          <!--            <span aria-hidden="true">&times;</span>-->
+          <!--        </button>-->
+              </div>
+                {% endfor %}
+
+          <div class="row mt-3">
+          {% for manager in manager %}
+            <div class="col-12 col-md-6 col-lg-4 col-xl-4">
+              <div class="card shadow-none border radius-15 manager-card">
+                <div class="card-body">
+                  <div class="align-items-center">
+                    		
+                    <div class="fm-icon-box radius-15 text-center">
+                         {% if manager.manager_image %}
+                      <img src="{{manager.manager_image.url}}" class="img-fluid user-img">
+                        {% else %}
+                        <div class="avatar-initials" style="width: 100px; height: 100px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; margin: 0 auto; color: white; font-size: 36px; font-weight: bold;">
+                          {{ manager.manager_first_name|first|upper }}{{ manager.manager_last_name|first|upper }}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="info mb-3 text-center">
+                      <h5 class="mt-3 mb-0">{{manager.manager_first_name}} {{manager.manager_last_name}} </h5>
+                      <div>{{manager.manager_department}} </div>
+                    </div>
+                    <div class="profile-button text-center">
+
+                      <button type="button" class="btn bg-gradient-deepblue" data-bs-toggle="modal" data-bs-target="#viewmanagerModal" id="viewmanagerBtn"  onclick="manager_details_fetch('{{manager.pk}}')">View</button>
+                      <button type="button" class="btn bg-gradient-quepal" data-bs-toggle="modal" data-bs-target="#editmanagerModal"  id="editmanagerBtn"  onclick="manager_id_fetch('{{manager.pk}}')">Edit</button>
+                      <button type="button" class="btn bg-gradient-ibiza" data-bs-toggle="modal" data-bs-target="#deletemanagerModal" id="deletemanagerBtn" onClick="getId('{{manager.id}}')" >Delete</button>
+                    </div>                    
+                    <div class="modal" id="viewmanagerModal">                      
+                      <div class="modal-dialog w-80">                        
+                        <div class="modal-content">                          
+                          <div class="modal-header">
+                            <h5 class="modal-title" id="exampleModalLabel">manager Profile  </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                          </div>                          
+                          <div class="modal-body">
+                            <div class="d-block align-items-center m-auto w-50 text-center">
+                              <div class="fm-icon-box radius-15">
+                                <img src="" id="manager_image_heading" class="img-fluid user-img">
+                                <h5 class="mt-3 mb-0" id="manager_detailed_info_heading"></h5>
+                              </div>
+                            </div>
+                            <div class="row">
+                              <div class="col-md-6">
+
+                                <table  class="table table-fluid table-bordered table-striped caption-top" id="viewmanager">
+                                  <caption>Professional Information </caption>
+
+                                  <tr>
+                                    <th>Manager ID</th>
+                                    <td id="manager_id_headings"></td>
+                                  </tr>
+                                    <tr>
+                                    <th>Department</th>
+                                     <td id="manager_department_heading"></td>
+                                     </tr>
+                                  <tr>
+                                    <th>Date of Join</th>
+                                    <td id="manager_join_heading"></td>
+                                  </tr>
+                                  <tr>
+                                    <th>Phone</th>
+                                    <td id="manager_phone_heading"></td>
+                                  </tr>
+                                  <tr>
+                                    <th>Email</th>
+                                    <td id="manager_email_heading"></td>
+                                  </tr>
+                                  <tr>
+                                    <th>Address</th>
+                                    <td id="manager_address_heading"></td>
+                                  </tr>
+                                  <tr>
+                                    <th>Gender</th>
+                                    <td id="manager_gender_heading"></td>
+                                  </tr>
+                                  <tr>
+                                    <th>Birthday</th>
+                                    <td id="manager_birth_date_heading"></td>
+                                  </tr>
+
+                                </table>
+
+                                <table class="table table-fluid table-bordered table-striped caption-top">
+                                  <caption>Education Information</caption>
+                                  <tr>
+                                    <td>
+                                      <ul>
+                                        <li>
+                                          <div class="education-user">
+                                            <div class="before-circle"></div>
+                                          </div>
+                                          <div class="education-content">
+                                            <b id="manager_institution_heading">Institution</b><br>
+                                            <span id="manager_subject_heading"></span><br>
+                                            <span class="degree-name" id="manager_degree_heading"></span><br>
+                                            <span class="grade-name" id="manager_grade_heading"> </span><br>
+                                            <sub><span class="start-date" id="manager_startDate_heading"></span> - <span class="end-date" id="manager_CompleteDate_heading"></span></sub>
+                                          </div>
+                                        </li>
+                                      </ul>
+                                    </td>
+                                  </tr>
+
+                                </table>
+                              </div>
+                              <div class="col-md-6">
+                                <table class="table table-fluid table-bordered caption-top table-striped">
+                                  <caption>Personal Information</caption>
+                                  <tr>
+                                    <th>Name</th>
+                                    <td id="manager_detailed_info_headings"></td>
+                                  </tr>
+                                  <tr>
+                                    <th>Father Name</th>
+                                        <td id="manager_father_heading"></td>
+                                  </tr>
+                                  <tr>
+                                    <th>Mother Name</th>
+                                         <td id="manager_mother_heading"></td>
+                                  </tr>
+                                  <tr>
+                                    <th>Nationality</th>
+                                     <td id="manager_nationality_heading"></td>
+                                  </tr>
+                                  <tr>
+                                    <th>Marital Status</th>
+                                         <td id="manager_marital_heading"></td>
+                                  </tr>
+                                </table>
+                                <table class="table table-fluid table-bordered caption-top table-striped">
+                                  <caption>Emergency Contact</caption>
+                                  <tr>
+                                    <th class="w-25">Name</th>
+                                    <td id="manager_emergencyName_heading"></td>
+                                  </tr>
+                                  <tr>
+                                    <th class="w-25">Relationship</th>
+                                    <td id="manager_emergencyRelationship_heading"></td>
+                                  </tr>
+                                  <tr>
+                                    <th class="w-25">Phone</th>
+                                    <td id="manager_emergencyPhone_heading"></td>
+                                  </tr>
+                                </table>
+                                <table class="table table-fluid table-bordered table-striped caption-top">
+                                  <caption>Experience</caption>
+                                  <tr>
+                                    <td>
+                                      <ul>
+                                        <li>
+                                          <div class="experience-user">
+                                            <div class="before-circle"></div>
+                                          </div>
+                                          <div class="experience-content">
+                                            <b class="institution-name" id="manager_companyName_heading"></b><br>
+                                            <span class="subject-name" id="manager_companyJobPosition_heading"></span><br>
+                                            <sub><span class="start-date" id="manager_companyPeriodfrom_heading"></span> - <span class="end-date" id="manager_companyPeriodTo_heading"></span></sub>
+                                          </div>
+                                        </li>
+                                      </ul>
+                                    </td>
+                                  </tr>                                                                    
+                                </table>                                
+                              </div>                              
+                            </div>                            
+                          </div>                          
+                        </div>                        
+                      </div>                      
+                    </div>
+                    <div class="modal" id="editmanagerModal">
+
+                      <div class="modal-dialog w-80">
+                        <div class="modal-content">
+                          <div class="modal-header">
+                            <h5 class="modal-title" id="exampleModalLabel">Edit manager </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                          </div>
+                          <div class="modal-body">
+
+
+                              <form method="post" action="{% url 'edit_manager' company_id=company_id company_staff_id=company_staff_id %}" enctype="multipart/form-data">
+                                        {% csrf_token %}
+                              <input type="hidden" name="manager_id" id="manager_id_heading">
+                              <div class="accordion" id="accordionExample">
+                                <div class="accordion-item">
+                                  <h2 class="accordion-header" id="profile">
+                                    <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#profile-img" aria-expanded="true" aria-controls="profile-img">
+                                      Profile Picture
+                                    </button>
+                                  </h2>
+                                  <div id="profile-img" class="accordion-collapse collapse show" aria-labelledby="profile" data-bs-parent="#accordionExample">
+                                    <div class="accordion-body">
+                                      <div class="row mb-2">
+                                        <div class="col">
+                                          <div class="d-block align-items-center m-auto text-center edit-profile">
+                                            <div class="fm-icon-box radius-50 m-auto">
+                                               <img src="" id="img-fluid-user-img_id" class="img-fluid user-img">
+                                              <input type="file" class="profile-img" name="manager_image">
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div class="accordion-item">
+                                  <h2 class="accordion-header" id="professional">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#professional-information" aria-expanded="true" aria-controls="professional-information">
+                                      Professional Information
+                                    </button>
+                                  </h2>
+                                  <div id="professional-information" class="accordion-collapse collapse" aria-labelledby="professional" data-bs-parent="#accordionExample">
+                                    <div class="accordion-body">
+                                      <div class="row mb-2">
+                                        <div class="col-md-6">
+                                          <label for="birth-date" class="form-label">Birth Date</label>
+                                          <input type="date" name="manager_birth_date"  class="form-control" id="manager_birth_heading_edit">
+                                        </div>
+                                        <div class="col-md-6">
+                                          <label for="gender" class="form-label">Gender</label>
+                                          <select class="form-select" id="manager_gender_edit" aria-label="Default select example" name="manager_gender">
+                                            <option selected>Select Gender</option>
+                                            <option value="Female">Female</option>
+                                            <option value="Male">Male</option>
+                                          </select>
+                                        </div>
+                                      </div>
+                                      <div class="row mb-2">
+                                        <div class="col-md-6">
+                                          <label for="address" class="form-label">Address</label>
+                                          <textarea id="manager_address_edit" class="form-control" rows="3" name="manager_address"></textarea>
+                                        </div>
+                                      </div>
+                                      <div class="row mb-2">
+                                        <div class="col-md-6">
+                                          <label for="state" class="form-label">State</label>
+                                          <input type="text" class="form-control" id="manager_state_edit" name="manager_state">
+                                        </div>
+                                        <div class="col-md-6">
+                                          <label for="country" class="form-label">Country</label>
+                                          <input type="text" class="form-control" id="manager_country_heading_edit" name="manager_country">
+                                        </div>
+                                      </div>
+                                      <div class="row mb-2">
+                                        <div class="col-md-6">
+                                          <label for="pin code" class="form-label">Pin Code</label>
+                                          <input type="text" class="form-control" id="manager_pin_code_heading_edit" name="manager_pin_code">
+                                        </div>
+                                        <div class="col-md-6">
+                                          <label for="phone-number" class="form-label">Phone Number</label>
+                                          <input type="text" class="form-control phone-input" id="manager_phone_heading_edit" name="manager_phone" maxlength="17">
+                                        </div>
+                                      </div>
+                                      <div class="row mb-2">
+                                        <div class="col-md-6">
+                                          <label for="status" class="form-label">Status <span class="text-danger">*</span></label>
+                                          <select class="form-select" aria-label="Default select example" id="manager_status_edit">
+                                            <option selected>Select Status</option>
+                                            <option value="Active">Active</option>
+                                            <option value="Inactive">Inactive</option>
+                                          </select>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div class="accordion-item">
+                                  <h2 class="accordion-header" id="personal">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#personal-information" aria-expanded="false" aria-controls="personal-information">
+                                      Personal Information
+                                    </button>
+                                  </h2>
+                                  <div id="personal-information" class="accordion-collapse collapse" aria-labelledby="personal" data-bs-parent="#accordionExample">
+                                    <div class="accordion-body">
+                                      <div class="row mb-2">
+                                        <div class="col-md-6">
+                                          <label for="manager_first_name_edit" class="form-label">First Name</label>
+                                          <input type="text" class="form-control" id="manager_first_name_edit" name="manager_first_name" required>
+                                        </div>
+                                        <div class="col-md-6">
+                                          <label for="manager_last_name_edit" class="form-label">Last Name</label>
+                                          <input type="text" class="form-control" id="manager_last_name_edit" name="manager_last_name">
+                                        </div>
+                                      </div>
+                                      <div class="row mb-2">
+                                        <div class="col-md-6">
+                                          <label for="father-name" class="form-label">Father Name</label>
+                                          <input type="text" class="form-control" id="manager_father_heading_edit" name="manager_father">
+                                        </div>
+                                      </div>
+                                      <div class="row mb-2">
+                                        <div class="col-md-6">
+                                          <label for="mother-name" class="form-label">Mother Name</label>
+                                          <input type="text" class="form-control" id="manager_mother_heading_edit" name="manager_mother">
+                                        </div>
+                                        <div class="col-md-6">
+                                          <label for="nationality" class="form-label">Nationality <span class="text-danger">*</span></label>
+                                          <input type="text" class="form-control" id="manager_nationality_heading_edit" name="manager_nationality">
+                                        </div>
+                                      </div>
+                                      <div class="row mb-2">
+                                        <div class="col-md-6">
+                                          <label for="status" class="form-label">Marital Status <span class="text-danger">*</span></label>
+                                          <select class="form-select" aria-label="Default select example" id="manager_marital_heading_edit" name="manager_marital_status">
+                                            <option value="">Select Marital Status</option>
+                                            <option value="Single">Single</option>
+                                            <option value="Married">Married</option>
+                                          </select>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div class="accordion-item">
+                                  <h2 class="accordion-header" id="emergency">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#emergency-contact" aria-expanded="false" aria-controls="emergency-contact">
+                                      Emergency Contact
+                                    </button>
+                                  </h2>
+                                  <div id="emergency-contact" class="accordion-collapse collapse" aria-labelledby="emergency" data-bs-parent="#accordionExample">
+                                    <div class="accordion-body">
+                                      <div class="row mb-2">
+                                        <div class="col-md-6">
+                                          <label for="name" class="form-label">Name <span class="text-danger">*</span></label>
+                                          <input type="text" class="form-control" id="manager_emergencyName_heading_edit" name="manager_emergency_primary_name">
+                                        </div>
+                                        <div class="col-md-6">
+                                          <label for="relationship" class="form-label">Relationship <span class="text-danger">*</span></label>
+                                          <input type="text" class="form-control" id="manager_emergencyRelationship_heading_edit" name="manager_emergency_primary_relationship">
+                                        </div>
+                                      </div>
+                                      <div class="row mb-2">
+                                        <div class="col-md-6">
+                                          <label for="phone-number" class="form-label">Phone Number <span class="text-danger">*</span></label>
+                                          <input type="text" class="form-control phone-input" id="manager_emergencyPhone_heading_edit" name="manager_emergency_primary_phone1" maxlength="17">
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div class="accordion-item">
+                                  <h2 class="accordion-header" id="education">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#education-information" aria-expanded="false" aria-controls="education-information">
+                                      Education Informations
+                                    </button>
+                                  </h2>
+                                  <div id="education-information" class="accordion-collapse collapse" aria-labelledby="education" data-bs-parent="#accordionExample">
+                                    <div class="accordion-body">
+                                      <div class="row mb-2">
+                                        <div class="col-md-6">
+                                          <label for="institution-name" class="form-label">Instiution</label>
+                                          <input type="text" class="form-control" id="manager_institution_heading_edit" name="manager_education_institution">
+                                        </div>
+                                        <div class="col-md-6">
+                                          <label for="subject-name" class="form-label">Subject</label>
+                                          <input type="text" class="form-control" id="manager_subject_heading_edit" name="manager_education_subject">
+                                        </div>
+                                      </div>
+                                      <div class="row mb-2">
+                                        <div class="col-md-6">
+                                          <label for="start-date" class="form-label">Starting Date</label>
+                                          <input type="text" class="form-control" id="manager_startDate_heading_edit" name="manager_education_starting_date">
+                                        </div>
+                                        <div class="col-md-6">
+                                          <label for="complete-date" class="form-label">Complete Date</label>
+                                          <input type="text" class="form-control" id="manager_CompleteDate_heading_edit" name="manager_education_complete_date">
+                                        </div>
+                                      </div>
+                                      <div class="row mb-2">
+                                        <div class="col-md-6">
+                                          <label for="degree-name" class="form-label">Degree</label>
+                                          <input type="text" class="form-control" id="manager_degree_heading_edit" name="manager_education_degree">
+                                        </div>
+                                        <div class="col-md-6">
+                                          <label for="grade" class="form-label">Grade</label>
+                                          <input type="text" class="form-control" id="manager_grade_heading_edit" name="manager_education_grade">
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div class="accordion-item">
+                                  <h2 class="accordion-header" id="experience">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#experience-information" aria-expanded="false" aria-controls="experience-information">
+                                      Experience
+                                    </button>
+                                  </h2>
+                                  <div id="experience-information" class="accordion-collapse collapse" aria-labelledby="experience" data-bs-parent="#accordionExample">
+                                    <div class="accordion-body">
+                                      <div class="row mb-2">
+                                        <div class="col-md-6">
+                                          <label for="company-name" class="form-label">Company Name</label>
+                                          <input type="text" class="form-control" id="manager_companyName_heading_edit" name="manager_experience_company_name">
+                                        </div>
+                                        <div class="col-md-6">
+                                          <label for="location" class="form-label">Location</label>
+                                          <input type="text" class="form-control" id="manager_companyLocation_heading_edit" name="manager_experience_company_location">
+                                        </div>
+                                      </div>
+                                      <div class="row mb-2">
+                                        <div class="col-md-6">
+                                          <label for="job-position" class="form-label">Job Position</label>
+                                          <input type="text" class="form-control" id="manager_companyJobPosition_heading_edit" name="manager_experience_company_job_position">
+                                        </div>
+                                        <div class="col-md-6">
+                                          <label for="period-from" class="form-label">Period From</label>
+                                          <input type="text" class="form-control" id="manager_companyPeriodfrom_heading_edit" name="manager_experience_company_period_from">
+                                        </div>
+                                      </div>
+                                      <div class="row mb-2">
+                                        <div class="col-md-6">
+                                          <label for="period-to" class="form-label">Period To</label>
+                                          <input type="text" class="form-control" id="manager_companyPeriodTo_heading_edit" name="manager_experience_company_period_to">
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              <div class="mt-4 mb-2 button-right">
+                                <button type="submit" class="btn btn-outline-orangeyellow">Submit</button>
+                              </div>
+                            </form>
+                          </div>
+                        </div>
+                      </div>
+
+                    </div>
+                    <div class="modal" id="deletemanagerModal">
+                      <div class="modal-dialog">
+                        <div class="modal-content">
+                          <div class="modal-header">
+                            <h5 class="modal-title" id="exampleModalLabel">Delete manager</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                          </div>
+                          <div class="modal-body text-center">
+                            <p>Are you sure want to delete?</p>
+                            	<div class="col-12">
+                                  <a href="javascript:void(0);"  id="delete" class="btn btn-outline-orangeyellow w-100 mb-2">Delete</a>
+                                </div>
+
+                            <button type="button" class="btn btn-outline-orangeyellow w-100" data-bs-dismiss="modal">Cancel</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        <footer class="page-footer">
+          <p class="mb-0">Copyright © 2022. All right reserved.</p>
+        </footer>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/simplebar@latest/dist/simplebar.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/metisMenu/3.0.7/metisMenu.min.js"></script>
+    <script src="https://unpkg.com/boxicons@2.1.2/dist/boxicons.js"></script>
+    <script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/js/all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.5.3/jspdf.debug.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.8.0/html2pdf.bundle.js"></script>
+    <script src="{% static 'asets/js/jquery.sparkline.min.js' %}"></script>
+    <script src="{% static 'asets/js/Chart.min.js' %}"></script>
+    <script src="{% static 'asets/js/Chart.extension.js' %}"></script>
+    <script src="{% static 'asets/js/script.js' %}"></script>
+
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"></script>
+
+        <script>
+      function manager_details_fetch(manager_id){
+        // for (var i=0; i<managers.length; i++){
+        //   if (managers[i].fields.manager_id === manager_id){
+        //     var manager_detailed_info_heading = document.getElementById("manager_detailed_info_heading");
+        //     manager_full_name = managers[i].fields.manager_first_name + ' ' + managers[i].fields.manager_last_name;
+        //     manager_detailed_info_heading.textContent = manager_full_name;
+        //   }
+        // }
+
+        // Ajax POST Request
+        var manager_detailed_info_heading = document.getElementById("manager_detailed_info_heading");
+        var manager_department_heading = document.getElementById("manager_department_heading");
+        var manager_phone_heading = document.getElementById("manager_phone_heading");
+        var manager_id_headings = document.getElementById("manager_id_headings");
+        var manager_email_heading = document.getElementById("manager_email_heading");
+        var manager_address_heading = document.getElementById("manager_address_heading");
+        var manager_join_heading = document.getElementById("manager_join_heading")
+        var manager_gender_heading = document.getElementById("manager_gender_heading")
+        var manager_birth_date_heading = document.getElementById("manager_birth_date_heading")
+        var manager_detailed_info_headings = document.getElementById("manager_detailed_info_headings");
+        var manager_father_heading = document.getElementById("manager_father_heading");
+        var manager_mother_heading = document.getElementById("manager_mother_heading");
+        var manager_nationality_heading = document.getElementById("manager_nationality_heading");
+        var manager_marital_heading = document.getElementById("manager_marital_heading");
+        var manager_institution_heading = document.getElementById("manager_institution_heading")
+        var manager_subject_heading = document.getElementById("manager_subject_heading");
+        var manager_degree_heading = document.getElementById("manager_degree_heading");
+        var manager_grade_heading = document.getElementById("manager_grade_heading");
+        var manager_startDate_heading  = document.getElementById("manager_startDate_heading");
+        var manager_CompleteDate_heading = document.getElementById("manager_CompleteDate_heading");
+        var manager_emergencyName_heading = document.getElementById("manager_emergencyName_heading");
+        var manager_emergencyRelationship_heading  = document.getElementById("manager_emergencyRelationship_heading");
+        var manager_emergencyPhone_heading = document.getElementById("manager_emergencyPhone_heading");
+        var manager_companyName_heading  = document.getElementById("manager_companyName_heading");
+        var manager_companyJobPosition_heading = document.getElementById("manager_companyJobPosition_heading");
+        var manager_companyPeriodfrom_heading = document.getElementById("manager_companyPeriodfrom_heading");
+        var manager_companyPeriodTo_heading  = document.getElementById("manager_companyPeriodTo_heading");
+        var manager_image_heading = document.getElementById("manager_image_heading");
+
+        $.ajax({
+                  url: '{% url "all_manager" company_id=company_id company_staff_id=company_staff_id %}',
+                  method: "POST",
+                  processData: false,
+                  contentType: 'application/json',
+                  mimeType: "multipart/form-data",
+                  headers: {'X-CSRFToken': "{{csrf_token}}", "Content-Type":"application/json"},
+                  data: JSON.stringify({'manager_id': manager_id}),
+                  dataType: "json",
+                  success: function(res){
+
+                  manager_full_name = res['manager_first_name'] + ' ' + res['manager_last_name'];
+                  manager_department = res['manager_department'];
+                  manager_phone = res['manager_phone'];
+                  manager_id = res['manager_id'];
+                  manager_email = res['manager_email'];
+                  manager_address = res['manager_address'];
+                  manager_joining_date  = res['manager_joining_date'];
+                  manager_gender = res['manager_gender'];
+                  manager_birth_date = res['manager_birth_date'];
+                  manager_father = res['manager_father'];
+                  manager_mother = res['manager_mother'];
+                  manager_nationality = res['manager_nationality'];
+                  manager_marital_status = res['manager_marital_status'];
+                  manager_education_institution = res['manager_education_institution'];
+                  manager_education_subject = res['manager_education_subject'];
+                  manager_education_degree = res['manager_education_degree'];
+                  manager_education_grade = res['manager_education_grade'];
+                  manager_education_starting_date = res['manager_education_starting_date'];
+                  manager_education_complete_date = res['manager_education_complete_date'];
+                  manager_emergency_primary_name = res['manager_emergency_primary_name'];
+                  manager_emergency_primary_relationship= res['manager_emergency_primary_relationship'];
+                  manager_emergency_primary_phone1= res['manager_emergency_primary_phone1'];
+                  manager_experience_company_name = res['manager_experience_company_name'];
+                  manager_experience_company_job_position= res['manager_experience_company_job_position'];
+                  manager_experience_company_period_from = res['manager_experience_company_period_from'];
+                  manager_experience_company_period_to = res['manager_experience_company_period_to'];
+                  manager_image_heading.src = res['manager_image'];
+
+
+
+                  manager_detailed_info_heading.textContent = manager_full_name;
+                  manager_department_heading.textContent = manager_department;
+                  manager_phone_heading.textContent = manager_phone;
+                  manager_id_headings.textContent = manager_id;
+                  manager_email_heading.textContent = manager_email;
+                  manager_address_heading.textContent = manager_address;
+                  manager_join_heading .textContent = manager_joining_date;
+                  manager_gender_heading.textContent = manager_gender;
+                  manager_birth_date_heading.textContent = manager_birth_date;
+                  manager_detailed_info_headings.textContent = manager_full_name;
+                  manager_father_heading.textContent = manager_father;
+                  manager_mother_heading .textContent = manager_mother;
+                  manager_nationality_heading.textContent = manager_nationality;
+                  manager_marital_heading.textContent = manager_marital_status;
+                  manager_institution_heading.textContent  = manager_education_institution;
+                  manager_subject_heading.textContent = manager_education_subject;
+                  manager_degree_heading.textContent = manager_education_degree;
+                  manager_grade_heading.textContent = manager_education_grade;
+                  manager_startDate_heading.textContent =  manager_education_starting_date;
+                  manager_CompleteDate_heading.textContent = manager_education_complete_date;
+                  manager_emergencyName_heading.textContent = manager_emergency_primary_name;
+                  manager_emergencyRelationship_heading .textContent = manager_emergency_primary_relationship;
+                  manager_emergencyPhone_heading.textContent =  manager_emergency_primary_phone1;
+                  manager_companyName_heading.textContent =  manager_experience_company_name;
+                  manager_companyJobPosition_heading.textContent =  manager_experience_company_job_position;
+                  manager_companyPeriodfrom_heading.textContent = manager_experience_company_period_from;
+                  manager_companyPeriodTo_heading.textContent = manager_experience_company_period_to;
+
+
+                },
+                error: function(xhr, status, error){
+                  console.log(error);
+                  console.log(status);
+                  console.log(xhr);
+                }
+        })
+      }
+
+       function manager_id_fetch(manager_id){
+        var manager_id_heading = document.getElementById("manager_id_heading");
+        var manager_address_edit = document.getElementById("manager_address_edit");
+        var manager_image_edit = document.getElementById("img-fluid-user-img_id");
+        var manager_gender_edit = document.getElementById("manager_gender_edit");
+        var manager_phone_heading_edit = document.getElementById("manager_phone_heading_edit");
+
+        var manager_pin_code_heading_edit = document.getElementById("manager_pin_code_heading_edit");
+        var manager_state_edit = document.getElementById("manager_state_edit");
+        var manager_birth_heading_edit = document.getElementById("manager_birth_heading_edit");
+        var manager_country_heading_edit  = document.getElementById("manager_country_heading_edit");
+        var manager_status_edit = document.getElementById("manager_status_edit");
+
+        var manager_first_name_edit = document.getElementById("manager_first_name_edit");
+        var manager_last_name_edit = document.getElementById("manager_last_name_edit");
+        var manager_father_heading_edit = document.getElementById("manager_father_heading_edit");
+        var manager_mother_heading_edit = document.getElementById("manager_mother_heading_edit");
+        var manager_nationality_heading_edit = document.getElementById("manager_nationality_heading_edit");
+        var manager_marital_heading_edit= document.getElementById("manager_marital_heading_edit");
+        var manager_emergencyName_heading_edit  = document.getElementById("manager_emergencyName_heading_edit");
+        var manager_emergencyRelationship_heading_edit  = document.getElementById("manager_emergencyRelationship_heading_edit");
+        var manager_emergencyPhone_heading_edit  = document.getElementById("manager_emergencyPhone_heading_edit");
+
+        var manager_institution_heading_edit = document.getElementById("manager_institution_heading_edit");
+        var manager_subject_heading_edit = document.getElementById("manager_subject_heading_edit");
+        var manager_degree_heading_edit = document.getElementById("manager_degree_heading_edit");
+        var manager_grade_heading_edit = document.getElementById("manager_grade_heading_edit");
+        var manager_startDate_heading_edit = document.getElementById("manager_startDate_heading_edit");
+        var manager_CompleteDate_heading_edit  = document.getElementById("manager_CompleteDate_heading_edit");
+        
+        var manager_companyName_heading_edit = document.getElementById("manager_companyName_heading_edit");
+        var manager_companyJobPosition_heading_edit = document.getElementById("manager_companyJobPosition_heading_edit");
+        var manager_companyLocation_heading_edit = document.getElementById("manager_companyLocation_heading_edit");
+        var manager_companyPeriodfrom_heading_edit = document.getElementById("manager_companyPeriodfrom_heading_edit");
+        var manager_companyPeriodTo_heading_edit = document.getElementById("manager_companyPeriodTo_heading_edit");
+
+
+        manager_id_heading.value = manager_id;
+
+        $.ajax({
+          url: '{% url "edit_manager" company_id=company_id company_staff_id=company_staff_id %}',
+          method: "GET",
+          data: {'manager_id': manager_id},
+          dataType: "json",
+          success: function(res){
+            manager_address_edit.textContent = res['manager_address']
+            manager_gender_edit.value = res['manager_gender']
+            manager_image_edit.src = res['manager_image']
+            manager_phone_heading_edit.value = res['manager_phone']
+            if (typeof formatManagerPhoneNumber === 'function') formatManagerPhoneNumber(manager_phone_heading_edit);
+
+            manager_pin_code_heading_edit.value = res['manager_pin_code']
+            manager_state_edit.value = res['manager_state']
+            manager_birth_heading_edit.value = res['manager_birth_date']
+            manager_country_heading_edit.value = res['manager_country']
+            manager_status_edit.value = res['manager_status']
+
+            manager_first_name_edit.value = res['manager_first_name'] || '';
+            manager_last_name_edit.value = res['manager_last_name'] || '';
+            manager_father_heading_edit.value = res['manager_father']
+            manager_mother_heading_edit.value = res['manager_mother']
+            manager_nationality_heading_edit.value = res['manager_nationality']
+            manager_marital_heading_edit.value = res['manager_marital_status']
+            manager_emergencyName_heading_edit.value = res['manager_emergency_primary_name']
+            manager_emergencyRelationship_heading_edit.value = res['manager_emergency_primary_relationship']
+            manager_emergencyPhone_heading_edit.value = res['manager_emergency_primary_phone1']
+            if (typeof formatManagerPhoneNumber === 'function') formatManagerPhoneNumber(manager_emergencyPhone_heading_edit);
+            manager_institution_heading_edit.value = res['manager_education_institution']
+            manager_subject_heading_edit.value = res['manager_education_subject']
+            manager_degree_heading_edit.value = res['manager_education_degree']
+            manager_grade_heading_edit.value = res['manager_education_grade']
+            manager_startDate_heading_edit.value = res['manager_education_starting_date'];
+            manager_CompleteDate_heading_edit.value = res['manager_education_complete_date'];
+            manager_companyName_heading_edit.value = res['manager_experience_company_name'];
+            manager_companyJobPosition_heading_edit.value = res['manager_experience_company_job_position'];
+            manager_companyLocation_heading_edit.value = res['manager_experience_company_location'];
+            manager_companyPeriodfrom_heading_edit.value = res['manager_experience_company_period_from'];
+            manager_companyPeriodTo_heading_edit.value = res['manager_experience_company_period_to'];
+
+
+
+
+          },
+          error: function(xhr, status, error){
+            console.log(error);
+            console.log(status);
+            console.log(xhr);
+          }
+        })
+      }
+
+
+    </script>
+
+
+   <script>
+  	function getId(id) {
+		// alert(id)
+		var a =document.getElementById('delete');
+		a.href = "/administration/Remove_manager/{{company_id}}/{{company_staff_id}}/"+id;
+	}
+   </script>
+
+   <script>
+     // Phone: sirf +91 ke baad 10 digit – auto format
+     function formatManagerPhoneNumber(input) {
+       if (!input) return;
+       var value = input.value.replace(/\D/g, '');
+       if (!value.startsWith('91') && value.length > 0) value = '91' + value;
+       if (value.length > 12) value = value.substring(0, 12);
+       var formatted = '';
+       if (value.length > 0) {
+         formatted = '+' + value.substring(0, 2);
+         if (value.length > 2) formatted += ' ' + value.substring(2, 7);
+         if (value.length > 7) formatted += ' ' + value.substring(7, 12);
+       }
+       input.value = formatted;
+     }
+     document.addEventListener('DOMContentLoaded', function() {
+       var phoneInputs = document.querySelectorAll('.phone-input');
+       phoneInputs.forEach(function(input) {
+         input.addEventListener('input', function(e) { formatManagerPhoneNumber(e.target); });
+         input.addEventListener('focus', function(e) {
+           if (e.target.value === '') e.target.value = '+91 ';
+         });
+         input.addEventListener('keydown', function(e) {
+           var pos = e.target.selectionStart;
+           if ((e.key === 'Backspace' || e.key === 'Delete') && pos <= 4) e.preventDefault();
+         });
+         if (input.value && !input.value.startsWith('+91')) formatManagerPhoneNumber(input);
+       });
+     });
+   </script>

@@ -1,0 +1,246 @@
+{% include "administration/header.html" %}
+{% include "administration/sidebar.html" %}
+{% include "administration/topbar.html" %}
+{% load static %}
+      <div class="page_wrapper">
+        <div class="page-content">
+          <div class="page-breadcrumb d-flex justify-content-between align-items-center mb-3">
+    <!-- LEFT SIDE: Breadcrumb -->
+    <div class="d-flex align-items-center">
+        <div class="breadcrumb-title pe-3">Employees</div>
+        <div class="ps-3">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0 p-0">
+                    <li class="breadcrumb-item">
+                        <a href="{% url 'index' company_id=company_id company_staff_id=company_staff_id %}">
+                            <i class="bx bx-home"></i>
+                        </a>
+                    </li>
+                    <li class="breadcrumb-item active" aria-current="page">All Documents</li>
+                </ol>
+            </nav>
+        </div>
+    </div>
+
+    <!-- RIGHT SIDE: BUTTON -->
+    <button type="button" class="btn btn-outline-orangeyellow"
+            data-bs-toggle="modal" data-bs-target="#addDocModal">
+        + Add Document
+    </button>
+</div>
+          <hr>
+          
+      <!-- Add Document Modal -->
+<div class="modal fade" id="addDocModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title">Add Employee Documents</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+
+        <form id="uploadDocsForm" method="POST" enctype="multipart/form-data" action="{% url 'all_documents' company_id=company_id company_staff_id=company_staff_id %}">
+          {% csrf_token %}
+
+          <div class="mb-3">
+            <label class="form-label">Select Employee</label>
+            <select name="employee" id="employee_select" class="form-select" required>
+              <option value="">Select Employee</option>
+              {% if employees %}
+                {% for emp in employees %}
+                <option value="{{ emp.id }}">{{ emp.employee_email }}</option>
+                {% endfor %}
+              {% else %}
+                <option value="" disabled>No employees found</option>
+              {% endif %}
+            </select>
+            {% if not employees or employees|length == 0 %}
+            <small class="text-danger d-block mt-2">
+              No employees found. Please ensure employees are registered in the Employee table.
+            </small>
+            {% else %}
+            <small class="text-muted d-block mt-1">{{ employees|length }} employee(s) available</small>
+            {% endif %}
+          </div>
+
+          <!-- Experience Letter -->
+          <div class="mb-3">
+            <label class="form-label">Experience Letter</label>
+            <input type="file" name="experience_letter" id="employee_experience_heading" class="form-control" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.bmp,.webp,.txt,.xls,.xlsx,.ppt,.pptx">
+            <small class="text-muted">Accepted formats: PDF, DOC, DOCX, JPG, PNG, GIF, BMP, WEBP, TXT, XLS, XLSX, PPT, PPTX</small>
+          </div>
+
+          <!-- Offer Letter -->
+          <div class="mb-3">
+            <label class="form-label">Offer Letter</label>
+            <input type="file" name="offer_letter" id="employee_offer_letter_heading" class="form-control" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.bmp,.webp,.txt,.xls,.xlsx,.ppt,.pptx">
+            <small class="text-muted">Accepted formats: PDF, DOC, DOCX, JPG, PNG, GIF, BMP, WEBP, TXT, XLS, XLSX, PPT, PPTX</small>
+          </div>
+
+          <!-- Education Certificate -->
+          <div class="mb-3">
+            <label class="form-label">Education Certificate</label>
+            <input type="file" name="education_certificate" id="employee_education_certificate_heading" class="form-control" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.bmp,.webp,.txt,.xls,.xlsx,.ppt,.pptx">
+            <small class="text-muted">Accepted formats: PDF, DOC, DOCX, JPG, PNG, GIF, BMP, WEBP, TXT, XLS, XLSX, PPT, PPTX</small>
+          </div>
+
+          <!-- Skill Certificate -->
+          <div class="mb-3">
+            <label class="form-label">Skill Certificate</label>
+            <input type="file" name="skill_certificate" id="employee_skill_certificate_heading" class="form-control" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.bmp,.webp,.txt,.xls,.xlsx,.ppt,.pptx">
+            <small class="text-muted">Accepted formats: PDF, DOC, DOCX, JPG, PNG, GIF, BMP, WEBP, TXT, XLS, XLSX, PPT, PPTX</small>
+          </div>
+
+          <button type="submit" class="btn btn-outline-orangeyellow w-100">
+            Upload Documents
+          </button>
+
+        </form>
+
+      </div>
+    </div>
+  </div>
+</div>
+          <div class="row mt-3">
+            <div class="col-12">
+              <div class="card">
+                <div class="card-body">
+                  <div class="table-responsive">
+                    <table class="table table-fluid table-hover" id="myTable">
+                      <thead>
+                        <tr>
+                          <th>Employee ID</th>
+                          <th>Employee Name</th>
+                            <th>Employee Email</th>
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                          {% for post in document_list %}
+                        <tr>
+                          <td style="width: 20%">{{post.user.employee_id}}</td>
+                          <td>{{post.user.employee_first_name}}&nbsp;{{post.user.employee_last_name}}</td>
+                             <td>{{ post.user.employee_email }}</td>
+
+                          <td class="dropdown"  style="width: 20%">
+                            <a class="d-flex align-items-center nav-link dropdown-toggle dropdown-toggle-nocaret" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                              <i class="bx bx-dots-vertical-rounded"></i>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li>
+                               <a href="{% url 'allpost' company_id=company_id company_staff_id=company_staff_id  id=post.id  %}" class="dropdown-item">View</a>
+                              </li>
+
+                              <li>
+                              <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#deleteemployeeModal" id="deleteBtn" onClick="getId('{{post.id}}')">
+                                  Delete
+                                </button>
+                              </li>
+                            </ul>
+                          </td>
+                        </tr>
+    {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Delete Employee Documents Modal - Outside Loop -->
+          <div class="modal fade" id="deleteemployeeModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title">Delete Employee Documents</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center">
+                  <p>Are you sure you want to delete this employee's documents?</p>
+                  <div class="col-12">
+                    <a href="javascript:void(0);" id="delete" class="btn btn-outline-orangeyellow w-100 mb-2">Delete</a>
+                  </div>
+                  <button type="button" class="btn btn-outline-orangeyellow w-100" data-bs-dismiss="modal">Cancel</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <footer class="page-footer">
+          <p class="mb-0">Copyright © 2022. All right reserved.</p>
+        </footer>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/simplebar@latest/dist/simplebar.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/metisMenu/3.0.7/metisMenu.min.js"></script>
+    <script src="https://unpkg.com/boxicons@2.1.2/dist/boxicons.js"></script>
+    <script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/js/all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.5.3/jspdf.debug.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.8.0/html2pdf.bundle.js"></script>
+    <script src="{% static 'asets/js/jquery.sparkline.min.js' %}"></script>
+    <script src="{% static 'asets/js/Chart.min.js' %}"></script>
+    <script src="{% static 'asets/js/Chart.extension.js' %}"></script>
+    <script src="{% static 'asets/js/script.js' %}"></script>
+
+    <script>
+            function document_details_fetch(id){
+
+
+        // Ajax POST Request
+           var employee_experience_heading = document.getElementById("employee_experience_heading");
+           var employee_offer_letter_heading = document.getElementById("employee_offer_letter_heading");
+           var employee_education_certificate_heading = document.getElementById("employee_education_certificate_heading");
+           var employee_skill_certificate_heading = document.getElementById("employee_skill_certificate_heading");
+
+
+        $.ajax({
+                  url: '{% url "all_documents" company_id=company_id company_staff_id=company_staff_id %}',
+                  method: "POST",
+                  processData: false,
+                  contentType: 'application/json',
+                  mimeType: "multipart/form-data",
+                  headers: {'X-CSRFToken': "{{csrf_token}}", "Content-Type":"application/json"},
+                  data: JSON.stringify({'id': id}),
+                  dataType: "json",
+                  success: function(res){
+
+
+                  employee_experience_heading.src = res['experience_letter'];
+                  employee_offer_letter_heading.src = res['offer_letter'];
+                  employee_education_certificate_heading.src = res['education_certificate'];
+                  employee_skill_certificate_heading.src = res['skill_certificate'];
+
+                },
+                error: function(xhr, status, error){
+                  console.log(error);
+                  console.log(status);
+                  console.log(xhr);
+                }
+        })
+      }
+    </script>
+
+                  <script>
+  	function getId(id) {
+		// Set the href for the delete link when modal is opened
+		var deleteLink = document.getElementById('delete');
+		deleteLink.href = "/administration/delete-employee-documents/{{company_id}}/{{company_staff_id}}/" + id + "/";
+	}
+
+   </script>
+
+
+
+    
+  </body>
+</html>

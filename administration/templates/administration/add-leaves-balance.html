@@ -1,0 +1,185 @@
+{% load static %}
+{% include "administration/header.html" %}
+{% include "administration/sidebar.html" %}
+{% include "administration/topbar.html" %}
+
+
+      <div class="page_wrapper">
+        <div class="page-content">
+          <div class="page-breadcrumb d-sm-flex align-items-center mb-3">
+            <div class="breadcrumb-title pe-3">Leaves</div>
+            <div class="ps-3">
+              <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0 p-0">
+                  <li class="breadcrumb-item">
+                    <a href="{% url 'index' company_id=company_id company_staff_id=company_staff_id %}">
+                      <i class="bx bx-home"></i>
+                    </a>
+                  </li>
+                  <li class="breadcrumb-item active" aria-current="page">Add Leaves Balance</li>
+                </ol>
+              </nav>
+            </div>            
+          </div>
+          <hr>
+          
+          <!-- Apply Leave Form -->
+          <div class="row mt-3">
+            <div class="col-12">
+              <div class="card">
+                <div class="card-header">
+                  <h5 class="card-title mb-0">Apply for Leave</h5>
+                </div>
+                <div class="card-body">
+                  <form method="POST" action="{% url 'add_leaves_balance' company_id=company_id company_staff_id=company_staff_id %}">
+                    {% csrf_token %}
+                    <div class="row mb-2">
+                      <div class="col">
+                        <label for="employee-select" class="form-label">Select Employee <span class="text-danger">*</span></label>
+                        <select class="form-select" id="employee-select" name="employee_id" required>
+                          <option value="">Select Employee</option>
+                          {% if employees %}
+                            {% for emp in employees %}
+                            <option value="{{ emp.id }}">{{ emp.employee_first_name }} {{ emp.employee_last_name }} ({{ emp.employee_email }})</option>
+                            {% endfor %}
+                          {% endif %}
+                        </select>
+                      </div>
+                    </div>
+                    <div class="row mb-2">
+                      <div class="col-md-6">
+                        <label for="start-time" class="form-label">Start Date <span class="text-danger">*</span></label>
+                        <input class="form-control" type="date" id="start-time" name="startdate" required>
+                      </div>
+                      <div class="col-md-6">
+                        <label for="end-time" class="form-label">End Date <span class="text-danger">*</span></label>
+                        <input class="form-control" type="date" id="end-time" name="enddate" required>
+                      </div>
+                    </div>
+                    <div class="row mb-2">
+                      <div class="col-md-6">
+                        <label for="leave-days" class="form-label">Leave Days</label>
+                        <input class="form-control" type="number" id="leave-days" name="leave_days" readonly>
+                        <small class="text-muted">Automatically calculated based on start and end date</small>
+                      </div>
+                      <div class="col-md-6">
+                        <label for="leave-type" class="form-label">Leave Type <span class="text-danger">*</span></label>
+                        <select class="form-select" aria-label="Default select example" name="leavetype" id="leave-type" required>
+                          <option value="">Select Leave Type</option>
+                          <option value="sick">Sick Leave</option>
+                          <option value="casual">Casual Leave</option>
+                          <option value="emergency">Emergency Leave</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div class="row mb-2">
+                      <div class="col">
+                        <label for="reason" class="form-label">Leave Reason <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="reason" name="reason" rows="3" required></textarea>
+                      </div>
+                    </div>
+                    <div class="row mb-2">
+                      <div class="col">
+                        <label for="description" class="form-label">Description</label>
+                        <textarea class="form-control" id="description" name="description" rows="4" placeholder="Enter detailed description of your leave..."></textarea>
+                      </div>
+                    </div>
+                    <div class="mt-4 mb-2 button-right">
+                      <button type="submit" class="btn btn-outline-orangeyellow">Apply Leave</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Add Leave Balance Form (Existing) -->
+          <div class="row mt-3">
+            <div class="col-12">
+              <div class="card">
+                <div class="card-header">
+                  <h5 class="card-title mb-0">Add Leaves Balance</h5>
+                </div>
+                <div class="card-body">
+                  <form>
+                    <div class="row mb-2">
+                      <div class="col">
+                        <label for="user" class="form-label">User <span class="text-danger">*</span></label>
+                        <select class="form-select" aria-label="Default select example" id="user">
+                          <option selected>Select User</option>
+                          <option value="abid@gmail.com">abid@gmail.com</option>
+                          <option value="abid1@gmail.com">abid1@gmail.com</option>
+                          <option value="saquib@gmail.com">saquib@gmail.com</option>
+                          <option value="saquib1@gmail.com">saquib1@gmail.com</option>
+                        </select>
+                      </div>                      
+                    </div>
+                    <div class="row mb-2">
+                      <div class="col">
+                        <label for="leaves" class="form-label">Leave days per year counter <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="leaves" value="10" required>
+                      </div>                      
+                    </div>
+                    <div class="mt-4 mb-2 button-right">
+                      <button type="button" class="btn btn-outline-orangeyellow">Submit</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <footer class="page-footer">
+          <p class="mb-0">Copyright © 2022. All right reserved.</p>
+        </footer>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/simplebar@latest/dist/simplebar.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/metisMenu/3.0.7/metisMenu.min.js"></script>
+    <script src="https://unpkg.com/boxicons@2.1.2/dist/boxicons.js"></script>
+    <script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/js/all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.5.3/jspdf.debug.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.8.0/html2pdf.bundle.js"></script>
+    <script src="{% static 'asets/js/jquery.sparkline.min.js' %}"></script>
+    <script src="{% static 'asets/js/Chart.min.js' %}"></script>
+    <script src="{% static 'asets/js/Chart.extension.js' %}"></script>
+    <script src="{% static 'asets/js/script.js' %}"></script>
+    
+    <script>
+      // Auto-calculate leave days based on start and end date
+      document.addEventListener('DOMContentLoaded', function() {
+        const startDateInput = document.getElementById('start-time');
+        const endDateInput = document.getElementById('end-time');
+        const leaveDaysInput = document.getElementById('leave-days');
+        
+        if (startDateInput && endDateInput && leaveDaysInput) {
+          function calculateLeaveDays() {
+            const startDate = new Date(startDateInput.value);
+            const endDate = new Date(endDateInput.value);
+            
+            if (startDateInput.value && endDateInput.value && startDate <= endDate) {
+              // Calculate difference in days (inclusive of both start and end dates)
+              const timeDiff = endDate.getTime() - startDate.getTime();
+              const daysDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24)) + 1; // +1 to include both start and end dates
+              leaveDaysInput.value = daysDiff;
+            } else if (startDateInput.value && endDateInput.value && startDate > endDate) {
+              leaveDaysInput.value = '';
+              alert('End date must be after start date!');
+            } else {
+              leaveDaysInput.value = '';
+            }
+          }
+          
+          startDateInput.addEventListener('change', calculateLeaveDays);
+          endDateInput.addEventListener('change', calculateLeaveDays);
+        }
+      });
+    </script>
+    
+  </body>
+</html>

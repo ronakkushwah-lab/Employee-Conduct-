@@ -1,0 +1,360 @@
+{% comment %} {% load static %}
+{% load employee_filter %}
+<header>
+  <div class="topbar d-flex align-items-center">
+    <nav class="navbar navbar-expand">
+      <!-- Hamburger Menu Button for Mobile -->
+      <button class="btn btn-link d-md-none me-3 mobile-menu-toggle" type="button" id="mobile-hamburger-btn" style="border: none; padding: 0.5rem; background: transparent; z-index: 1001;">
+        <i class="bx bx-menu" style="font-size: 24px; color: #333; cursor: pointer;"></i>
+      </button>
+      
+      <div class="search-bar flex-grow-1">
+              <div class="position-relative search-bar-box">
+                <input type="text" class="form-control search-control" placeholder="Type to search...">
+                <span class="position-absolute top-50 search-show translate-middle-y">
+                  <i class="bx bx-search"></i>
+                </span>
+                <span class="position-absolute top-50 search-close translate-middle-y">
+                  <i class="bx bx-x"></i>
+                </span>
+              </div>
+            </div>
+            <div class="user-box dropdown">
+              <a class="d-flex align-items-center nav-link dropdown-toggle dropdown-toggle-nocaret" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                {% if employee and employee.employee_image %}
+                  <img src="{{ employee.employee_image.url }}" class="user-img" alt="user avatar" id="topbar-avatar">
+                {% elif profile and profile.employee_image %}
+                  <img src="{{ profile.employee_image.url }}" class="user-img" alt="user avatar" id="topbar-avatar">
+                {% elif company_staff_id %}
+                  {% get_employee company_staff_id as current_employee %}
+                  {% if current_employee and current_employee.employee_image %}
+                    <img src="{{ current_employee.employee_image.url }}" class="user-img" alt="user avatar" id="topbar-avatar">
+                  {% else %}
+                    <img src="{% static 'asets/images/dummy-man.png ' %}" class="user-img" alt="user avatar" id="topbar-avatar">
+                  {% endif %}
+                {% else %}
+                  <img src="{% static 'asets/images/dummy-man.png ' %}" class="user-img" alt="user avatar" id="topbar-avatar">
+                {% endif %}
+                <div class="user-info ps-3">
+                  <p class="user-name mb-0">
+                    Hello 
+                    {% if employee %}
+                      {{ employee.employee_first_name }} {{ employee.employee_last_name }}
+                    {% elif profile %}
+                      {{ profile.employee_first_name }} {{ profile.employee_last_name }}
+                    {% elif company_staff_id %}
+                      {% get_employee company_staff_id as current_employee %}
+                      {% if current_employee %}
+                        {{ current_employee.employee_first_name }} {{ current_employee.employee_last_name }}
+                      {% else %}
+                        User
+                      {% endif %}
+                    {% else %}
+                      User
+                    {% endif %}
+                  </p>
+                </div>
+              </a>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li>
+                  <a href="#" class="dropdown-item" id="upload-profile-picture-trigger"><i class='bx bx-image'></i> Change Profile Picture</a>
+                </li>
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                  <a href="{% url 'employee_profile' company_id=company_id company_staff_id=company_staff_id  %}" class="dropdown-item"><i class='bx bx-user'></i> My Profile</a>
+                </li>
+                 <li>
+                  <a href="{% url 'change_password' company_id=company_id company_staff_id=company_staff_id %}" class="dropdown-item"><i class='bx bx-user'></i>Change Password</a>
+                </li>
+                <li>
+                  <a href="{% url 'logout' %}" class="dropdown-item"><i class='bx bx-log-out-circle'></i> Logout</a>
+                </li>
+              </ul>
+            </div>
+            <!-- Hidden file input for profile picture upload -->
+            <input type="file" id="profile-image-input" accept="image/*" style="display: none;">
+            
+            <script>
+            // Function to get CSRF token from cookies
+            function getCookie(name) {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
+            
+            // Function to display messages without page reload (for AJAX uploads)
+            function showMessage(type, message) {
+                // Remove any existing messages
+                const existingAlert = document.querySelector('.topbar-upload-message');
+                if (existingAlert) {
+                    existingAlert.remove();
+                }
+                
+                // Create message element
+                const alertDiv = document.createElement('div');
+                alertDiv.className = 'alert alert-' + (type === 'success' ? 'success' : 'danger') + ' alert-dismissible fade show topbar-upload-message shadow-sm';
+                alertDiv.setAttribute('role', 'alert');
+                alertDiv.style.cssText = 'position: fixed; top: 80px; right: 20px; z-index: 9999; min-width: 300px; margin-bottom: 10px;';
+                
+                const messageContent = type === 'success' ? '✅ Success: ' : '⚠️ Error: ';
+                alertDiv.innerHTML = `
+                    <div class="d-flex align-items-center">
+                        <div class="flex-grow-1">
+                            <strong>${messageContent}</strong>${message}
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                `;
+                
+                // Insert message into page
+                document.body.appendChild(alertDiv);
+                
+                // Auto-remove after 5 seconds
+                setTimeout(function() {
+                    if (alertDiv.parentNode) {
+                        alertDiv.classList.remove('show');
+                        setTimeout(function() {
+                            if (alertDiv.parentNode) {
+                                alertDiv.remove();
+                            }
+                        }, 150);
+                    }
+                }, 5000);
+            }
+            
+            document.addEventListener('DOMContentLoaded', function() {
+                const uploadTrigger = document.getElementById('upload-profile-picture-trigger');
+                const fileInput = document.getElementById('profile-image-input');
+                const avatarImg = document.getElementById('topbar-avatar');
+                
+                if (uploadTrigger && fileInput) {
+                    uploadTrigger.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        fileInput.click();
+                    });
+                    
+                    fileInput.addEventListener('change', function(e) {
+                        const file = e.target.files[0];
+                        if (!file) return;
+                        
+                        // Validate file type
+                        if (!file.type.startsWith('image/')) {
+                            alert('Please select an image file.');
+                            return;
+                        }
+                        
+                        // Validate file size (max 5MB)
+                        if (file.size > 5 * 1024 * 1024) {
+                            alert('Image size should be less than 5MB.');
+                            return;
+                        }
+                        
+                        // Show preview
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            if (avatarImg) {
+                                avatarImg.src = e.target.result;
+                            }
+                        };
+                        reader.readAsDataURL(file);
+                        
+                        // Upload file
+                        const formData = new FormData();
+                        formData.append('employee_image', file);
+                        const csrftoken = getCookie('csrftoken');
+                        
+                        fetch('{% url "upload_profile_image" company_id=company_id company_staff_id=company_staff_id %}', {
+                            method: 'POST',
+                            body: formData,
+                            headers: {
+                                'X-CSRFToken': csrftoken
+                            }
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                // Update avatar with new image URL
+                                if (data.image_url && avatarImg) {
+                                    avatarImg.src = data.image_url;
+                                }
+                                // Show success message without reloading to avoid resubmission warning
+                                showMessage('success', data.message || 'Profile updated successfully.');
+                            } else {
+                                // Show error message without reloading
+                                showMessage('error', data.error || 'Failed to upload image.');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            showMessage('error', 'An error occurred while uploading the image.');
+                        });
+                    });
+                }
+            });
+            </script>
+          </nav>
+        </div>
+      </header> {% endcomment %}
+
+
+
+
+
+
+
+
+
+
+
+{% load static %}
+{% load employee_filter %}
+<header>
+  <div class="topbar d-flex align-items-center">
+    <nav class="navbar navbar-expand">
+      
+      <div class="search-bar flex-grow-1">
+        <div class="position-relative search-bar-box">
+          <input type="text" class="form-control search-control" placeholder="Type to search...">
+          <span class="position-absolute top-50 search-show translate-middle-y">
+            <i class="bx bx-search"></i>
+          </span>
+          <span class="position-absolute top-50 search-close translate-middle-y">
+            <i class="bx bx-x"></i>
+          </span>
+        </div>
+      </div>
+
+      <div class="user-box dropdown">
+        <a class="d-flex align-items-center nav-link dropdown-toggle dropdown-toggle-nocaret" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+          {% if employee and employee.employee_image %}
+            <img src="{{ employee.employee_image.url }}" class="user-img" alt="user avatar" id="topbar-avatar">
+          {% elif profile and profile.employee_image %}
+            <img src="{{ profile.employee_image.url }}" class="user-img" alt="user avatar" id="topbar-avatar">
+          {% elif company_staff_id %}
+            {% get_employee company_staff_id as current_employee %}
+            {% if current_employee and current_employee.employee_image %}
+              <img src="{{ current_employee.employee_image.url }}" class="user-img" alt="user avatar" id="topbar-avatar">
+            {% else %}
+              <img src="{% static 'asets/images/dummy-man.png' %}" class="user-img" alt="user avatar" id="topbar-avatar">
+            {% endif %}
+          {% else %}
+            <img src="{% static 'asets/images/dummy-man.png' %}" class="user-img" alt="user avatar" id="topbar-avatar">
+          {% endif %}
+
+          <div class="user-info ps-3">
+            <p class="user-name mb-0">
+              Hello
+              {% if employee %}
+                {{ employee.employee_first_name }} {{ employee.employee_last_name }}
+              {% elif profile %}
+                {{ profile.employee_first_name }} {{ profile.employee_last_name }}
+              {% elif company_staff_id %}
+                {% get_employee company_staff_id as current_employee %}
+                {% if current_employee %}
+                  {{ current_employee.employee_first_name }} {{ current_employee.employee_last_name }}
+                {% else %}
+                  User
+                {% endif %}
+              {% else %}
+                User
+              {% endif %}
+            </p>
+          </div>
+        </a>
+
+        <ul class="dropdown-menu dropdown-menu-end">
+          <li>
+            <a href="{% url 'employee_profile' company_id=company_id company_staff_id=company_staff_id  %}" class="dropdown-item"><i class='bx bx-user'></i> My Profile</a>
+          </li>
+          <li>
+            <a href="{% url 'change_password' company_id=company_id company_staff_id=company_staff_id %}" class="dropdown-item"><i class='bx bx-user'></i> Change Password</a>
+          </li>
+          <li>
+            <a href="{% url 'logout' %}" class="dropdown-item"><i class='bx bx-log-out-circle'></i> Logout</a>
+          </li>
+        </ul>
+      </div>
+
+      <script>
+        (function() {
+          function initMobileMenu() {
+            var hamburgerBtn = document.getElementById('mobile-hamburger-btn');
+            var wrapper = document.querySelector('.wrapper');
+            var sidebar = document.querySelector('.sidebar_wrapper');
+            
+            if (!hamburgerBtn || !wrapper || !sidebar) {
+              setTimeout(initMobileMenu, 100);
+              return;
+            }
+            
+            // Force sidebar to be hidden on mobile load
+            function hideSidebarOnMobile() {
+              if (window.innerWidth <= 838) {
+                wrapper.classList.remove('active');
+                sidebar.style.left = '-250px';
+              } else {
+                sidebar.style.left = '';
+              }
+            }
+            
+            // Hide on load
+            hideSidebarOnMobile();
+            
+            // Hide on resize to mobile
+            window.addEventListener('resize', hideSidebarOnMobile);
+            
+            // Hamburger button click handler
+            hamburgerBtn.addEventListener('click', function(e) {
+              e.preventDefault();
+              e.stopPropagation();
+              if (window.innerWidth <= 838) {
+                var isActive = wrapper.classList.contains('active');
+                if (isActive) {
+                  wrapper.classList.remove('active');
+                  sidebar.style.left = '-250px';
+                } else {
+                  wrapper.classList.add('active');
+                  sidebar.style.left = '0';
+                }
+              }
+            });
+            
+            // Close sidebar when clicking outside
+            document.addEventListener('click', function(e) {
+              if (window.innerWidth <= 838) {
+                var isClickInsideSidebar = e.target.closest('.sidebar_wrapper');
+                var isClickOnHamburger = e.target.closest('#mobile-hamburger-btn, .mobile-menu-toggle');
+                
+                if (!isClickInsideSidebar && !isClickOnHamburger && wrapper.classList.contains('active')) {
+                  wrapper.classList.remove('active');
+                  sidebar.style.left = '-250px';
+                }
+              }
+            });
+            
+            // Prevent sidebar clicks from closing
+            sidebar.addEventListener('click', function(e) {
+              e.stopPropagation();
+            });
+          }
+          
+          // Initialize when DOM is ready
+          if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initMobileMenu);
+          } else {
+            initMobileMenu();
+          }
+        })();
+      </script>
+    </nav>
+  </div>
+</header>

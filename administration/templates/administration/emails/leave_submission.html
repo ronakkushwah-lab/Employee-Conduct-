@@ -1,0 +1,55 @@
+{% extends "administration/emails/base_email.html" %}
+
+{% block content %}
+<h2>Leave Request Submitted Successfully</h2>
+
+<p>Dear {{ recipient_name }},</p>
+
+<p>Your leave request has been submitted successfully and is now pending approval.</p>
+
+<div class="info-box">
+    <div class="detail-row">
+        <span class="detail-label">Employee Name:</span>
+        <span class="detail-value">{{ employee_name }}</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Employee ID:</span>
+        <span class="detail-value">{{ employee_id }}</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Leave Type:</span>
+        <span class="detail-value">{{ leave_type }}</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Start Date:</span>
+        <span class="detail-value">{{ start_date }}</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">End Date:</span>
+        <span class="detail-value">{{ end_date }}</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Total Days:</span>
+        <span class="detail-value">{{ leave_days }} day(s)</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Reason:</span>
+        <span class="detail-value">{{ reason }}</span>
+    </div>
+    {% if description and description != 'N/A' %}
+    <div class="detail-row">
+        <span class="detail-label">Description:</span>
+        <span class="detail-value">{{ description }}</span>
+    </div>
+    {% endif %}
+    <div class="detail-row">
+        <span class="detail-label">Status:</span>
+        <span class="detail-value">{{ status|title }}</span>
+    </div>
+</div>
+
+<p>Your leave request is currently under review. You will be notified once a decision has been made.</p>
+
+<p>Best regards,<br>
+{{ company_name }} Team</p>
+{% endblock %}

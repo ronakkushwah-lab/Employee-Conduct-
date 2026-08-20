@@ -1,0 +1,267 @@
+@media (min-width: 851px) and (max-width: 1000px) {
+	.login_box .card {
+		width: 45%;
+	}
+	.dataTables_wrapper .dataTables_paginate {
+		padding-bottom: 0.7em;
+	}
+	#createinvoiceModal .table tr th {
+		min-width: 200px !important;
+	}
+	#createinvoiceModal .table tr th:last-child {
+		min-width: auto !important;
+	}
+}
+
+@media (min-width: 701px) and (max-width: 850px) {
+	.login_box .card {
+		width: 50%;
+	}
+	#createinvoiceModal .table tr th {
+		min-width: 200px !important;
+	}
+	#createinvoiceModal .table tr th:last-child {
+		min-width: auto !important;
+	}
+}
+
+@media screen and (max-width: 838px) {
+	.wrapper .sidebar_wrapper, .wrapper .sidebar-header {
+	    width: 80px !important;
+	}
+	.wrapper .sidebar-header img, .wrapper .sidebar_wrapper .metisMenu .menu-label, 
+	.wrapper .sidebar_wrapper .metisMenu .menu-title, 
+	.wrapper .metismenu .mm-active>.has-arrow::after, .wrapper .metismenu li>.has-arrow::after, 
+	.wrapper .metismenu .has-arrow[aria-expanded=true]::after, .wrapper .mm-collapse {
+	    display: none !important;
+	    transition: .2s ease-out;
+	}
+	.wrapper.active .sidebar_wrapper, .wrapper.active .sidebar-header {
+	    width: 250px !important;
+	}
+	.wrapper.active .mm-collapse {
+		display: none;
+	}
+	.wrapper.active .mm-collapse.mm-show {
+		display: block !important;
+	}
+	.wrapper.active .sidebar-header img, .wrapper.active .sidebar_wrapper .metisMenu .menu-label, 
+	.wrapper.active .sidebar_wrapper .metisMenu .menu-title, 
+	.wrapper.active .metismenu .mm-active>.has-arrow::after, 
+	.wrapper.active .metismenu li>.has-arrow::after, 
+	.wrapper.active .metismenu .has-arrow[aria-expanded=true]::after, 
+	.wrapper.active li {
+		display: block !important;
+		transition: .2s ease-out;
+	}
+	.wrapper .page_wrapper {
+	    width: calc(100% - 80px);
+	    margin-left: 80px;
+	}
+	.wrapper header .topbar, .wrapper footer {
+	    width: calc(100% - 80px);
+	    margin-left: -170px;
+	}
+	.wrapper header .topbar .navbar .search-bar .position-relative.search-bar-box {
+	    width: 100% !important;
+	}
+	.accordion-button {
+		width: 100% !important;
+	}
+	#createinvoiceModal .table tr th {
+		min-width: 200px !important;
+	}
+	#createinvoiceModal .table tr th:last-child {
+		min-width: auto !important;
+	}
+}
+
+@media screen and (max-width: 768px) {
+	.modal .modal-body form .row div:first-child {
+		margin-bottom: 10px;
+	}
+	.btn-outline-orangeyellow {
+		width: auto !important;
+	}
+	.modal-body button.mb-2 {
+		margin-bottom: 0px !important;
+	}
+}
+
+@media (min-width: 551px) and (max-width: 700px) {
+	.login_box .card {
+		width: 55%;
+	}
+}
+
+@media screen and (max-width: 651px) {	
+	.message .d-flex {
+		display: block !important;
+	}
+	.message .message-img img {
+		display: block;
+		margin: auto;
+		margin-top: 15px;
+	}
+	.search-bar {
+		visibility: hidden;
+	}
+	.page-content .page-breadcrumb.d-sm-flex {
+		display: block !important;
+	}
+	.page-breadcrumb .breadcrumb-title {
+		float: left;
+	}
+	.page-breadcrumb .breadcrumb {
+		line-height: 32px !important;
+		padding-left: 15px !important;
+	}
+	.page-breadcrumb .ms-auto {
+		text-align: right;
+	}
+	.modal .modal-body form .row {
+		text-align: left;
+	}
+	.modal .modal-body form button {
+		width: auto;
+	} 
+	#print-salary .d-flex {
+		display: block !important;
+	}
+	#print-salary .logo img {
+	    width: 40% !important;
+	    border-radius: 0px !important;
+	    margin: auto;
+	    display: block;
+	}
+	#print-salary .ms-auto {
+		margin-top: 20px;
+	}
+}
+
+@media (min-width: 471px) and (max-width: 550px) {
+	.login_box .card {
+		width: 60%;
+		padding: 2.25rem 1.1rem !important;
+	}
+}
+
+@media (min-width: 401px) and (max-width: 470px) {
+	.login_box .card {
+		width: 65%;
+		padding: 2.25rem 1.1rem !important;
+	}
+}
+
+@media screen and (max-width: 400px) {
+	.page-breadcrumb {
+		text-align: center !important;
+	}
+	.page-breadcrumb .breadcrumb-title {
+		float: none;
+		border: none !important;
+		padding-right: 0px !important;
+	}
+	.page-breadcrumb .ps-3 {
+		padding-left: 0px !important;
+	}
+	.page-breadcrumb .breadcrumb {
+		margin: auto;
+		padding-left: 0px !important;
+		justify-content: center;
+		display: flex;
+	}
+	.page-breadcrumb .ms-auto {
+		text-align: center !important;
+		margin-top: 10px;
+	}
+	.page-breadcrumb .btn-group a {
+		margin: 0 10px 0 0 !important;
+	}
+}
+
+@media (min-width: 351px) and (max-width: 400px) {
+	.login_box .card {
+		width: 70%;
+		padding: 2.25rem 1.1rem !important;
+	}	
+}
+
+@media (min-width: 306px) and (max-width: 350px) {
+	.login_box .card {
+		width: 80%;
+		padding: 2.25rem 1.1rem !important;
+	}
+}
+
+@media screen and (max-width: 305px) {
+	.login_box .card {
+		width: 85%;
+		padding: 2.25rem 1.1rem !important;
+	}
+}
+/* Account responsive hardening */
+html,
+body {
+	max-width: 100%;
+	overflow-x: hidden;
+}
+
+img,
+svg,
+canvas,
+video {
+	max-width: 100%;
+	height: auto;
+}
+
+.login_bg {
+	min-height: 100svh;
+}
+
+.login_box {
+	width: 100%;
+}
+
+.login_box .card {
+	width: min(92vw, 520px) !important;
+	max-width: 520px;
+}
+
+.login_box .card form,
+.login_box .card form input,
+.login_box .card form .form-control,
+.login_box .password_form input {
+	max-width: 100%;
+}
+
+.role-buttons {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+}
+
+.role-buttons .btn {
+	flex: 1 1 120px;
+	white-space: normal;
+}
+
+@media screen and (max-width: 575.98px) {
+	.login_box {
+		display: block;
+		padding: 1rem;
+	}
+
+	.login_box .card {
+		width: 100% !important;
+		padding: 1.5rem 1rem !important;
+	}
+
+	.login_box .card:hover {
+		transform: none;
+	}
+
+	.login_box .card img {
+		width: min(150px, 70vw);
+	}
+}

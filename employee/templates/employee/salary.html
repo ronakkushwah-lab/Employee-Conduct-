@@ -1,0 +1,172 @@
+{% load static %}
+{% include "employee/header.html" %}
+{% include "employee/sidebar.html" %}
+{% include "employee/topbar.html" %}
+{% load crispy_forms_tags %}
+{% load humanize %}
+
+      <div class="page_wrapper">
+        <div class="page-content">
+          <div class="page-breadcrumb d-sm-flex align-items-center mb-3">
+            <div class="breadcrumb-title pe-3">Salary</div>
+            <div class="ps-3">
+              <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0 p-0">
+                  <li class="breadcrumb-item">
+                    <a href="{% url 'employee_dashboard' company_id=company_id company_staff_id=company_staff_id %}">
+                      <i class="bx bx-home"></i>
+                    </a>
+                  </li>
+                  <li class="breadcrumb-item active" aria-current="page">Salary</li>
+                </ol>
+              </nav>
+            </div>
+          </div>
+          <hr>
+          <div class="row mt-3" style="display: none;">
+            <div class="col-12">
+              <div class="card">
+                <div class="card-body" id="print-salary">
+                  <h5 class="text-center text-uppercase">Payslip for the Month of {{ object.month|date:"F Y " }}</h5>
+                  <div class="d-flex align-items-center mt-5 mb-5">
+                    <div class="logo">
+                      <img src="{% static 'asets/images/employee_conduct_logo.png' %}" alt="Eagle in Cloud Logo" class="img-fluid" style="max-width: 200px; height: auto;">
+                    </div>
+                    <div class="ms-auto">
+                      <h6 class="mb-0 text-right">PAYSLIP #{{object.id}}</h6>
+                      <span class="font-14">Salary Month: {{ object.month|date:"F Y " }}</span>
+                    </div>
+                  </div>
+                  <div class="align-items-center employee-details mb-5">
+                    <h6 class="name">{{ object.employee.employee_first_name}} {{ object.employee.employee_last_name}}</h6>
+                    <span class="role">{{ object.employee.employee_department}}</span><br>
+                    <span class="employee-id">Employee ID: {{ object.employee.employee_id}}</span><br>
+                    <span class="joining-date">Joining Date: {{ object.employee.employee_joining_date}}</span>
+                  </div>
+                  <div class="salary-details">
+                    <div class="row">
+                      <div class="col">
+                        <span>Earnings</span>
+                        <table class="table table-bordered mt-2">
+                          <tbody>
+                            <tr>
+                              <th>Basic Salary</th>
+                              <td>{{ object.basic }}</td>
+                            </tr>
+                            <tr>
+                              <th>House Rent Allowance (H.R.A.)</th>
+                              <td>{{ object.hra_percent }}</td>
+                            </tr>
+                            <tr>
+                              <th>Bounce</th>
+                              <td>{{ object.medical_allowance }}</td>
+                            </tr>
+                            <tr>
+                              <th>Medical Allowance</th>
+                              <td>{{ object.medical_allowance }}</td>
+                            </tr>
+                            <tr>
+                              <th>Total Earning</th>
+                              <th>{{ object.total_earnings|intcomma}}</th>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                      <div class="col">
+                        <span>Deductions</span>
+                        <table class="table table-bordered mt-2">
+                          <tbody>
+                            <tr>
+                              <th>Tax Deducted at Source (T.D.S.)</th>
+                              <td>{{ object.tds|intcomma}}</td>
+                            </tr>
+                            <tr>
+                              <th>Provident Fund</th>
+                              <td>{{ object.providence_fund|intcomma}}</td>
+                            </tr>
+                            <tr>
+                              <th>ESI</th>
+                              <td>{{ object.esi|intcomma}}</td>
+                            </tr>
+                            <tr>
+                              <th>Leave</th>
+                              <td>{{ object.leave|intcomma}}</td>
+                            </tr>
+                            <tr>
+                              <th>Total Deductions</th>
+                              <tH>{{ object.total_deductions|intcomma}}</th>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="net-salary mt-3">
+                    <h6>Net Salary: {{ object.net_pay|intcomma}}</h6>
+                  </div>
+                </div>
+              </div>              
+            </div>
+          </div>
+          <div class="row mt-3">
+            <div class="col">
+              <div class="card shadow-none border radius-15">
+                <div class="card-body">                  
+                  <div class="table-responsive">
+                    <table class="table table-fluid" id="myTable">
+                      <thead>
+                        <tr>
+                          <th>Employee</th>
+                          <th>Employee ID</th>
+                          <th>Email</th>
+                          <th>Joining Date</th>
+                          <th>Role</th>
+                          <th>Salary Month</th>
+                          <th>Salary</th>
+                          <th class="no-sort">Download Slip</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                          {% for item in salary  %}
+                        <tr>
+                          <td>{{ item.employee.employee_first_name}} {{ item.employee.employee_last_name}}</td>
+                          <td>{{ item.employee.employee_id}}</td>
+                          <td>{{ item.employee.employee_email}}</td>
+                          <td>{{ item.employee.employee_joining_date}}</td>
+                          <td>{{ item.employee.employee_department}} </td>
+                          <td>{{ item.month|date:"F Y " }}</td>
+                          <td>{{ item.basic|intcomma}}</td>
+                          <td><a class="btn btn-outline-orangeyellow" href="{% url 'salary-download' company_id=company_id company_staff_id=company_staff_id id=item.id %}" target="_blank">Download Slip</a></td>
+                        </tr>
+                       {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <footer class="page-footer">
+          <p class="mb-0">Copyright © 2022. All right reserved.</p>
+        </footer>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/simplebar@latest/dist/simplebar.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/metisMenu/3.0.7/metisMenu.min.js"></script>
+    <script src="https://unpkg.com/boxicons@2.1.2/dist/boxicons.js"></script>
+    <script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/js/all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.5.3/jspdf.debug.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.8.0/html2pdf.bundle.js"></script>
+    <script src="{% static 'asets/js/jquery.sparkline.min.js' %}"></script>
+    <script src="{% static 'asets/js/Chart.min.js' %}"></script>
+    <script src="{% static 'asets/js/Chart.extension.js' %}"></script>
+    <script src="{% static 'asets/js/script.js' %}"></script>
+    
+  </body>
+</html>

@@ -1,0 +1,121 @@
+{% load static %}
+{% include "managers/header.html" %}
+{% include "managers/sidebar.html" %}
+{% include "managers/topbar.html" %}
+
+      <div class="page_wrapper">
+        <div class="page-content">
+          <div class="page-breadcrumb d-sm-flex align-items-center mb-3">
+            <div class="breadcrumb-title pe-3">Project</div>
+            <div class="ps-3">
+              <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0 p-0">
+                  <li class="breadcrumb-item">
+                    <a href="{% url 'dashboard' company_id company_staff_id %}">
+                      <i class="bx bx-home"></i>
+                    </a>
+                  </li>
+                  <li class="breadcrumb-item active" aria-current="page">My Project</li>
+                </ol>
+              </nav>
+            </div>
+          </div>
+          <hr>
+          <div class="row mt-3">
+            <div class="col">
+              <div class="card shadow-none border radius-15">
+                <div class="card-body">
+                  <div class="table-responsive">
+                    <table class="table table-fluid table-hover" id="myTable">
+                      <thead>
+                        <tr>
+                          <th width="20%">Assigned Date</th>
+                          <th width="20%">Project</th>
+                          <th width="12%">Assigned By</th>
+                          <th>Description</th>
+                          <th class="no-sort" width="10%">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                           {% for task in tasks %}
+                        <tr>
+                          <td>{{ task.created_date|date:"F d, Y" }}</td>
+                          <td>{{ task.title }}</td>
+                          <td>{{ task.source }}</td>
+                          <td>{{ task.description }}</td>
+                          <td>
+                            <button type="button" class="btn btn-outline-orangeyellow btn-sm view-project-btn"
+                              data-title="{{ task.title }}"
+                              data-description="{{ task.description|default:'' }}"
+                              data-date="{{ task.created_date|date:'F d, Y' }}"
+                              data-source="{{ task.source }}">
+                              View
+                            </button>
+                          </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                          <td colspan="5" class="text-center text-muted py-4">
+                            No project assigned yet.
+                          </td>
+                        </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <footer class="page-footer">
+          <p class="mb-0">Copyright © 2022. All right reserved.</p>
+        </footer>
+      </div>
+    </div>
+
+    <!-- View Project Modal -->
+    <div class="modal fade" id="viewProjectModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">View Project</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <table class="table table-bordered">
+              <tr><th>Assigned Date</th><td id="viewProjectDate"></td></tr>
+              <tr><th>Project</th><td id="viewProjectTitle"></td></tr>
+              <tr><th>Assigned By</th><td id="viewProjectSource"></td></tr>
+              <tr><th>Description</th><td id="viewProjectDesc"></td></tr>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/simplebar@latest/dist/simplebar.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/metisMenu/3.0.7/metisMenu.min.js"></script>
+    <script src="https://unpkg.com/boxicons@2.1.2/dist/boxicons.js"></script>
+    <script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/js/all.min.js"></script>
+     <script src="{% static 'asets/js/jquery.sparkline.min.js' %}"></script>
+    <script src="{% static 'asets/js/Chart.min.js' %}"></script>
+    <script src="{% static 'asets/js/Chart.extension.js' %}"></script>
+    <script src="{% static 'asets/js/script.js' %}"></script>
+    <script>
+      document.querySelectorAll('.view-project-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          document.getElementById('viewProjectDate').textContent = this.getAttribute('data-date') || '';
+          document.getElementById('viewProjectTitle').textContent = this.getAttribute('data-title') || '';
+          document.getElementById('viewProjectSource').textContent = this.getAttribute('data-source') || '';
+          document.getElementById('viewProjectDesc').textContent = this.getAttribute('data-description') || '';
+          var modal = new bootstrap.Modal(document.getElementById('viewProjectModal'));
+          modal.show();
+        });
+      });
+    </script>
+
+  </body>
+</html>
