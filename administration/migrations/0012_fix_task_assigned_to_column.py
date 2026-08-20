@@ -5,9 +5,18 @@ from django.db import migrations, connection
 
 def add_assigned_to_id_if_missing(apps, schema_editor):
     with connection.cursor() as cursor:
-        cursor.execute("PRAGMA table_info(administration_task)")
-        columns = [row[1] for row in cursor.fetchall()]
-        if "assigned_to_id" not in columns:
+        if connection.vendor == 'sqlite':
+            cursor.execute("PRAGMA table_info(administration_task)")
+            columns = [row[1] for row in cursor.fetchall()]
+        elif connection.vendor in ('postgresql', 'postgres'):
+            cursor.execute(
+                "SELECT column_name FROM information_schema.columns WHERE table_name = 'administration_task'"
+            )
+            columns = [row[0] for row in cursor.fetchall()]
+        else:
+            columns = []
+
+        if columns and "assigned_to_id" not in columns:
             cursor.execute(
                 "ALTER TABLE administration_task ADD COLUMN assigned_to_id INTEGER NULL REFERENCES employee_employee(id)"
             )
