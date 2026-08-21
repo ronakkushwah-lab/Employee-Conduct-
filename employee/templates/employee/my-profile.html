@@ -209,14 +209,14 @@
                                       <input type="text" class="form-control" id="mother-name" name="employee_mother" value="{{profile.employee_mother}}">
                                     </div>
                                     <div class="col-md-6">
-                                      <label for="nationality" class="form-label">Nationality <span class="text-danger">*</span></label>
-                                      <input type="text" class="form-control" id="nationality" name="employee_nationality" value="{{profile.employee_nationality}}" required >
+                                      <label for="nationality" class="form-label">Nationality</label>
+                                      <input type="text" class="form-control" id="nationality" name="employee_nationality" value="{{profile.employee_nationality}}">
                                     </div>
                                   </div>
                                   <div class="row mb-2">
                                     <div class="col-md-6">
-                                      <label for="status" class="form-label">Marital Status <span class="text-danger">*</span></label>
-                                      <select class="form-select" class="select form-control" name="employee_marital_status" required>
+                                      <label for="status" class="form-label">Marital Status</label>
+                                      <select class="form-select" class="select form-control" name="employee_marital_status">
 													{% if profile.employee_marital_status == "Single" %}
 														<option value="Single" selected>Single</option>
 													{% else %}
@@ -241,18 +241,18 @@
                                 <div class="accordion-body">
                                   <div class="row mb-2">
                                     <div class="col-md-6">
-                                      <label for="name" class="form-label">Name <span class="text-danger">*</span></label>
-                                      <input type="text" class="form-control" id="name"  name="employee_emergency_primary_name" value="{{profile.employee_emergency_primary_name}}" required>
+                                      <label for="name" class="form-label">Name</label>
+                                      <input type="text" class="form-control" id="name"  name="employee_emergency_primary_name" value="{{profile.employee_emergency_primary_name}}">
                                     </div>
                                     <div class="col-md-6">
-                                      <label for="relationship" class="form-label">Relationship <span class="text-danger">*</span></label>
-                                      <input type="text" class="form-control" id="relationship" name="employee_emergency_primary_relationship" value="{{profile.employee_emergency_primary_relationship}}" required>
+                                      <label for="relationship" class="form-label">Relationship</label>
+                                      <input type="text" class="form-control" id="relationship" name="employee_emergency_primary_relationship" value="{{profile.employee_emergency_primary_relationship}}">
                                     </div>
                                   </div>
                                   <div class="row mb-2">
                                     <div class="col-md-6">
-                                      <label for="emergency-phone-number" class="form-label">Phone Number <span class="text-danger">*</span></label>
-                                      <input type="text" class="form-control phone-input" id="emergency-phone-number" name="employee_emergency_primary_phone1" value="{{profile.employee_emergency_primary_phone1}}" required maxlength="17" placeholder="+91 98765 43210">
+                                      <label for="emergency-phone-number" class="form-label">Phone Number</label>
+                                      <input type="text" class="form-control phone-input" id="emergency-phone-number" name="employee_emergency_primary_phone1" value="{{profile.employee_emergency_primary_phone1}}" maxlength="17" placeholder="+91 98765 43210">
                                     </div>
                                   </div>
                                 </div>
@@ -291,7 +291,7 @@
                                     </div>
                                     <div class="col-md-6">
                                       <label for="grade" class="form-label">Grade</label>
-                                      <input type="text" class="form-control" id="grade" required name="employee_education_degree" value="{{profile.employee_education_degree}}">
+                                      <input type="text" class="form-control" id="grade" name="employee_education_grade" value="{{profile.employee_education_grade}}">
                                     </div>
                                   </div>
                                 </div>
