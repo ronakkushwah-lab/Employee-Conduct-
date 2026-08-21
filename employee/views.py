@@ -739,8 +739,14 @@ def taskList(request,company_id, company_staff_id):
         context['company_staff_id'] = company_staff_id
         return render(request, 'employee/my-project.html', context)
     
-    queryset = Task.objects.filter(assigned_to__id=employee.id, company_id=company_id)
-    context['tasks'] = queryset
+    admin_tasks = Task.objects.filter(assigned_to__id=employee.id, company_id=company_id)
+    manager_tasks = MTask.objects.filter(assigned_to__id=employee.id)
+    
+    # Combine both and sort by created_date descending
+    tasks = list(admin_tasks) + list(manager_tasks)
+    tasks.sort(key=lambda x: x.created_date, reverse=True)
+    
+    context['tasks'] = tasks
     context['company_id'] = company_id
     context['company_staff_id'] = company_staff_id
     return render(request, 'employee/my-project.html', context)
