@@ -15,6 +15,11 @@ https://docs.djangoproject.com/en/2.2/ref/settings/
 # """
 
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
 import socket
 import sweetify
 
