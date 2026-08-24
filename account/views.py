@@ -463,6 +463,11 @@ class Login(View):
 
 
     def get(self, request):
+        # Flush any stale workflow messages from session so they never appear on login page
+        from django.contrib.messages import get_messages
+        storage = get_messages(request)
+        for _ in storage:
+            pass
         return render(request, "account/login.html")
 
 

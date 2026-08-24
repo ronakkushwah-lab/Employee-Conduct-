@@ -994,8 +994,7 @@ def approve_regularization(request,company_id, company_staff_id,id):
     if company_id:
         regularization = get_object_or_404(Regularization, id=id)
         regularization.approve_regularization
-        messages.error(request, 'regularizationation successfully approved',
-                       extra_tags='alert alert-success alert-dismissible show')
+        messages.success(request, 'Regularization successfully approved')
         return redirect(f'/managers/mnregularization/approved/all/{company_id}/{company_staff_id}')
 
 
@@ -1421,8 +1420,7 @@ def approve_resign(request,company_id, company_staff_id, id):
         # employee = Employee.objects.filter(user=user)
         resign.approve_resign
 
-        messages.error(request, 'Resignation successfully approved',
-                       extra_tags='alert alert-success alert-dismissible show')
+        messages.success(request, 'Resignation successfully approved')
         return redirect(f'/managers/resign_list/{company_id}/{company_staff_id}')
 
 
@@ -1486,8 +1484,7 @@ def approve_leave(request,company_id, company_staff_id, id):
 
         leave.approve_leave
 
-        messages.error(request, 'Leave successfully approved',
-                       extra_tags='alert alert-success alert-dismissible show')
+        messages.success(request, 'Leave successfully approved')
         return redirect(f'/managers/leave_list/{company_id}/{company_staff_id}')
 
 
