@@ -94,3 +94,127 @@ def biometric_heartbeat(request):
     device.last_seen_at = timezone.now()
     device.save(update_fields=['last_seen_at', 'updated'])
     return JsonResponse({'status': 'SUCCESS', 'device_id': device.device_id})
+
+
+from django.http import HttpResponse
+
+
+@csrf_exempt
+def iclock_cdata(request):
+    """
+    Standard ZKTeco / eSSL ADMS protocol endpoint for /iclock/cdata.
+    Handles:
+    - GET: Device handshake, heartbeat & config option sync
+    - POST: Punch log uploads (ATTLOG / table data)
+    """
+    sn = (request.GET.get('SN') or request.GET.get('sn') or '').strip()
+    table = (request.GET.get('table') or '').upper()
+    source_ip = request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() or request.META.get('REMOTE_ADDR')
+
+    device = None
+    if sn:
+        device = (
+            BiometricDevice.objects.filter(device_id=sn).first()
+            or BiometricDevice.objects.filter(serial_number=sn).first()
+            or BiometricDevice.objects.filter(terminal_id=sn).first()
+        )
+    if not device:
+        device = BiometricDevice.objects.filter(is_active=True).first()
+
+    if device:
+        device.last_seen_at = timezone.now()
+        device.save(update_fields=['last_seen_at', 'updated'])
+
+    if request.method == 'GET':
+        response_text = (
+            f"GET OPTION FROM: {sn}\n"
+            f"ATTLOGStamp=None\n"
+            f"OPERLOGStamp=None\n"
+            f"ATTPHOTOStamp=None\n"
+            f"ErrorDelay=60\n"
+            f"Delay=30\n"
+            f"TransTimes=00:00;14:05\n"
+            f"TransInterval=1\n"
+            f"TransFlag=1111000000\n"
+            f"TimeZone=5.5\n"
+            f"Realtime=1\n"
+            f"Encrypt=0\n"
+        )
+        return HttpResponse(response_text, content_type='text/plain')
+
+    if request.method == 'POST':
+        body_text = request.body.decode('utf-8', errors='ignore')
+        inserted_count = 0
+        if body_text:
+            lines = [l.strip() for l in body_text.split('\n') if l.strip()]
+            for line in lines:
+                parts = [p.strip() for p in line.replace('\t', ',').split(',') if p.strip()]
+                if not parts:
+                    continue
+                user_id = parts[0]
+                punch_time_str = parts[1] if len(parts) > 1 else str(timezone.now())
+                verify_mode = parts[2] if len(parts) > 2 else ''
+                payload = {
+                    'user_id': user_id,
+                    'punch_time': punch_time_str,
+                    'verify_mode': verify_mode,
+                    'device_id': sn or (device.device_id if device else '1'),
+                    'source_ip': source_ip,
+                }
+                process_biometric_punch(payload, protocol='adms_push', source_ip=source_ip)
+                inserted_count += 1
+
+        if device:
+            device.last_punch_at = timezone.now()
+            device.save(update_fields=['last_punch_at', 'updated'])
+
+        return HttpResponse(f"OK: {inserted_count}\n" if inserted_count > 0 else "OK\n", content_type='text/plain')
+
+
+@csrf_exempt
+def iclock_getrequest(request):
+    """
+    Standard ZKTeco / eSSL ADMS command polling endpoint for /iclock/getrequest.
+    """
+    sn = (request.GET.get('SN') or request.GET.get('sn') or '').strip()
+    if sn:
+        device = (
+            BiometricDevice.objects.filter(device_id=sn).first()
+            or BiometricDevice.objects.filter(serial_number=sn).first()
+            or BiometricDevice.objects.filter(terminal_id=sn).first()
+        )
+        if not device:
+            device = BiometricDevice.objects.filter(is_active=True).first()
+        if device:
+            device.last_seen_at = timezone.now()
+            device.save(update_fields=['last_seen_at', 'updated'])
+
+    return HttpResponse("OK\n", content_type='text/plain')
+
+
+@csrf_exempt
+def iclock_devicecmd(request):
+    """
+    Standard ZKTeco / eSSL ADMS command result endpoint for /iclock/devicecmd.
+    """
+    return HttpResponse("OK\n", content_type='text/plain')
+
+
+@csrf_exempt
+def iclock_registry(request):
+    """
+    Standard ZKTeco / eSSL ADMS device registration endpoint for /iclock/registry.
+    """
+    sn = (request.GET.get('SN') or request.GET.get('sn') or '').strip()
+    if sn:
+        device = (
+            BiometricDevice.objects.filter(device_id=sn).first()
+            or BiometricDevice.objects.filter(serial_number=sn).first()
+            or BiometricDevice.objects.filter(terminal_id=sn).first()
+        )
+        if not device:
+            device = BiometricDevice.objects.filter(is_active=True).first()
+        if device:
+            device.last_seen_at = timezone.now()
+            device.save(update_fields=['last_seen_at', 'updated'])
+    return HttpResponse("OK\n", content_type='text/plain')
