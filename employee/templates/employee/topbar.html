@@ -22,18 +22,18 @@
             <div class="user-box dropdown">
               <a class="d-flex align-items-center nav-link dropdown-toggle dropdown-toggle-nocaret" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                 {% if employee and employee.employee_image %}
-                  <img src="{{ employee.employee_image.url }}" class="user-img" alt="user avatar" id="topbar-avatar">
+                  <img src="{{ employee.employee_image.url }}" class="user-img" alt="user avatar" id="topbar-avatar" onerror="this.src='{% static \'asets/images/dummy-man.png\' %}'">
                 {% elif profile and profile.employee_image %}
-                  <img src="{{ profile.employee_image.url }}" class="user-img" alt="user avatar" id="topbar-avatar">
+                  <img src="{{ profile.employee_image.url }}" class="user-img" alt="user avatar" id="topbar-avatar" onerror="this.src='{% static \'asets/images/dummy-man.png\' %}'">
                 {% elif company_staff_id %}
                   {% get_employee company_staff_id as current_employee %}
                   {% if current_employee and current_employee.employee_image %}
-                    <img src="{{ current_employee.employee_image.url }}" class="user-img" alt="user avatar" id="topbar-avatar">
+                    <img src="{{ current_employee.employee_image.url }}" class="user-img" alt="user avatar" id="topbar-avatar" onerror="this.src='{% static \'asets/images/dummy-man.png\' %}'">
                   {% else %}
-                    <img src="{% static 'asets/images/dummy-man.png ' %}" class="user-img" alt="user avatar" id="topbar-avatar">
+                    <img src="{% static 'asets/images/dummy-man.png' %}" class="user-img" alt="user avatar" id="topbar-avatar">
                   {% endif %}
                 {% else %}
-                  <img src="{% static 'asets/images/dummy-man.png ' %}" class="user-img" alt="user avatar" id="topbar-avatar">
+                  <img src="{% static 'asets/images/dummy-man.png' %}" class="user-img" alt="user avatar" id="topbar-avatar">
                 {% endif %}
                 <div class="user-info ps-3">
                   <p class="user-name mb-0">
@@ -236,13 +236,13 @@
       <div class="user-box dropdown">
         <a class="d-flex align-items-center nav-link dropdown-toggle dropdown-toggle-nocaret" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
           {% if employee and employee.employee_image %}
-            <img src="{{ employee.employee_image.url }}" class="user-img" alt="user avatar" id="topbar-avatar">
+            <img src="{{ employee.employee_image.url }}" class="user-img" alt="user avatar" id="topbar-avatar" onerror="this.src='{% static \'asets/images/dummy-man.png\' %}'">
           {% elif profile and profile.employee_image %}
-            <img src="{{ profile.employee_image.url }}" class="user-img" alt="user avatar" id="topbar-avatar">
+            <img src="{{ profile.employee_image.url }}" class="user-img" alt="user avatar" id="topbar-avatar" onerror="this.src='{% static \'asets/images/dummy-man.png\' %}'">
           {% elif company_staff_id %}
             {% get_employee company_staff_id as current_employee %}
             {% if current_employee and current_employee.employee_image %}
-              <img src="{{ current_employee.employee_image.url }}" class="user-img" alt="user avatar" id="topbar-avatar">
+              <img src="{{ current_employee.employee_image.url }}" class="user-img" alt="user avatar" id="topbar-avatar" onerror="this.src='{% static \'asets/images/dummy-man.png\' %}'">
             {% else %}
               <img src="{% static 'asets/images/dummy-man.png' %}" class="user-img" alt="user avatar" id="topbar-avatar">
             {% endif %}
