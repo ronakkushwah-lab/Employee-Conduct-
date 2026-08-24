@@ -238,9 +238,11 @@ def Register_Employee_View(request,company_id, company_staff_id):
             employee_salary = request.POST.get('employee_salary', '').strip()
             department_id = request.POST.get("id")
             assign_id = request.POST.get("manager_id")
-
-            # Auto-generate employee_id if not provided or not in correct format
-            if not employee_id or not employee_id.startswith('EIC-'):
+            # Format employee_id: prepend EIC- if digits entered (matching Manager ID format)
+            if employee_id:
+                if not employee_id.upper().startswith('EIC-'):
+                    employee_id = f"EIC-{employee_id}"
+            else:
                 import re
                 existing_employees = Employee.objects.filter(user__company__id=company_id)
                 max_num = 0

@@ -179,15 +179,28 @@ class Employee(models.Model):
 
 
     @property
+    def formatted_employee_id(self):
+        """
+        Always show full employee ID with 'EIC-' prefix (e.g. EIC-001, EIC-002).
+        If employee_id is empty or only 'EIC-', fallback to EIC-{pk}.
+        """
+        eid = (self.employee_id or "").strip()
+        if not eid or eid.upper() in ("EIC-", "EIC"):
+            return f"EIC-{self.pk:03d}"
+        if eid.upper().startswith("EIC-"):
+            return eid
+        return f"EIC-{eid}"
+
+    @property
     def get_full_name(self):
         fullname = ''
         firstname = self.employee_first_name
         lastname = self.employee_last_name
 
-        if firstname and lastname is None:
+        if firstname and lastname:
             fullname = firstname + ' ' + lastname
             return fullname
-        return
+        return firstname or lastname or ''
 
 
 # -------------------------------/Employee Model---------------------------------------------------------------------------------

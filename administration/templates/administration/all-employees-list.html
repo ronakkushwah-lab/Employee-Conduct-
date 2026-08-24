@@ -63,7 +63,10 @@
                             </div>
                             <div class="col-md-6">
                               <label for="employee-id" class="form-label">Employee ID <span class="text-danger">*</span></label>
-                              <input type="text" class="form-control" readonly="readonly" value="EIC-{{max_employee_id|stringformat:'04d'}}" name="employee_id" id="id_employee_id"  required>
+                              <div class="input-group">
+                                <span class="input-group-text">EIC-</span>
+                                <input type="text" class="form-control" name="employee_id" id="id_employee_id" placeholder="Enter ID digits" value="{{max_employee_id|stringformat:'03d'}}" required>
+                              </div>
                             </div>
                           </div>
                           <div class="row mb-2">
