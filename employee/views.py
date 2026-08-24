@@ -1193,10 +1193,38 @@ def create_entry(request, company_id, company_staff_id):
     company_staff = CompanyStaff.objects.get(id=company_staff_id)
     emp = Employee.objects.get(user=company_staff)
 
-    assigned_projects = Task.objects.filter(
+    # 1. Admin-assigned projects
+    admin_tasks = Task.objects.filter(
         assigned_to=emp,
         company_id=company_id
     )
+
+    # 2. Manager-assigned projects
+    manager_tasks = MTask.objects.filter(
+        assigned_to=emp
+    )
+    if company_id:
+        manager_tasks = manager_tasks.filter(user__user__company_id=company_id)
+
+    # Combine both into a list for the dropdown
+    assigned_projects = []
+    for t in admin_tasks:
+        assigned_projects.append({
+            'id': f"admin_{t.id}",
+            'raw_id': t.id,
+            'title': t.title,
+            'source': 'Admin',
+            'display_title': f"{t.title} (Admin)",
+        })
+    for mt in manager_tasks:
+        mgr_name = f"{mt.user.manager_first_name} {mt.user.manager_last_name}".strip() if mt.user else "Manager"
+        assigned_projects.append({
+            'id': f"manager_{mt.id}",
+            'raw_id': mt.id,
+            'title': mt.title,
+            'source': 'Manager',
+            'display_title': f"{mt.title} (Manager: {mgr_name})",
+        })
 
     context = {
         'assigned': Manager.objects.filter(user__company__id=company_id),
@@ -1217,16 +1245,30 @@ def create_entry(request, company_id, company_staff_id):
                 assign_id = request.POST.get("manager_id")
 
                 if not all([start_time, end_time, project_id, task, assign_id]):
-                    messages.error(request, 'All fields are required.')
+                    messages.error(request, 'All required fields must be filled.')
                     return render(request, 'employee/create-timesheet.html', context)
 
-                try:
-                    selected_project = Task.objects.get(
-                        id=project_id,
-                        assigned_to=emp,
-                        company_id=company_id
-                    )
-                except Task.DoesNotExist:
+                # Look up project title from either Task (Admin) or MTask (Manager)
+                project_title = None
+                if str(project_id).startswith("admin_"):
+                    raw_tid = str(project_id).replace("admin_", "")
+                    p_obj = Task.objects.filter(id=raw_tid, assigned_to=emp, company_id=company_id).first()
+                    if p_obj:
+                        project_title = p_obj.title
+                elif str(project_id).startswith("manager_"):
+                    raw_mtid = str(project_id).replace("manager_", "")
+                    p_obj = MTask.objects.filter(id=raw_mtid, assigned_to=emp).first()
+                    if p_obj:
+                        project_title = p_obj.title
+                else:
+                    # Fallback if raw numeric ID was sent
+                    p_obj = Task.objects.filter(id=project_id, assigned_to=emp, company_id=company_id).first()
+                    if not p_obj:
+                        p_obj = MTask.objects.filter(id=project_id, assigned_to=emp).first()
+                    if p_obj:
+                        project_title = p_obj.title
+
+                if not project_title:
                     messages.error(request, 'Selected project is not assigned to you.')
                     return render(request, 'employee/create-timesheet.html', context)
 
@@ -1240,14 +1282,14 @@ def create_entry(request, company_id, company_staff_id):
                     user=emp,
                     start_time=start_time,
                     end_time=end_time,
-                    project=selected_project.title,
+                    project=project_title,
                     task=task,
                     blocker_name=blocker_name,
                     attachment=attachment,
                     assigned_to=assigned_to
                 )
 
-                messages.success(request, 'Entry created successfully!')
+                messages.success(request, 'Timesheet entry created successfully!')
                 return redirect(f'/employee/entries-detail/{company_id}/{company_staff_id}')
 
             except Exception as e:

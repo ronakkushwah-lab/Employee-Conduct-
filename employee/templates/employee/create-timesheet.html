@@ -44,8 +44,10 @@
                         <select class="form-select" name="project" id="project" required>
                           <option value="">Select Project</option>
                           {% for project in assigned_projects %}
-                            <option value="{{ project.id }}">{{ project.title }}</option>
-                           {% endfor %}
+                            <option value="{{ project.id }}">{{ project.display_title|default:project.title }}</option>
+                          {% empty %}
+                            <option value="" disabled>No projects assigned to you yet</option>
+                          {% endfor %}
                         </select>
                       </div>
                     </div>
