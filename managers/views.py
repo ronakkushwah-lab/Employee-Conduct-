@@ -432,11 +432,21 @@ class LeaveRemove(View):
 def BalanceLeaveView(request,company_id, company_staff_id):
     context ={}
 
-    company_staff = CompanyStaff.objects.get(id=company_staff_id)
+    try:
+        company_staff = CompanyStaff.objects.get(id=company_staff_id)
+        manager = company_staff.manager
+    except (CompanyStaff.DoesNotExist, Manager.DoesNotExist):
+        manager = None
 
-    queryset = BalanceLeave.objects.filter(user=company_staff.manager)
-    print('queryset: ', queryset)
+    if manager:
+        queryset = BalanceLeave.objects.filter(user=manager)
+        summary = BalanceLeave.get_balance_summary(manager)
+    else:
+        queryset = BalanceLeave.objects.none()
+        summary = {'total_allocated': 0, 'used_days': 0, 'approved_days': 0, 'pending_days': 0, 'remaining_balance': 0}
+
     context['balance']= queryset
+    context['summary'] = summary
     context['company_id']= company_id
     context['company_staff_id']= company_staff_id
     return render(request, 'managers/leave-balance.html', context)
@@ -1216,6 +1226,18 @@ def add_leave(request, company_id, company_staff_id):
             managers_qs = managers_qs.exclude(id=current_manager.id)
         managers_list = list(managers_qs)
 
+        balance_summary = BalanceLeave.get_balance_summary(current_manager) if current_manager else {
+            'total_allocated': 0, 'used_days': 0, 'approved_days': 0, 'pending_days': 0, 'remaining_balance': 0
+        }
+
+        dataset = {
+            'leavetypes': ManagerLeave.objects.all(),
+            'company_id': company_id,
+            'company_staff_id': company_staff_id,
+            'managers': managers_list,
+            'balance_summary': balance_summary,
+        }
+
         if request.method == "POST":
             startdate = request.POST.get("startdate")
             enddate = request.POST.get("enddate")
@@ -1224,6 +1246,30 @@ def add_leave(request, company_id, company_staff_id):
             description = request.POST.get("description", "")
             assigned_to_id = request.POST.get("assigned_to")
             user = current_manager
+
+            if not all([startdate, enddate, leavetype, reason]):
+                messages.error(request, 'All required fields must be filled.')
+                return render(request, "managers/apply-leave.html", dataset)
+
+            from datetime import datetime as dt
+            try:
+                start_dt = dt.strptime(startdate, "%Y-%m-%d").date()
+                end_dt = dt.strptime(enddate, "%Y-%m-%d").date()
+            except ValueError:
+                messages.error(request, 'Invalid date format.')
+                return render(request, "managers/apply-leave.html", dataset)
+
+            if start_dt > end_dt:
+                messages.error(request, 'End date must be on or after start date.')
+                return render(request, "managers/apply-leave.html", dataset)
+
+            days_requested = (end_dt - start_dt).days + 1
+            if days_requested > balance_summary['remaining_balance']:
+                messages.error(
+                    request,
+                    f"Insufficient leave balance! You have {balance_summary['remaining_balance']} day(s) remaining, but requested {days_requested} day(s)."
+                )
+                return render(request, "managers/apply-leave.html", dataset)
 
             assigned_to = None
             if assigned_to_id:
@@ -1287,12 +1333,6 @@ def add_leave(request, company_id, company_staff_id):
 
             return redirect(f'/managers/mleaves/view/table/{company_id}/{company_staff_id}')
 
-        dataset = {
-            'leavetypes': ManagerLeave.objects.all(),
-            'company_id': company_id,
-            'company_staff_id': company_staff_id,
-            'managers': managers_list,
-        }
         return render(request, "managers/apply-leave.html", dataset)
 
 

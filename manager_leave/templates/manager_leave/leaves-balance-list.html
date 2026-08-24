@@ -27,20 +27,25 @@
               <div class="card">
                 <div class="card-body">
                   <div class="table-responsive">
-                    <table class="table table-fluid table-hover" id="myTable">
-                      <thead>
+                    <table class="table table-fluid table-hover align-middle" id="myTable">
+                      <thead class="table-light">
                         <tr>
                           <th>Assigned Date</th>
                           <th>Assigned To</th>
-                          <th>Leave Balance</th>                                                
+                          <th>Total Allocated</th>
+                          <th>Used Days</th>
+                          <th>Remaining Balance</th>                                                
                           <th>Action</th>
                         </tr>
                       </thead>
                       <tbody>
+                        {% for obj in balance %}
                         <tr>
-                          <td>May 2, 2022</td>
-                          <td>Abid</td>
-                          <td>10</td>                                                
+                          <td>{{ obj.created|date:"d M Y" }}</td>
+                          <td><strong>{{ obj.user.manager_first_name }} {{ obj.user.manager_last_name }}</strong><br><small class="text-muted">{{ obj.user.manager_email }}</small></td>
+                          <td><span class="badge bg-primary fs-6">{{ obj.balancedays }}</span></td>
+                          <td><span class="badge bg-warning text-dark fs-6">{{ obj.used_days }}</span></td>
+                          <td><span class="badge bg-success fs-6">{{ obj.remaining_days }}</span></td>
                           <td class="dropdown">
                             <a class="d-flex align-items-center nav-link dropdown-toggle dropdown-toggle-nocaret" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                               <i class="bx bx-dots-vertical-rounded"></i>
@@ -54,7 +59,7 @@
                               <div class="modal-dialog">
                                 <div class="modal-content">
                                   <div class="modal-header">
-                                    <h5 class="modal-title" id="exampleModalLabel">Delete Employee</h5>
+                                    <h5 class="modal-title" id="exampleModalLabel">Delete Manager Leave Balance</h5>
                                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                   </div>
                                   <div class="modal-body text-center">                                  
@@ -66,7 +71,12 @@
                               </div>
                             </div>
                           </td>
-                        </tr>                      
+                        </tr>
+                        {% empty %}
+                        <tr>
+                          <td colspan="6" class="text-center text-muted py-3">No leave balances assigned yet.</td>
+                        </tr>
+                        {% endfor %}                      
                       </tbody>
                     </table>
                   </div>

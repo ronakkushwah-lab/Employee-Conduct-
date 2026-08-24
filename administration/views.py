@@ -1462,6 +1462,21 @@ def unreject_leave(request, id):
 
 def add_leaves_balance(request, company_id, company_staff_id):
     """View for Add Leaves Balance page - handles both leave application and balance management"""
+    # Handle leave balance assignment form submission
+    if request.method == "POST" and 'balancedays' in request.POST:
+        balancedays = request.POST.get("balancedays")
+        employee_id = request.POST.get("employee_id")
+        try:
+            if employee_id:
+                employee = Employee.objects.get(id=employee_id)
+                BalanceLeaves.objects.create(user=employee, balancedays=int(balancedays))
+                messages.success(request, f'Leave balance of {balancedays} day(s) assigned to {employee.employee_first_name} {employee.employee_last_name}!')
+            else:
+                messages.error(request, 'Please select an employee.')
+        except Exception as e:
+            messages.error(request, f'Error assigning leave balance: {str(e)}')
+        return redirect("add_leaves_balance", company_id=company_id, company_staff_id=company_staff_id)
+
     # Handle leave application form submission
     if request.method == "POST" and 'startdate' in request.POST:
         startdate = request.POST.get("startdate")
@@ -1480,6 +1495,22 @@ def add_leaves_balance(request, company_id, company_staff_id):
                 employee = company_staff.employee
             
             if employee:
+                from datetime import datetime as dt
+                start_dt = dt.strptime(startdate, "%Y-%m-%d").date()
+                end_dt = dt.strptime(enddate, "%Y-%m-%d").date()
+                if start_dt > end_dt:
+                    messages.error(request, 'End date must be on or after start date.')
+                    return redirect("add_leaves_balance", company_id=company_id, company_staff_id=company_staff_id)
+
+                days_requested = (end_dt - start_dt).days + 1
+                balance_summary = BalanceLeaves.get_balance_summary(employee)
+                if days_requested > balance_summary['remaining_balance']:
+                    messages.error(
+                        request,
+                        f"Insufficient leave balance! Employee has {balance_summary['remaining_balance']} day(s) remaining, but requested {days_requested} day(s)."
+                    )
+                    return redirect("add_leaves_balance", company_id=company_id, company_staff_id=company_staff_id)
+
                 Leave.objects.create(
                     user=employee,
                     startdate=startdate,
@@ -1513,12 +1544,13 @@ def add_leaves_balance(request, company_id, company_staff_id):
 
 def Balance_list(request,company_id, company_staff_id):
     if company_id:
-        balance = BalanceLeave.objects.filter(user__user__company_id=company_id)
+        emp_balance = BalanceLeaves.objects.filter(user__user__company_id=company_id)
+        mgr_balance = BalanceLeave.objects.filter(user__user__company_id=company_id)
         context = {
-            'balance': balance,
+            'balance': emp_balance,
+            'mgr_balance': mgr_balance,
             'company_id': company_id,
             'company_staff_id': company_staff_id,
-
         }
         return render(request, 'administration/leaves-balance-list.html', context)
 
@@ -1527,10 +1559,13 @@ class BalanceRemove(View):
     def get(self, request,company_id, company_staff_id, id):
         if company_id:
             try:
-                balance = BalanceLeave.objects.get(id=id)
+                try:
+                    balance = BalanceLeaves.objects.get(id=id)
+                except BalanceLeaves.DoesNotExist:
+                    balance = BalanceLeave.objects.get(id=id)
                 balance.delete()
                 messages.success(request, 'Leave balance deleted successfully!')
-            except BalanceLeave.DoesNotExist:
+            except Exception:
                 messages.error(request, 'Leave balance not found!')
             return redirect(f'/administration/balancelist/{company_id}/{company_staff_id}')
 

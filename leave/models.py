@@ -62,13 +62,12 @@ class Leave(models.Model):
 
     @property
     def leave_days(self):
-        days_count = ''
-        startdate = self.startdate
-        enddate = self.enddate
-        if startdate > enddate:
-            return
-        dates = (enddate - startdate)
-        return dates.days
+        if not self.startdate or not self.enddate:
+            return 0
+        if self.startdate > self.enddate:
+            return 0
+        dates = (self.enddate - self.startdate)
+        return dates.days + 1
 
     @property
     def leave_approved(self):
@@ -139,10 +138,57 @@ class Leave(models.Model):
 
 class BalanceLeaves(models.Model):
     user = models.ForeignKey(Employee, on_delete=models.CASCADE, null=True, blank=True)
-    leaves=models.ForeignKey(Leave, on_delete=models.CASCADE,null=True,blank=True)
+    leaves = models.ForeignKey(Leave, on_delete=models.CASCADE, null=True, blank=True)
     balancedays = models.PositiveIntegerField(verbose_name=_('Leave days per year counter'), default=10, null=True,
                                               blank=True)
-    created = models.DateTimeField(auto_now=False, auto_now_add=True,null=True)
+    created = models.DateTimeField(auto_now=False, auto_now_add=True, null=True)
 
     def __str__(self):
         return ('{0} - {1}'.format(self.balancedays, self.user))
+
+    @property
+    def used_days(self):
+        if not self.user:
+            return 0
+        active_leaves = Leave.objects.filter(
+            user=self.user
+        ).exclude(status__in=['rejected', 'cancelled', 'canceled'])
+        return sum(l.leave_days for l in active_leaves if l.leave_days)
+
+    @property
+    def remaining_days(self):
+        total = self.balancedays or 0
+        return max(0, total - self.used_days)
+
+    @classmethod
+    def get_balance_summary(cls, employee):
+        if not employee:
+            return {
+                'total_allocated': 0,
+                'used_days': 0,
+                'approved_days': 0,
+                'pending_days': 0,
+                'remaining_balance': 0,
+            }
+
+        balances = cls.objects.filter(user=employee)
+        if balances.exists():
+            total_allocated = sum(b.balancedays or 0 for b in balances)
+        else:
+            total_allocated = 10
+
+        all_leaves = Leave.objects.filter(user=employee)
+        active_leaves = all_leaves.exclude(status__in=['rejected', 'cancelled', 'canceled'])
+
+        used_days = sum(l.leave_days for l in active_leaves if l.leave_days)
+        approved_days = sum(l.leave_days for l in all_leaves.filter(is_approved=True) if l.leave_days)
+        pending_days = sum(l.leave_days for l in active_leaves.filter(is_approved=False) if l.leave_days)
+        remaining_balance = max(0, total_allocated - used_days)
+
+        return {
+            'total_allocated': total_allocated,
+            'used_days': used_days,
+            'approved_days': approved_days,
+            'pending_days': pending_days,
+            'remaining_balance': remaining_balance,
+        }

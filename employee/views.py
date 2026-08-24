@@ -377,17 +377,36 @@ def EmployeeDashboardView(request, company_id, company_staff_id):
 
 def leave_creation(request,company_id, company_staff_id):
     if company_id:
+        try:
+            company_staff = CompanyStaff.objects.get(id=company_staff_id)
+            employee = Employee.objects.filter(user=company_staff).first()
+        except CompanyStaff.DoesNotExist:
+            company_staff = None
+            employee = None
+
+        balance_summary = BalanceLeaves.get_balance_summary(employee) if employee else {
+            'total_allocated': 0, 'used_days': 0, 'approved_days': 0, 'pending_days': 0, 'remaining_balance': 0
+        }
+
         if request.method == 'POST':
             form = LeaveCreationForm(data=request.POST)
             if form.is_valid():
                 try:
                     instance = form.save(commit=False)
-                    company_staff = CompanyStaff.objects.get(id=company_staff_id)
-                    employee = Employee.objects.filter(user=company_staff).first()
-                    if employee:
-                        instance.user = employee
-                    else:
-                        instance.user = None
+                    instance.user = employee
+                    
+                    # Validate remaining leave balance
+                    days_requested = instance.leave_days or 0
+                    if days_requested <= 0:
+                        messages.error(request, 'End date must be on or after start date.',
+                                       extra_tags='alert alert-warning alert-dismissible show')
+                        return redirect(f'/employee/leave/{company_id}/{company_staff_id}')
+
+                    if days_requested > balance_summary['remaining_balance']:
+                        messages.error(request, f"Insufficient leave balance! You have {balance_summary['remaining_balance']} day(s) remaining, but requested {days_requested} day(s).",
+                                       extra_tags='alert alert-danger alert-dismissible show')
+                        return redirect(f'/employee/leave/{company_id}/{company_staff_id}')
+
                     instance.save()
                     
                     # Send email notification
@@ -398,7 +417,7 @@ def leave_creation(request,company_id, company_staff_id):
                         except Exception as e:
                             print(f"Error sending leave submission notification: {str(e)}")
                     
-                    messages.success(request, 'Leave Request Sent,wait for response',
+                    messages.success(request, 'Leave Request Sent, wait for response',
                                      extra_tags='alert alert-success alert-dismissible show')
                     return redirect(f'/employee/leaves/view/table/{company_id}/{company_staff_id}')
                 except CompanyStaff.DoesNotExist:
@@ -407,7 +426,7 @@ def leave_creation(request,company_id, company_staff_id):
                 except Exception as e:
                     messages.error(request, f'Error creating leave request: {str(e)}')
                     return redirect(f'/employee/leave/{company_id}/{company_staff_id}')
-            messages.error(request, 'failed to Request a Leave,please check entry dates',
+            messages.error(request, 'failed to Request a Leave, please check entry dates',
                            extra_tags='alert alert-warning alert-dismissible show')
         return redirect(f'/employee/leave/{company_id}/{company_staff_id}')
 
@@ -418,6 +437,7 @@ def leave_creation(request,company_id, company_staff_id):
     dataset['company_id'] = company_id
     dataset['company_staff_id'] = company_staff_id
     dataset['managers'] = Manager.objects.filter(user__company__id=company_id)
+    dataset['balance_summary'] = balance_summary
     return render(request, 'employee/apply-leaves.html', dataset)
 
 
@@ -1002,12 +1022,15 @@ def BalanceLeaveView(request,company_id, company_staff_id):
     if not employee:
         messages.error(request, 'Employee profile not found.')
         context['balance'] = BalanceLeaves.objects.none()
+        context['summary'] = {'total_allocated': 0, 'used_days': 0, 'approved_days': 0, 'pending_days': 0, 'remaining_balance': 0}
         context['company_id'] = company_id
         context['company_staff_id'] = company_staff_id
         return render(request, 'employee/leave-balance.html', context)
 
     queryset = BalanceLeaves.objects.filter(user=employee)
+    summary = BalanceLeaves.get_balance_summary(employee)
     context['balance'] = queryset
+    context['summary'] = summary
     context['company_id'] = company_id
     context['company_staff_id'] = company_staff_id
     return render(request, 'employee/leave-balance.html', context)
@@ -1236,11 +1259,23 @@ def create_entry(request, company_id, company_staff_id):
 
 def create_leave(request,company_id, company_staff_id):
     managers = Manager.objects.filter(user__company__id=company_id)
+    
+    employee = None
+    balance_summary = {'total_allocated': 0, 'used_days': 0, 'approved_days': 0, 'pending_days': 0, 'remaining_balance': 0}
+    try:
+        company_staff = CompanyStaff.objects.get(id=company_staff_id)
+        employee = Employee.objects.filter(user=company_staff).first()
+        if employee:
+            balance_summary = BalanceLeaves.get_balance_summary(employee)
+    except CompanyStaff.DoesNotExist:
+        pass
+
     ctx = {
         'leavetypes': Leave.objects.all(),
         'company_id': company_id,
         'company_staff_id': company_staff_id,
         'managers': managers,
+        'balance_summary': balance_summary,
     }
     if company_id:
         if request.method == "POST":
@@ -1256,15 +1291,29 @@ def create_leave(request,company_id, company_staff_id):
                     messages.error(request, 'All required fields must be filled.')
                     return render(request, "employee/apply-leaves.html", ctx)
                 
-                try:
-                    company_staff = CompanyStaff.objects.get(id=company_staff_id)
-                except CompanyStaff.DoesNotExist:
-                    messages.error(request, 'Company staff not found.')
-                    return redirect('accounts:login')
-                
-                employee = Employee.objects.filter(user=company_staff).first()
                 if not employee:
                     messages.error(request, 'Employee profile not found.')
+                    return render(request, "employee/apply-leaves.html", ctx)
+
+                # Parse dates and calculate requested days
+                from datetime import datetime as dt
+                try:
+                    start_dt = dt.strptime(startdate, "%Y-%m-%d").date()
+                    end_dt = dt.strptime(enddate, "%Y-%m-%d").date()
+                except ValueError:
+                    messages.error(request, 'Invalid date format.')
+                    return render(request, "employee/apply-leaves.html", ctx)
+
+                if start_dt > end_dt:
+                    messages.error(request, 'End date must be on or after start date.')
+                    return render(request, "employee/apply-leaves.html", ctx)
+
+                days_requested = (end_dt - start_dt).days + 1
+                if days_requested > balance_summary['remaining_balance']:
+                    messages.error(
+                        request,
+                        f"Insufficient leave balance! You have {balance_summary['remaining_balance']} day(s) remaining, but requested {days_requested} day(s)."
+                    )
                     return render(request, "employee/apply-leaves.html", ctx)
 
                 # Dropdown se jo manager select hua (jiska email dropdown me dikh raha hai), usi par notification jayega

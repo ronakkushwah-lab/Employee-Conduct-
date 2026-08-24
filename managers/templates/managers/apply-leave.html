@@ -24,6 +24,22 @@
           <hr>
           <div class="row mt-3">
             <div class="col">
+              <!-- Leave Balance Info Banner -->
+              <div class="alert alert-info border-0 bg-info alert-dismissible fade show py-2">
+                <div class="d-flex align-items-center">
+                  <div class="font-35 text-dark"><i class='bx bx-info-circle'></i>
+                  </div>
+                  <div class="ms-3">
+                    <h6 class="mb-0 text-dark">Your Leave Balance Status</h6>
+                    <div class="text-dark">
+                      Available Balance: <strong>{{ balance_summary.remaining_balance|default:"0" }} Day(s)</strong> &nbsp;|&nbsp; 
+                      Total Allocated: <strong>{{ balance_summary.total_allocated|default:"0" }} Day(s)</strong> &nbsp;|&nbsp; 
+                      Used / Pending: <strong>{{ balance_summary.used_days|default:"0" }} Day(s)</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div class="card shadow-none border radius-15">
                 <div class="card-body">                  
                   <form action="{% url 'add_leave' company_id=company_id company_staff_id=company_staff_id %}" method="POST"  >

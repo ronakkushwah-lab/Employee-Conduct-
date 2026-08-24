@@ -22,25 +22,104 @@
             </div>
           </div>
           <hr>
+          <!-- Summary Cards -->
+          <div class="row row-cols-1 row-cols-md-3 row-cols-xl-3 g-3 mb-4">
+            <div class="col">
+              <div class="card radius-10 border-start border-0 border-3 border-info shadow-sm">
+                <div class="card-body">
+                  <div class="d-flex align-items-center">
+                    <div>
+                      <p class="mb-0 text-secondary">Total Allocated</p>
+                      <h4 class="my-1 text-info">{{ summary.total_allocated|default:"0" }} <small class="fs-6 text-muted">Days</small></h4>
+                      <p class="mb-0 font-13 text-muted">Total leave days per year</p>
+                    </div>
+                    <div class="widgets-icons-2 rounded-circle bg-light-info text-info ms-auto">
+                      <i class='bx bx-calendar'></i>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="card radius-10 border-start border-0 border-3 border-warning shadow-sm">
+                <div class="card-body">
+                  <div class="d-flex align-items-center">
+                    <div>
+                      <p class="mb-0 text-secondary">Leaves Taken / Pending</p>
+                      <h4 class="my-1 text-warning">{{ summary.used_days|default:"0" }} <small class="fs-6 text-muted">Days</small></h4>
+                      <p class="mb-0 font-13 text-muted">Approved: {{ summary.approved_days|default:"0" }} | Pending: {{ summary.pending_days|default:"0" }}</p>
+                    </div>
+                    <div class="widgets-icons-2 rounded-circle bg-light-warning text-warning ms-auto">
+                      <i class='bx bx-time'></i>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="card radius-10 border-start border-0 border-3 border-success shadow-sm">
+                <div class="card-body">
+                  <div class="d-flex align-items-center">
+                    <div>
+                      <p class="mb-0 text-secondary">Remaining Balance</p>
+                      <h4 class="my-1 text-success">{{ summary.remaining_balance|default:"0" }} <small class="fs-6 text-muted">Days</small></h4>
+                      <p class="mb-0 font-13 text-success">Available for application</p>
+                    </div>
+                    <div class="widgets-icons-2 rounded-circle bg-light-success text-success ms-auto">
+                      <i class='bx bx-check-circle'></i>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div class="row mt-3">
             <div class="col">
               <div class="card shadow-none border radius-15">
                 <div class="card-body">                  
                   <div class="table-responsive">
-                    <table class="table table-fluid table-bordered caption-top">
-                      <caption>Balance Leave that has been assigned to you </caption>
-                      <tbody>
-
+                    <table class="table table-fluid table-bordered caption-top align-middle">
+                      <caption>Leave Balance Details</caption>
+                      <thead class="table-light">
                         <tr>
                           <th>Assigned Date</th>
-                          <th>Leave Balance</th>
+                          <th>Total Allocated Days</th>
+                          <th>Used Days</th>
+                          <th>Remaining Balance</th>
+                          <th>Status</th>
                         </tr>
-                            {% for object in balance %}
+                      </thead>
+                      <tbody>
+                        {% for object in balance %}
                         <tr>
-                          <td>{{object.created }}</td>
-                          <td>{{ object.balancedays}}</td>
+                          <td>{{ object.created|date:"d M Y" }}</td>
+                          <td><span class="badge bg-primary fs-6">{{ object.balancedays }}</span></td>
+                          <td><span class="badge bg-warning text-dark fs-6">{{ object.used_days }}</span></td>
+                          <td><span class="badge bg-success fs-6">{{ object.remaining_days }}</span></td>
+                          <td>
+                            {% if object.remaining_days > 0 %}
+                            <span class="badge bg-success">Available</span>
+                            {% else %}
+                            <span class="badge bg-danger">Exhausted</span>
+                            {% endif %}
+                          </td>
                         </tr>
-                          {% endfor %}
+                        {% empty %}
+                        <tr>
+                          <td>-</td>
+                          <td><span class="badge bg-primary fs-6">{{ summary.total_allocated }}</span></td>
+                          <td><span class="badge bg-warning text-dark fs-6">{{ summary.used_days }}</span></td>
+                          <td><span class="badge bg-success fs-6">{{ summary.remaining_balance }}</span></td>
+                          <td>
+                            {% if summary.remaining_balance > 0 %}
+                            <span class="badge bg-success">Available (Default)</span>
+                            {% else %}
+                            <span class="badge bg-danger">Exhausted</span>
+                            {% endif %}
+                          </td>
+                        </tr>
+                        {% endfor %}
                       </tbody>
                     </table>
                   </div>

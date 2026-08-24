@@ -93,35 +93,37 @@
             </div>
           </div>
 
-          <!-- Add Leave Balance Form (Existing) -->
+          <!-- Add Leave Balance Form -->
           <div class="row mt-3">
             <div class="col-12">
               <div class="card">
                 <div class="card-header">
-                  <h5 class="card-title mb-0">Add Leaves Balance</h5>
+                  <h5 class="card-title mb-0">Assign Leave Balance to Employee</h5>
                 </div>
                 <div class="card-body">
-                  <form>
+                  <form method="POST" action="{% url 'add_leaves_balance' company_id=company_id company_staff_id=company_staff_id %}">
+                    {% csrf_token %}
                     <div class="row mb-2">
                       <div class="col">
-                        <label for="user" class="form-label">User <span class="text-danger">*</span></label>
-                        <select class="form-select" aria-label="Default select example" id="user">
-                          <option selected>Select User</option>
-                          <option value="abid@gmail.com">abid@gmail.com</option>
-                          <option value="abid1@gmail.com">abid1@gmail.com</option>
-                          <option value="saquib@gmail.com">saquib@gmail.com</option>
-                          <option value="saquib1@gmail.com">saquib1@gmail.com</option>
+                        <label for="assign_user" class="form-label">Employee <span class="text-danger">*</span></label>
+                        <select class="form-select" id="assign_user" name="employee_id" required>
+                          <option value="">Select Employee</option>
+                          {% if employees %}
+                            {% for emp in employees %}
+                            <option value="{{ emp.id }}">{{ emp.employee_first_name }} {{ emp.employee_last_name }} ({{ emp.employee_email }})</option>
+                            {% endfor %}
+                          {% endif %}
                         </select>
                       </div>                      
                     </div>
                     <div class="row mb-2">
                       <div class="col">
-                        <label for="leaves" class="form-label">Leave days per year counter <span class="text-danger">*</span></label>
-                        <input type="number" class="form-control" id="leaves" value="10" required>
+                        <label for="assign_leaves" class="form-label">Leave days per year counter <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="assign_leaves" name="balancedays" value="10" min="1" required>
                       </div>                      
                     </div>
                     <div class="mt-4 mb-2 button-right">
-                      <button type="button" class="btn btn-outline-orangeyellow">Submit</button>
+                      <button type="submit" class="btn btn-outline-orangeyellow">Assign Balance</button>
                     </div>
                   </form>
                 </div>

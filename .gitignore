@@ -208,5 +208,8 @@ __marimo__/
 
 media/
 venv/
+.venv/
+.venv-fresh/
+staticfiles/
 .env
 __pycache__/

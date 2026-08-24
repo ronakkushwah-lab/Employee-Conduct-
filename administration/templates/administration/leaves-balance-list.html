@@ -27,21 +27,27 @@
               <div class="card">
                 <div class="card-body">
                   <div class="table-responsive">
-                    <table class="table table-fluid table-hover" id="myTable">
-                      <thead>
+                    <table class="table table-fluid table-hover align-middle" id="myTable">
+                      <thead class="table-light">
                         <tr>
                           <th>Assigned Date</th>
                           <th>Assigned To</th>
-                          <th>Leave Balance</th>                                                
+                          <th>Role</th>
+                          <th>Total Allocated</th>
+                          <th>Used Days</th>
+                          <th>Remaining Balance</th>                                                
                           <th>Action</th>
                         </tr>
                       </thead>
                       <tbody>
-                       {% for obj in balance  %}
+                        {% for obj in balance %}
                         <tr>
-                          <td>{{ obj.created }}</td>
-                          <td>{{ obj.user }}</td>
-                          <td>{{ obj.balancedays }}</td>
+                          <td>{{ obj.created|date:"d M Y" }}</td>
+                          <td><strong>{{ obj.user.employee_first_name }} {{ obj.user.employee_last_name }}</strong><br><small class="text-muted">{{ obj.user.employee_email }}</small></td>
+                          <td><span class="badge bg-secondary">Employee</span></td>
+                          <td><span class="badge bg-primary fs-6">{{ obj.balancedays }}</span></td>
+                          <td><span class="badge bg-warning text-dark fs-6">{{ obj.used_days }}</span></td>
+                          <td><span class="badge bg-success fs-6">{{ obj.remaining_days }}</span></td>
                           <td class="dropdown">
                             <a class="d-flex align-items-center nav-link dropdown-toggle dropdown-toggle-nocaret" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                               <i class="bx bx-dots-vertical-rounded"></i>
@@ -51,28 +57,49 @@
                                 <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#deletebalanceleaveModal" id="deleteBtn" onClick="getId('{{obj.id}}')">Delete</button>
                               </li>
                             </ul>                                                    
-                            <div class="modal" id="deletebalanceleaveModal">
-                              <div class="modal-dialog">
-                                <div class="modal-content">
-                                  <div class="modal-header">
-                                    <h5 class="modal-title" id="exampleModalLabel">Delete Employee</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                  </div>
-                                  <div class="modal-body text-center">                                  
-                                    <p>Are you sure want to delete?</p>
-                                       <div class="col-12">
-                                  <a href="javascript:void(0);"  id="delete" class="btn btn-outline-orangeyellow w-100 mb-2">Delete</a>
-                                   </div>
-                                    <button type="button" class="btn btn-outline-orangeyellow w-100" data-bs-dismiss="modal">Cancel</button>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
                           </td>
                         </tr>
-                         {% endfor %}
+                        {% endfor %}
+                        {% for obj in mgr_balance %}
+                        <tr>
+                          <td>{{ obj.created|date:"d M Y" }}</td>
+                          <td><strong>{{ obj.user.manager_first_name }} {{ obj.user.manager_last_name }}</strong><br><small class="text-muted">{{ obj.user.manager_email }}</small></td>
+                          <td><span class="badge bg-info text-dark">Manager</span></td>
+                          <td><span class="badge bg-primary fs-6">{{ obj.balancedays }}</span></td>
+                          <td><span class="badge bg-warning text-dark fs-6">{{ obj.used_days }}</span></td>
+                          <td><span class="badge bg-success fs-6">{{ obj.remaining_days }}</span></td>
+                          <td class="dropdown">
+                            <a class="d-flex align-items-center nav-link dropdown-toggle dropdown-toggle-nocaret" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                              <i class="bx bx-dots-vertical-rounded"></i>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                              <li>
+                                <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#deletebalanceleaveModal" id="deleteBtn" onClick="getId('{{obj.id}}')">Delete</button>
+                              </li>
+                            </ul>                                                    
+                          </td>
+                        </tr>
+                        {% endfor %}
                       </tbody>
                     </table>
+
+                    <div class="modal" id="deletebalanceleaveModal">
+                      <div class="modal-dialog">
+                        <div class="modal-content">
+                          <div class="modal-header">
+                            <h5 class="modal-title" id="exampleModalLabel">Delete Leave Balance</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                          </div>
+                          <div class="modal-body text-center">                                  
+                            <p>Are you sure want to delete this leave balance?</p>
+                            <div class="col-12">
+                              <a href="javascript:void(0);" id="delete" class="btn btn-outline-orangeyellow w-100 mb-2">Delete</a>
+                            </div>
+                            <button type="button" class="btn btn-outline-orangeyellow w-100" data-bs-dismiss="modal">Cancel</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
