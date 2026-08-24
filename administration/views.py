@@ -94,9 +94,11 @@ def biometric_machines(request, company_id, company_staff_id):
                     except OSError as exc:
                         message = str(exc)
             elif device_to_test.integration_mode == 'tcp_xml_push':
-                message = f'Start listener with: python manage.py run_biometric_tcp_server --host 0.0.0.0 --port {device_to_test.port}'
+                ok = device_to_test.is_online
+                message = 'Device is active (recent TCP/XML packets received).' if ok else f'No recent TCP/XML data received. Run listener on port {device_to_test.port}.'
             elif device_to_test.integration_mode == 'http_push':
-                message = f'Configure machine push URL: {_biometric_base_url()}/api/attendance/http-push/'
+                ok = device_to_test.is_online
+                message = 'Device is active (recent HTTP pushes received).' if ok else f'Waiting for HTTP push from device to: {_biometric_base_url()}/api/attendance/http-push/'
             device_to_test.mark_test_result(ok, message)
             messages.success(request, message) if ok else messages.warning(request, message)
             return redirect('biometric_machines', company_id=company_id, company_staff_id=company_staff_id)
@@ -253,6 +255,11 @@ def Register_Employee_View(request,company_id, company_staff_id):
                             continue
                 employee_id = f"EIC-{max_num + 1:03d}"
 
+            employee_biometric_id = request.POST.get('biometric_id', '').strip() or None
+            if employee_biometric_id and Employee.objects.filter(biometric_id=employee_biometric_id).exists():
+                messages.error(request, f"Biometric ID '{employee_biometric_id}' is already assigned to another employee!")
+                return redirect(f'/administration/all_employee/{company_id}/{company_staff_id}')
+
             if not all([employee_first_name, employee_last_name, employee_email, employee_joining_date_str, 
                        employee_password, employee_confirm_password, employee_id, department_id, assign_id]):
                 messages.error(request, "All required fields must be filled.")
@@ -297,6 +304,7 @@ def Register_Employee_View(request,company_id, company_staff_id):
                                                      employee_phone=employee_phone,
                                                      employee_department=employee_department,
                                                      employee_reports_to=employee_reports_to,
+                                                     biometric_id=employee_biometric_id,
                                                      )
 
                         register_employee.save()
@@ -407,10 +415,11 @@ def Employee_Edit_View(request, company_id,company_staff_id):
                 old_manager = employee_instance.employee_reports_to
 
             for key, value in request.POST.items():
-                if key in employee_models_fields_list and key != 'employee_id' and key != 'id' and value is not None and len(
-                        value) != 0:
-                    print(key, value)
-                    employee_models_fields_dict.setdefault(key, value)
+                if key in employee_models_fields_list and key != 'employee_id' and key != 'id':
+                    if key == 'biometric_id':
+                        employee_models_fields_dict[key] = value.strip() or None
+                    elif value is not None and len(value) != 0:
+                        employee_models_fields_dict.setdefault(key, value)
             
             # Check if manager is being changed
             if 'employee_reports_to' in employee_models_fields_dict:
@@ -519,6 +528,11 @@ def Register_manager_View(request,company_id, company_staff_id):
             manager_salary = request.POST.get('manager_salary', '').strip()
             department_id = request.POST.get("id")
 
+            manager_biometric_id = request.POST.get('biometric_id', '').strip() or None
+            if manager_biometric_id and Manager.objects.filter(biometric_id=manager_biometric_id).exists():
+                messages.error(request, f"Biometric ID '{manager_biometric_id}' is already assigned to another manager!")
+                return redirect(f'/administration/all_manager/{company_id}/{company_staff_id}')
+
             if not all([manager_first_name, manager_last_name, manager_email, manager_joining_date_str, 
                        manager_password, manager_confirm_password, manager_id, department_id]):
                 messages.error(request, "All required fields must be filled.")
@@ -556,7 +570,8 @@ def Register_manager_View(request,company_id, company_staff_id):
                                                    manager_last_name=manager_last_name, manager_email=manager_email,
                                                    manager_joining_date=manager_joining_date,
                                                    manager_department=manager_department, manager_id=manager_id,
-                                                   manager_phone=manager_phone)
+                                                   manager_phone=manager_phone,
+                                                   biometric_id=manager_biometric_id)
                         register_manager.save()
                         
                         # Send email notification for new manager
@@ -637,10 +652,11 @@ def manager_Edit_View(request,company_id, company_staff_id):
             manager_obj = Manager.objects.filter(pk=manager_obj_id)
 
             for key, value in request.POST.items():
-                if key in manager_models_fields_list and key != 'manager_id' and key != 'id' and value is not None and len(
-                        value) != 0:
-                    print(key, value)
-                    manager_models_fields_dict.setdefault(key, value)
+                if key in manager_models_fields_list and key != 'manager_id' and key != 'id':
+                    if key == 'biometric_id':
+                        manager_models_fields_dict[key] = value.strip() or None
+                    elif value is not None and len(value) != 0:
+                        manager_models_fields_dict.setdefault(key, value)
             manager_obj.update(**manager_models_fields_dict)
             emp_id = request.POST.get('manager_id')
 

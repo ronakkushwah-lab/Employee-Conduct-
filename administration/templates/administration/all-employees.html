@@ -102,6 +102,10 @@
                                   {% endfor %}
                                 </select>
                             </div>
+                            <div class="col-md-6">
+                              <label for="employee_biometric_id_add" class="form-label">Biometric ID</label>
+                              <input type="text" name="biometric_id" class="form-control" placeholder="e.g. 101" id="employee_biometric_id_add">
+                            </div>
                           </div>
                         	<div class="mt-4 mb-2 button-right">
                               <button type="submit" value="submit" class="btn btn-outline-orangeyellow">submit</button>
@@ -405,6 +409,12 @@
                                             <option value="{{ m.id }}">{{ m.manager_first_name }} {{ m.manager_last_name }} ({{ m.manager_email }})</option>
                                             {% endfor %}
                                           </select>
+                                        </div>
+                                      </div>
+                                      <div class="row mb-2">
+                                        <div class="col-md-6">
+                                          <label for="employee_biometric_id_edit" class="form-label">Biometric ID</label>
+                                          <input type="text" class="form-control" id="employee_biometric_id_edit" name="biometric_id" placeholder="e.g. 101">
                                         </div>
                                       </div>
                                     </div>
@@ -751,6 +761,7 @@
         var employee_country_heading_edit  = document.getElementById("employee_country_heading_edit");
         var employee_status_edit = document.getElementById("employee_status_edit");
         var employee_reports_to_edit = document.getElementById("employee_reports_to_edit");
+        var employee_biometric_id_edit = document.getElementById("employee_biometric_id_edit");
 
         var employee_detail_info_headings = document.getElementById("employee_detail_info_headings");
         var employee_father_heading_edit = document.getElementById("employee_father_heading_edit");
@@ -794,6 +805,7 @@
             employee_country_heading_edit.value = res['employee_country']
             employee_status_edit.value = res['employee_status']
             if (employee_reports_to_edit) employee_reports_to_edit.value = res['employee_reports_to'] || '';
+            if (employee_biometric_id_edit) employee_biometric_id_edit.value = res['biometric_id'] || '';
 
             employee_detail_info_headings.value = res['employee_first_name'] + ' ' + res['employee_last_name'];
             employee_father_heading_edit.value = res['employee_father']

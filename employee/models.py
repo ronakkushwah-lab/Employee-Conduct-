@@ -172,7 +172,8 @@ class Employee(models.Model):
             'employee_experience_company_job_position': self.employee_experience_company_job_position,
             'employee_experience_company_period_from': self.employee_experience_company_period_from,
             'employee_experience_company_period_to': self.employee_experience_company_period_to,
-            'employee_reports_to': self.employee_reports_to_id if self.employee_reports_to_id else None
+            'employee_reports_to': self.employee_reports_to_id if self.employee_reports_to_id else None,
+            'biometric_id': self.biometric_id or ''
         }
         return employee_details_dict
 

@@ -95,6 +95,12 @@
                               <input type="text" name="manager_salary" class="form-control" placeholder="350000" aria-label="Salary" id="salary" required>
                             </div>
                           </div>
+                          <div class="row mb-2">
+                            <div class="col-md-6">
+                              <label for="manager_biometric_id_add" class="form-label">Biometric ID</label>
+                              <input type="text" name="biometric_id" class="form-control" placeholder="e.g. 201" id="manager_biometric_id_add">
+                            </div>
+                          </div>
 
                         	<div class="mt-4 mb-2 button-right">
                               <button type="submit" value="submit" class="btn btn-outline-orangeyellow">submit</button>
@@ -389,6 +395,10 @@
                                             <option value="Active">Active</option>
                                             <option value="Inactive">Inactive</option>
                                           </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                          <label for="manager_biometric_id_edit" class="form-label">Biometric ID</label>
+                                          <input type="text" class="form-control" id="manager_biometric_id_edit" name="biometric_id" placeholder="e.g. 201">
                                         </div>
                                       </div>
                                     </div>
@@ -738,6 +748,7 @@
         var manager_birth_heading_edit = document.getElementById("manager_birth_heading_edit");
         var manager_country_heading_edit  = document.getElementById("manager_country_heading_edit");
         var manager_status_edit = document.getElementById("manager_status_edit");
+        var manager_biometric_id_edit = document.getElementById("manager_biometric_id_edit");
 
         var manager_first_name_edit = document.getElementById("manager_first_name_edit");
         var manager_last_name_edit = document.getElementById("manager_last_name_edit");
@@ -782,6 +793,7 @@
             manager_birth_heading_edit.value = res['manager_birth_date']
             manager_country_heading_edit.value = res['manager_country']
             manager_status_edit.value = res['manager_status']
+            if (manager_biometric_id_edit) manager_biometric_id_edit.value = res['biometric_id'] || '';
 
             manager_first_name_edit.value = res['manager_first_name'] || '';
             manager_last_name_edit.value = res['manager_last_name'] || '';

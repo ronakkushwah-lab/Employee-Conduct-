@@ -268,10 +268,12 @@ def process_biometric_punch(payload, protocol='manual', source_ip=None, device=N
         payload.get('user_id')
         or payload.get('UserID')
         or payload.get('UserId')
-        or payload.get('rfid_code')
+        or payload.get('biometric_id')
         or payload.get('biometric_user_id')
+        or payload.get('rfid_code')
         or payload.get('EnrollNumber')
         or payload.get('EnrollNo')
+        or payload.get('PIN')
     )
     if not user_id:
         return {

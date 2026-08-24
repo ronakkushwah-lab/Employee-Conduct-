@@ -10,6 +10,7 @@ class managerForm(forms.Form):
     manager_phone = forms.CharField(max_length=30, required=False, help_text='Optional')
     manager_password = forms.CharField(max_length=30, required=False, help_text='Optional')
     manager_confirm_password = forms.CharField(max_length=30, required=False, help_text='Optional')
+    biometric_id = forms.CharField(max_length=100, required=False, help_text='Optional')
 
 # --------------------------------------------Department------------------------------------------
 

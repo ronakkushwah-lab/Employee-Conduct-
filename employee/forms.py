@@ -27,6 +27,7 @@ class EmployeeForm(forms.Form):
     employee_phone = forms.CharField(max_length=30, required=False, help_text='Optional')
     employee_password = forms.CharField(max_length=30, required=False, help_text='Optional')
     employee_confirm_password = forms.CharField(max_length=30, required=False, help_text='Optional')
+    biometric_id = forms.CharField(max_length=100, required=False, help_text='Optional')
 
 
 # --------------------------------------------Department------------------------------------------

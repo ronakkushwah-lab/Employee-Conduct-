@@ -175,7 +175,8 @@ class Manager(models.Model):
             'manager_experience_company_location': self.manager_experience_company_location,
             'manager_experience_company_job_position': self.manager_experience_company_job_position,
             'manager_experience_company_period_from': self.manager_experience_company_period_from,
-            'manager_experience_company_period_to': self.manager_experience_company_period_to
+            'manager_experience_company_period_to': self.manager_experience_company_period_to,
+            'biometric_id': self.biometric_id or ''
         }
         return manager_details_dict
 
