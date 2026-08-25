@@ -3,9 +3,24 @@ import socketserver
 from datetime import datetime as datetime_type
 from http.client import HTTPMessage
 
+import requests
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from django.utils import timezone
+
+def _forward_punch_to_cloud(payload):
+    try:
+        url = 'https://employee-conduct-mcak.onrender.com/api/attendance/biometric-punch/'
+        clean_payload = {
+            'user_id': payload.get('UserID') or payload.get('user_id') or payload.get('EnrollNumber'),
+            'punch_time': payload.get('punch_time'),
+            'device_id': payload.get('DeviceSerialNo') or payload.get('device_id') or '1',
+            'verify_mode': payload.get('VerifMode') or payload.get('verify_mode') or '',
+            'event_type': payload.get('Event') or payload.get('event_type') or 'TimeLog',
+        }
+        requests.post(url, json=clean_payload, timeout=5)
+    except Exception:
+        pass
 
 from biometric.direct_push import (
     build_secureye_http_ack,
@@ -120,6 +135,7 @@ class BiometricTCPRequestHandler(socketserver.BaseRequestHandler):
                 protocol='tcp_xml',
                 source_ip=source_ip,
             )
+            _forward_punch_to_cloud(payload)
             logger.info(
                 'Processed biometric TCP XML event serial=%s event=%s status=%s',
                 payload.get('DeviceSerialNo', ''),
@@ -162,6 +178,7 @@ class BiometricTCPRequestHandler(socketserver.BaseRequestHandler):
                 protocol='http',
                 source_ip=source_ip,
             )
+            _forward_punch_to_cloud(payload)
             logger.info(
                 'Processed biometric HTTP push serial=%s request_code=%s user=%s trans_id=%s punch_time=%s status=%s',
                 payload.get('DeviceSerialNo', ''),
