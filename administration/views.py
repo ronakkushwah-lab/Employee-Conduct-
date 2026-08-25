@@ -2933,3 +2933,403 @@ def delete_email_notification(request, company_id, company_staff_id, id):
         except EmailNotification.DoesNotExist:
             sweetify.error(request, "Notification not found!", timer=2000)
         return redirect(f'/administration/email_notifications/{company_id}/{company_staff_id}')
+
+
+# ==============================================================================
+# MASTER BULK IMPORT SYSTEM (EXCEL / CSV) - ADMIN, MANAGER, EMPLOYEE
+# ==============================================================================
+import csv
+import io
+from openpyxl import Workbook, load_workbook
+from django.http import HttpResponse
+
+
+def download_master_template(request):
+    """Generates and downloads the pre-filled Master Staff Excel template."""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Master Staff List"
+
+    headers = [
+        "Role", "First Name", "Last Name", "Email", "Staff ID", 
+        "Biometric ID", "Department", "Reporting Manager", 
+        "Joining Date", "Phone", "Salary", "Password"
+    ]
+    ws.append(headers)
+
+    # Sample rows for illustration
+    ws.append([
+        "Admin", "Super", "Admin", "admin@eic.com", "EIC-ADM1",
+        "1", "Management", "", "2024-01-01", "9876543210", "100000", "eic@12345"
+    ])
+    ws.append([
+        "Manager", "Amit", "Sharma", "amit@eic.com", "EIC-001",
+        "101", "IT", "", "2024-01-15", "9876543211", "75000", "eic@12345"
+    ])
+    ws.append([
+        "Employee", "Ronak", "Kushwah", "ronak@eic.com", "EIC-101",
+        "201", "IT", "amit@eic.com", "2024-02-01", "9876543212", "45000", "eic@12345"
+    ])
+
+    # Auto-adjust column widths
+    for col in ws.columns:
+        max_len = max(len(str(cell.value or '')) for cell in col)
+        col_letter = col[0].column_letter
+        ws.column_dimensions[col_letter].width = max(max_len + 4, 14)
+
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    response = HttpResponse(
+        output.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename="EIC_Master_Staff_Template.xlsx"'
+    return response
+
+
+def _parse_uploaded_file(uploaded_file):
+    """Helper to parse rows from .xlsx, .xls, or .csv file into a list of dicts."""
+    filename = uploaded_file.name.lower()
+    rows = []
+
+    if filename.endswith('.csv'):
+        content = uploaded_file.read().decode('utf-8-sig', errors='ignore')
+        reader = csv.DictReader(io.StringIO(content))
+        for r in reader:
+            rows.append({k.strip(): str(v).strip() for k, v in r.items() if k})
+    elif filename.endswith(('.xlsx', '.xlsm', '.xltx', '.xltm')):
+        wb = load_workbook(filename=uploaded_file, data_only=True)
+        ws = wb.active
+        headers = []
+        for i, row in enumerate(ws.iter_rows(values_only=True)):
+            if i == 0:
+                headers = [str(h).strip() if h is not None else f'Col_{idx}' for idx, h in enumerate(row)]
+            else:
+                if not any(row):
+                    continue
+                row_dict = {}
+                for idx, val in enumerate(row):
+                    if idx < len(headers):
+                        row_dict[headers[idx]] = str(val).strip() if val is not None else ''
+                rows.append(row_dict)
+    return rows
+
+
+@custom_login_required
+def bulk_import_staff(request, company_id, company_staff_id):
+    """
+    2-Pass Master Excel / CSV Bulk Importer:
+    - Pass 1: Admins and Managers
+    - Pass 2: Employees (linked to Managers)
+    """
+    if request.method != 'POST':
+        return redirect(f'/administration/all_employee/{company_id}/{company_staff_id}')
+
+    uploaded_file = request.FILES.get('staff_file')
+    if not uploaded_file:
+        messages.error(request, "Please select an Excel (.xlsx) or CSV (.csv) file to upload.")
+        return redirect(f'/administration/all_employee/{company_id}/{company_staff_id}')
+
+    company = get_object_or_404(Company, id=company_id)
+
+    try:
+        raw_rows = _parse_uploaded_file(uploaded_file)
+    except Exception as exc:
+        messages.error(request, f"Could not read the uploaded spreadsheet: {exc}")
+        return redirect(f'/administration/all_employee/{company_id}/{company_staff_id}')
+
+    if not raw_rows:
+        messages.error(request, "The uploaded spreadsheet is empty or has no data rows.")
+        return redirect(f'/administration/all_employee/{company_id}/{company_staff_id}')
+
+    # Standardize column headers (mapping common variations)
+    def normalize_row(r):
+        normalized = {}
+        for k, v in r.items():
+            clean_k = k.lower().replace('_', ' ').replace('-', ' ').strip()
+            if clean_k in ('role', 'user type', 'type'):
+                normalized['role'] = v.title()
+            elif clean_k in ('first name', 'firstname', 'fname'):
+                normalized['first_name'] = v
+            elif clean_k in ('last name', 'lastname', 'lname'):
+                normalized['last_name'] = v
+            elif clean_k in ('email', 'email address', 'mail'):
+                normalized['email'] = v.lower()
+            elif clean_k in ('staff id', 'employee id', 'manager id', 'emp id', 'id'):
+                normalized['staff_id'] = v
+            elif clean_k in ('biometric id', 'biometric_id', 'punch id', 'enroll no', 'bio id'):
+                normalized['biometric_id'] = v
+            elif clean_k in ('department', 'dept'):
+                normalized['department'] = v
+            elif clean_k in ('reporting manager', 'manager', 'manager email', 'reports to'):
+                normalized['reporting_manager'] = v
+            elif clean_k in ('joining date', 'join date', 'doj'):
+                normalized['joining_date'] = v
+            elif clean_k in ('phone', 'mobile', 'contact', 'phone number'):
+                normalized['phone'] = v
+            elif clean_k in ('salary', 'pay'):
+                normalized['salary'] = v
+            elif clean_k in ('password', 'pass'):
+                normalized['password'] = v
+        return normalized
+
+    normalized_rows = [normalize_row(r) for r in raw_rows]
+
+    admin_count = 0
+    manager_count = 0
+    employee_count = 0
+    errors = []
+
+    # Helper date parser
+    def parse_date(date_str):
+        if not date_str:
+            return timezone.now().date()
+        for fmt in ('%Y-%m-%d', '%d/%m/%Y', '%d-%m-%Y', '%Y/%m/%d', '%m/%d/%Y'):
+            try:
+                return datetime.strptime(date_str.split()[0], fmt).date()
+            except ValueError:
+                pass
+        return timezone.now().date()
+
+    # PASS 1: Admins and Managers
+    for idx, row in enumerate(normalized_rows, start=2):
+        role = row.get('role', 'Employee').strip().lower()
+        email = row.get('email', '').strip()
+        first_name = row.get('first_name', '').strip()
+        last_name = row.get('last_name', '').strip()
+        password = row.get('password', '').strip() or 'eic@12345'
+        phone = row.get('phone', '').strip()
+        salary = row.get('salary', '').strip() or '0'
+        dept_name = row.get('department', '').strip()
+        staff_id = row.get('staff_id', '').strip()
+        bio_id = row.get('biometric_id', '').strip() or None
+        joining_date = parse_date(row.get('joining_date'))
+
+        if not email or not first_name:
+            continue
+
+        full_name = f"{first_name} {last_name}".strip()
+
+        # Department resolution
+        dept_obj = None
+        if dept_name:
+            dept_obj, _ = Department.objects.get_or_create(
+                department_name__iexact=dept_name,
+                company=company,
+                defaults={'department_name': dept_name, 'company': company}
+            )
+
+        if role == 'admin':
+            user, created = CompanyStaff.objects.get_or_create(
+                email=email,
+                defaults={
+                    'company': company,
+                    'full_name': full_name,
+                    'is_active': True,
+                    'is_staff': True,
+                    'is_superuser': True,
+                }
+            )
+            if created:
+                user.password = make_password(password)
+                user.save()
+            admin_count += 1
+
+        elif role == 'manager':
+            # Staff ID formatting
+            if staff_id and not staff_id.upper().startswith('EIC-'):
+                staff_id = f"EIC-{staff_id}"
+            elif not staff_id:
+                staff_id = f"EIC-{manager_count + 101:03d}"
+
+            user, created = CompanyStaff.objects.get_or_create(
+                email=email,
+                defaults={
+                    'company': company,
+                    'full_name': full_name,
+                    'is_active': True,
+                    'is_manager': True,
+                }
+            )
+            if created:
+                user.password = make_password(password)
+                user.is_manager = True
+                user.save()
+
+            mgr_obj, _ = Manager.objects.update_or_create(
+                user=user,
+                defaults={
+                    'manager_first_name': first_name,
+                    'manager_last_name': last_name,
+                    'manager_email': email,
+                    'manager_id': staff_id,
+                    'manager_department': dept_obj,
+                    'manager_salary': salary,
+                    'manager_phone': phone,
+                    'manager_joining_date': joining_date,
+                    'biometric_id': bio_id,
+                }
+            )
+            manager_count += 1
+
+    # PASS 2: Employees (Linking to Managers)
+    for idx, row in enumerate(normalized_rows, start=2):
+        role = row.get('role', 'Employee').strip().lower()
+        if role in ('admin', 'manager'):
+            continue
+
+        email = row.get('email', '').strip()
+        first_name = row.get('first_name', '').strip()
+        last_name = row.get('last_name', '').strip()
+        password = row.get('password', '').strip() or 'eic@12345'
+        phone = row.get('phone', '').strip()
+        salary = row.get('salary', '').strip() or '0'
+        dept_name = row.get('department', '').strip()
+        staff_id = row.get('staff_id', '').strip()
+        bio_id = row.get('biometric_id', '').strip() or None
+        rep_manager_str = row.get('reporting_manager', '').strip()
+        joining_date = parse_date(row.get('joining_date'))
+
+        if not email or not first_name:
+            continue
+
+        full_name = f"{first_name} {last_name}".strip()
+
+        # Department resolution
+        dept_obj = None
+        if dept_name:
+            dept_obj, _ = Department.objects.get_or_create(
+                department_name__iexact=dept_name,
+                company=company,
+                defaults={'department_name': dept_name, 'company': company}
+            )
+
+        # Reporting Manager resolution (by email, staff ID, or name)
+        rep_manager_obj = None
+        if rep_manager_str:
+            rep_manager_obj = (
+                Manager.objects.filter(manager_email__iexact=rep_manager_str, user__company=company).first()
+                or Manager.objects.filter(manager_id__iexact=rep_manager_str, user__company=company).first()
+                or Manager.objects.filter(manager_first_name__icontains=rep_manager_str, user__company=company).first()
+            )
+        if not rep_manager_obj:
+            rep_manager_obj = Manager.objects.filter(user__company=company).first()
+
+        # Staff ID formatting
+        if staff_id and not staff_id.upper().startswith('EIC-'):
+            staff_id = f"EIC-{staff_id}"
+        elif not staff_id:
+            staff_id = f"EIC-{employee_count + 1:03d}"
+
+        user, created = CompanyStaff.objects.get_or_create(
+            email=email,
+            defaults={
+                'company': company,
+                'full_name': full_name,
+                'is_active': True,
+            }
+        )
+        if created:
+            user.password = make_password(password)
+            user.save()
+
+        emp_obj, _ = Employee.objects.update_or_create(
+            user=user,
+            defaults={
+                'employee_first_name': first_name,
+                'employee_last_name': last_name,
+                'employee_email': email,
+                'employee_id': staff_id,
+                'employee_department': dept_obj,
+                'employee_reports_to': rep_manager_obj,
+                'employee_salary': salary,
+                'employee_phone': phone,
+                'employee_joining_date': joining_date,
+                'biometric_id': bio_id,
+            }
+        )
+        employee_count += 1
+
+    summary_msg = f"Master Import Successful! Processed: {admin_count} Admin(s), {manager_count} Manager(s), {employee_count} Employee(s)."
+    messages.success(request, summary_msg)
+    return redirect(f'/administration/all_employee/{company_id}/{company_staff_id}')
+
+
+def download_attendance_template(request):
+    """Generates a sample Attendance Punch Log Excel template."""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Punch Logs"
+
+    ws.append(["Biometric User ID", "Punch Time (YYYY-MM-DD HH:MM:SS)", "Verify Mode", "Device Serial / ID"])
+    ws.append(["101", datetime.now().strftime('%Y-%m-%d 09:30:00'), "1", "2508031064"])
+    ws.append(["201", datetime.now().strftime('%Y-%m-%d 09:35:00'), "1", "2508031064"])
+    ws.append(["101", datetime.now().strftime('%Y-%m-%d 18:30:00'), "1", "2508031064"])
+
+    for col in ws.columns:
+        max_len = max(len(str(cell.value or '')) for cell in col)
+        col_letter = col[0].column_letter
+        ws.column_dimensions[col_letter].width = max(max_len + 4, 18)
+
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    response = HttpResponse(
+        output.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename="Attendance_Punch_Template.xlsx"'
+    return response
+
+
+@custom_login_required
+def bulk_import_attendance(request, company_id, company_staff_id):
+    """Bulk import attendance punch logs exported from biometric machines or Excel files."""
+    if request.method != 'POST':
+        return redirect(f'/administration/biometric-machines/{company_id}/{company_staff_id}')
+
+    uploaded_file = request.FILES.get('attendance_file')
+    if not uploaded_file:
+        messages.error(request, "Please select an attendance Excel (.xlsx) or CSV file.")
+        return redirect(f'/administration/biometric-machines/{company_id}/{company_staff_id}')
+
+    company = get_object_or_404(Company, id=company_id)
+    device = BiometricDevice.objects.filter(company=company).first()
+
+    try:
+        raw_rows = _parse_uploaded_file(uploaded_file)
+    except Exception as exc:
+        messages.error(request, f"Could not read punch file: {exc}")
+        return redirect(f'/administration/biometric-machines/{company_id}/{company_staff_id}')
+
+    processed_count = 0
+    from biometric.services import process_biometric_punch
+
+    for r in raw_rows:
+        user_id = (
+            r.get('Biometric User ID') or r.get('User ID') or r.get('PIN')
+            or r.get('biometric_id') or r.get('user_id') or r.get('UserID')
+        )
+        punch_time = (
+            r.get('Punch Time (YYYY-MM-DD HH:MM:SS)') or r.get('Punch Time')
+            or r.get('Time') or r.get('punch_time') or r.get('DateTime')
+        )
+        verify_mode = r.get('Verify Mode') or r.get('Status') or '1'
+        device_id = r.get('Device Serial / ID') or r.get('DeviceID') or (device.device_id if device else '1')
+
+        if user_id and punch_time:
+            payload = {
+                'user_id': str(user_id).strip(),
+                'punch_time': str(punch_time).strip(),
+                'verify_mode': str(verify_mode).strip(),
+                'device_id': str(device_id).strip(),
+            }
+            process_biometric_punch(payload, protocol='excel_import', device=device)
+            processed_count += 1
+
+    messages.success(request, f"Successfully imported and processed {processed_count} attendance punch records!")
+    return redirect(f'/administration/biometric-machines/{company_id}/{company_staff_id}')
+
