@@ -128,17 +128,19 @@ def iclock_cdata(request):
     if request.method == 'GET':
         response_text = (
             f"GET OPTION FROM: {sn}\n"
-            f"ATTLOGStamp=None\n"
-            f"OPERLOGStamp=None\n"
-            f"ATTPHOTOStamp=None\n"
-            f"ErrorDelay=60\n"
-            f"Delay=30\n"
+            f"Stamp=9999\n"
+            f"OpStamp=9999\n"
+            f"PhotoStamp=0\n"
+            f"ErrorDelay=30\n"
+            f"Delay=5\n"
             f"TransTimes=00:00;14:05\n"
             f"TransInterval=1\n"
             f"TransFlag=1111000000\n"
             f"TimeZone=5.5\n"
             f"Realtime=1\n"
             f"Encrypt=0\n"
+            f"PushProtVer=2.4.1\n"
+            f"ServerVersion=3.1.1\n"
         )
         return HttpResponse(response_text, content_type='text/plain')
 
@@ -148,27 +150,58 @@ def iclock_cdata(request):
         if body_text:
             lines = [l.strip() for l in body_text.split('\n') if l.strip()]
             for line in lines:
-                parts = [p.strip() for p in line.replace('\t', ',').split(',') if p.strip()]
-                if not parts:
-                    continue
-                user_id = parts[0]
-                punch_time_str = parts[1] if len(parts) > 1 else str(timezone.now())
-                verify_mode = parts[2] if len(parts) > 2 else ''
-                payload = {
-                    'user_id': user_id,
-                    'punch_time': punch_time_str,
-                    'verify_mode': verify_mode,
-                    'device_id': sn or (device.device_id if device else '1'),
-                    'source_ip': source_ip,
-                }
-                process_biometric_punch(payload, protocol='adms_push', source_ip=source_ip)
-                inserted_count += 1
+                # Handle key-value style (e.g. PIN=101\tTime=...)
+                if '=' in line:
+                    kv = {}
+                    for item in line.replace('\t', ' ').split():
+                        if '=' in item:
+                            k, v = item.split('=', 1)
+                            kv[k.upper()] = v
+                    user_id = kv.get('PIN') or kv.get('USERID') or kv.get('USER_ID') or kv.get('ENROLLNUMBER')
+                    punch_time_str = kv.get('TIME') or kv.get('PUNCHTIME') or kv.get('DATETIME') or str(timezone.now())
+                    verify_mode = kv.get('STATUS') or kv.get('VERIFY') or ''
+                elif '\t' in line:
+                    # Tab separated: user_id \t punch_time \t verify_mode
+                    parts = [p.strip() for p in line.split('\t') if p.strip()]
+                    user_id = parts[0] if len(parts) > 0 else ''
+                    punch_time_str = parts[1] if len(parts) > 1 else str(timezone.now())
+                    verify_mode = parts[2] if len(parts) > 2 else ''
+                elif ',' in line:
+                    # Comma separated
+                    parts = [p.strip() for p in line.split(',') if p.strip()]
+                    user_id = parts[0] if len(parts) > 0 else ''
+                    punch_time_str = parts[1] if len(parts) > 1 else str(timezone.now())
+                    verify_mode = parts[2] if len(parts) > 2 else ''
+                else:
+                    # Space separated: "101 2026-08-25 13:10:00 1 1"
+                    parts = line.split()
+                    if len(parts) >= 3 and '-' in parts[1] and ':' in parts[2]:
+                        user_id = parts[0]
+                        punch_time_str = f"{parts[1]} {parts[2]}"
+                        verify_mode = parts[3] if len(parts) > 3 else ''
+                    elif len(parts) >= 1:
+                        user_id = parts[0]
+                        punch_time_str = str(timezone.now())
+                        verify_mode = ''
+                    else:
+                        continue
+
+                if user_id:
+                    payload = {
+                        'user_id': user_id,
+                        'punch_time': punch_time_str,
+                        'verify_mode': verify_mode,
+                        'device_id': sn or (device.device_id if device else '1'),
+                        'source_ip': source_ip,
+                    }
+                    process_biometric_punch(payload, protocol='adms_push', source_ip=source_ip)
+                    inserted_count += 1
 
         if device:
             device.last_punch_at = timezone.now()
             device.save(update_fields=['last_punch_at', 'updated'])
 
-        return HttpResponse(f"OK: {inserted_count}\n" if inserted_count > 0 else "OK\n", content_type='text/plain')
+        return HttpResponse("OK\n" if inserted_count == 0 else f"OK: {inserted_count}\n", content_type='text/plain')
 
 
 @csrf_exempt
