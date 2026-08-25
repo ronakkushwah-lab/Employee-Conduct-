@@ -318,6 +318,8 @@ def process_biometric_punch(payload, protocol='manual', source_ip=None, device=N
         company = employee.user.company
     elif manager and manager.user:
         company = manager.user.company
+    elif device and device.company:
+        company = device.company
 
     existing_log = BiometricEventLog.objects.filter(
         biometric_user_id=user_id,
