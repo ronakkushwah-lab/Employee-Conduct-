@@ -262,19 +262,10 @@ def _apply_employee_punch(employee, punch_time):
             source='biometric',
         ), 'check_in'
 
-    if attendance.check_in and abs((attendance.check_in - punch_time).total_seconds()) < 60:
-        return attendance, 'duplicate'
-
-    if attendance.check_out and abs((attendance.check_out - punch_time).total_seconds()) < 60:
-        return attendance, 'duplicate'
-
-    if not attendance.check_out or punch_time > attendance.check_out:
-        attendance.check_out = punch_time
-        attendance.source = 'biometric'
-        attendance.save(update_fields=['check_out', 'source', 'updated'])
-        return attendance, 'check_out'
-
-    return attendance, 'duplicate'
+    attendance.check_out = punch_time
+    attendance.source = 'biometric'
+    attendance.save(update_fields=['check_out', 'source', 'updated'])
+    return attendance, 'check_out'
 
 
 def _apply_manager_punch(manager, punch_time):
@@ -292,18 +283,9 @@ def _apply_manager_punch(manager, punch_time):
             check_in=punch_time,
         ), 'check_in'
 
-    if attendance.check_in and abs((attendance.check_in - punch_time).total_seconds()) < 60:
-        return attendance, 'duplicate'
-
-    if attendance.check_out and abs((attendance.check_out - punch_time).total_seconds()) < 60:
-        return attendance, 'duplicate'
-
-    if not attendance.check_out or punch_time > attendance.check_out:
-        attendance.check_out = punch_time
-        attendance.save(update_fields=['check_out'])
-        return attendance, 'check_out'
-
-    return attendance, 'duplicate'
+    attendance.check_out = punch_time
+    attendance.save(update_fields=['check_out'])
+    return attendance, 'check_out'
 
 
 @transaction.atomic
@@ -370,20 +352,6 @@ def process_biometric_punch(payload, protocol='manual', source_ip=None, device=N
         from administration.models import Company
         company = Company.objects.first()
 
-    existing_log = BiometricEventLog.objects.filter(
-        biometric_user_id=user_id,
-        punch_time=punch_time,
-        device=device,
-    ).first()
-    if existing_log:
-        existing_log.status = BiometricEventLog.STATUS_DUPLICATE
-        existing_log.save(update_fields=['status'])
-        return {
-            'status': BiometricEventLog.STATUS_DUPLICATE,
-            'biometric_user_id': user_id,
-            'message': 'Duplicate biometric punch ignored.',
-        }
-
     event = BiometricEventLog.objects.create(
         device=device,
         company=company,
@@ -416,7 +384,7 @@ def process_biometric_punch(payload, protocol='manual', source_ip=None, device=N
         attendance, action = _apply_manager_punch(manager, punch_time)
         event.manager_attendance = attendance
 
-    event.status = BiometricEventLog.STATUS_DUPLICATE if action == 'duplicate' else BiometricEventLog.STATUS_APPLIED
+    event.status = BiometricEventLog.STATUS_APPLIED
     event.message = f'Biometric {action} recorded.'
     event.save(update_fields=['attendance', 'manager_attendance', 'status', 'message'])
 
