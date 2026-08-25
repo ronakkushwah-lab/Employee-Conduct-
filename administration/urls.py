@@ -216,10 +216,5 @@ urlpatterns = [
         views.delete_employee_documents,
         name="delete_employee_documents"
     ),
-
-    # Master Bulk Import & Templates (Excel / CSV)
-    path('bulk_import_staff/<int:company_id>/<int:company_staff_id>/', views.bulk_import_staff, name='bulk_import_staff'),
-    path('download_master_template/', views.download_master_template, name='download_master_template'),
-    path('bulk_import_attendance/<int:company_id>/<int:company_staff_id>/', views.bulk_import_attendance, name='bulk_import_attendance'),
-    path('download_attendance_template/', views.download_attendance_template, name='download_attendance_template'),
+   
 ]
