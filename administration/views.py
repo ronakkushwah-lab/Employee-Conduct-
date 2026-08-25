@@ -193,8 +193,8 @@ def biometric_machines(request, company_id, company_staff_id):
 
     devices = BiometricDevice.objects.filter(company=company).order_by('name', 'id')
     recent_events = BiometricEventLog.objects.filter(
-        Q(company=company) | Q(device__company=company)
-    ).select_related('device', 'employee', 'manager').order_by('-received_at', '-id')[:25]
+        Q(company=company) | Q(device__company=company) | Q(company__isnull=True)
+    ).select_related('device', 'employee', 'manager').order_by('-received_at', '-id')[:50]
     context = {
         'form': form,
         'edit_device': device,

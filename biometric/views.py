@@ -194,7 +194,7 @@ def iclock_cdata(request):
                         'device_id': sn or (device.device_id if device else '1'),
                         'source_ip': source_ip,
                     }
-                    process_biometric_punch(payload, protocol='adms_push', source_ip=source_ip)
+                    process_biometric_punch(payload, protocol='adms_push', source_ip=source_ip, device=device)
                     inserted_count += 1
 
         if device:
