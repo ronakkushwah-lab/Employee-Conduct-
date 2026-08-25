@@ -97,8 +97,8 @@ def biometric_machines(request, company_id, company_staff_id):
                 ok = device_to_test.is_online
                 message = 'Device is active (recent TCP/XML packets received).' if ok else f'No recent TCP/XML data received. Run listener on port {device_to_test.port}.'
             elif device_to_test.integration_mode == 'http_push':
-                ok = device_to_test.is_online
-                message = 'Device is active (recent HTTP pushes received).' if ok else f'Waiting for HTTP push from device to: {_biometric_base_url()}/api/attendance/http-push/'
+                ok = device_to_test.is_online or bool(device_to_test.latest_activity_at())
+                message = 'Device is active and connected (recent punches / ADMS heartbeats received).' if ok else f'Waiting for ADMS push from device to: {_biometric_base_url()}/iclock/cdata'
             device_to_test.mark_test_result(ok, message)
             messages.success(request, message) if ok else messages.warning(request, message)
             return redirect('biometric_machines', company_id=company_id, company_staff_id=company_staff_id)

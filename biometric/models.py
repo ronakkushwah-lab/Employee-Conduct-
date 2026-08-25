@@ -78,6 +78,8 @@ class BiometricDevice(models.Model):
             'device_secret_key': self.secret_key,
         }
 
+    ONLINE_WINDOW_SECONDS = 86400  # 24 hours
+
     def mark_test_result(self, ok, message):
         self.last_tested_at = timezone.now()
         self.last_test_status = 'online' if ok else 'offline'
@@ -101,12 +103,16 @@ class BiometricDevice(models.Model):
     def runtime_status_label(self):
         if not self.is_active:
             return 'Disabled'
+        if not self.latest_activity_at():
+            return 'Pending Setup'
         return 'Active' if self.is_online else 'Offline'
 
     @property
     def runtime_status_class(self):
         if not self.is_active:
             return 'bg-secondary'
+        if not self.latest_activity_at():
+            return 'bg-warning text-dark'
         return 'bg-success' if self.is_online else 'bg-danger'
 
 
