@@ -313,13 +313,16 @@ def latest_events_api(request):
         elif e.manager:
             person_name = f"{e.manager.manager_first_name} {e.manager.manager_last_name}"
 
+        local_time = timezone.localtime(e.punch_time) if e.punch_time else None
+        punch_time_str = local_time.strftime('%b. %d, %Y, %I:%M %p') if local_time else ''
+
         data.append({
             'id': e.id,
             'user_id': e.biometric_user_id,
             'person': person_name,
             'protocol': e.get_protocol_display(),
             'status': e.get_status_display(),
-            'punch_time': e.punch_time.strftime('%b. %d, %Y, %I:%M %p') if e.punch_time else '',
+            'punch_time': punch_time_str,
         })
 
     return JsonResponse({
