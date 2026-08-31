@@ -181,7 +181,7 @@ def iclock_cdata(request):
                 device.save(update_fields=['last_punch_at', 'updated'])
 
             return HttpResponse(
-                '{"status":"success","result":"success","success":true,"count":1}',
+                '{"status":"success"}',
                 content_type='application/json'
             )
         else:
