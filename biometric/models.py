@@ -130,6 +130,7 @@ class BiometricEventLog(models.Model):
     STATUS_UNMATCHED = 'unmatched'
     STATUS_INVALID = 'invalid'
     STATUS_ERROR = 'error'
+    STATUS_IGNORED = 'ignored'
 
     STATUS_CHOICES = [
         (STATUS_RECEIVED, 'Received'),
@@ -138,6 +139,7 @@ class BiometricEventLog(models.Model):
         (STATUS_UNMATCHED, 'Unmatched'),
         (STATUS_INVALID, 'Invalid'),
         (STATUS_ERROR, 'Error'),
+        (STATUS_IGNORED, 'Ignored'),
     ]
 
     device = models.ForeignKey(BiometricDevice, null=True, blank=True, on_delete=models.SET_NULL, related_name='event_logs')

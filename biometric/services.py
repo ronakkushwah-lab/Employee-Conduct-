@@ -398,6 +398,18 @@ def process_biometric_punch(payload, protocol='manual', source_ip=None, device=N
             'message': event.message,
         }
 
+    # Filter out historical punches (older than 24h) so only fresh punches create attendance
+    cutoff_time = timezone.now() - timedelta(hours=24)
+    if punch_time < cutoff_time:
+        event.status = BiometricEventLog.STATUS_IGNORED
+        event.message = f'Historical punch from {punch_time.date()} ignored (older than 24h).'
+        event.save(update_fields=['status', 'message'])
+        return {
+            'status': event.status,
+            'biometric_user_id': user_id,
+            'message': event.message,
+        }
+
     if employee:
         attendance, action = _apply_employee_punch(employee, punch_time)
         event.attendance = attendance
