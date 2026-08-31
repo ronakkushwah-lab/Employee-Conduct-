@@ -180,13 +180,10 @@ def iclock_cdata(request):
                 device.last_punch_at = timezone.now()
                 device.save(update_fields=['last_punch_at', 'updated'])
 
-            return JsonResponse({
-                'status': 'success',
-                'result': 'success',
-                'success': True,
-                'message': 'success',
-                'count': 1
-            })
+            return HttpResponse(
+                '{"status":"success","result":"success","success":true,"count":1}',
+                content_type='application/json'
+            )
         else:
             # Fall back to standard ADMS text parser (table = ATTLOG)
             body_text_clean = body_text.replace('\x00', '')
