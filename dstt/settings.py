@@ -30,13 +30,16 @@ SECRET_KEY = '^2gq+gcpq@#4exlzp&tt*yl8@4%^6o7hf^kkzyz!5hpk_r0e^&'
 DEBUG = True
 ALLOWED_HOSTS = ['*']
 
-# CSRF Trusted Origins for ngrok and other external domains
-# Add your ngrok domain here (wildcards not supported, add specific domains)
+# CSRF Trusted Origins for Render, ngrok and other external domains
 CSRF_TRUSTED_ORIGINS = [
+    'https://employee-conduct-mcak.onrender.com',
+    'https://*.onrender.com',
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
     'https://maryetta-semiacademical-eufemia.ngrok-free.dev',
-    # Add more ngrok domains as needed:
-    # 'https://your-ngrok-domain.ngrok-free.dev',
-    # 'https://your-ngrok-domain.ngrok.io',
+    'https://*.ngrok-free.app',
+    'https://*.ngrok-free.dev',
+    'https://*.ngrok.io',
 ]
 
 # For development: Allow all origins (use only in development, not production)

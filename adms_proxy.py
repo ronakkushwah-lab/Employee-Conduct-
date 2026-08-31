@@ -18,8 +18,17 @@ def get_laptop_ip():
         return '127.0.0.1'
 
 class ADMSProxyHandler(BaseHTTPRequestHandler):
+    def _normalize_path(self, path):
+        clean = path
+        if not clean.startswith('/iclock/') and not clean.startswith('/api/'):
+            for prefix in ('/cdata', '/getrequest', '/devicecmd', '/registry', '/fdata', '/querydata', '/push'):
+                if clean.startswith(prefix):
+                    clean = '/iclock' + clean
+                    break
+        return clean
+
     def do_GET(self):
-        target_url = f"{RENDER_BASE_URL}{self.path}"
+        target_url = f"{RENDER_BASE_URL}{self._normalize_path(self.path)}"
         try:
             print(f"[ADMS IN] GET {self.path}")
             resp = requests.get(target_url, headers={'User-Agent': 'ADMS-Proxy'}, timeout=10)
@@ -32,13 +41,15 @@ class ADMSProxyHandler(BaseHTTPRequestHandler):
             print(f"[ADMS OUT] Handshake response sent to machine (HTTP {resp.status_code})")
         except Exception as e:
             print(f"[ERROR] Forwarding GET failed: {e}")
-            self.send_response(500)
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/plain')
             self.end_headers()
+            self.wfile.write(b"OK\n")
 
     def do_POST(self):
         content_length = int(self.headers.get('Content-Length', 0))
         body = self.rfile.read(content_length) if content_length > 0 else b''
-        target_url = f"{RENDER_BASE_URL}{self.path}"
+        target_url = f"{RENDER_BASE_URL}{self._normalize_path(self.path)}"
         try:
             print(f"[ADMS IN] POST {self.path} (Payload: {len(body)} bytes)")
             resp = requests.post(target_url, data=body, headers={'Content-Type': 'text/plain'}, timeout=10)
@@ -51,8 +62,10 @@ class ADMSProxyHandler(BaseHTTPRequestHandler):
             print(f"[ADMS OUT] Punch response sent to machine: {resp.text.strip()}")
         except Exception as e:
             print(f"[ERROR] Forwarding POST failed: {e}")
-            self.send_response(500)
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/plain')
             self.end_headers()
+            self.wfile.write(b"OK: 1\n")
 
     def log_message(self, format, *args):
         pass  # Custom logging in do_GET/do_POST

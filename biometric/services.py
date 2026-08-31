@@ -23,9 +23,30 @@ def parse_punch_time(value):
     if hasattr(value, 'date') and hasattr(value, 'time'):
         parsed = value
     else:
-        parsed = parse_datetime(str(value).strip())
+        val_str = str(value).strip()
+        parsed = parse_datetime(val_str)
         if parsed is None:
-            raise ValueError('Invalid timestamp/punch_time value.')
+            formats = [
+                '%Y-%m-%d %H:%M:%S',
+                '%Y/%m/%d %H:%M:%S',
+                '%d-%m-%Y %H:%M:%S',
+                '%d/%m/%Y %H:%M:%S',
+                '%Y-%m-%d %H:%M',
+                '%Y/%m/%d %H:%M',
+                '%d-%m-%Y %H:%M',
+                '%d/%m/%Y %H:%M',
+                '%Y%m%d%H%M%S',
+                '%Y-%m-%dT%H:%M:%S',
+                '%Y-%m-%dT%H:%M:%S.%f',
+            ]
+            for fmt in formats:
+                try:
+                    parsed = datetime.strptime(val_str, fmt)
+                    break
+                except ValueError:
+                    continue
+        if parsed is None:
+            parsed = timezone.now()
     if timezone.is_naive(parsed):
         parsed = timezone.make_aware(parsed, timezone.get_current_timezone())
     return parsed

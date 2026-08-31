@@ -122,6 +122,7 @@ class BiometricEventLog(models.Model):
         ('bridge', 'Bridge Pull'),
         ('http', 'HTTP/HTTPS Push'),
         ('tcp_xml', 'TCP XML Push'),
+        ('adms_push', 'ADMS Push'),
     )
     STATUS_RECEIVED = 'received'
     STATUS_APPLIED = 'applied'

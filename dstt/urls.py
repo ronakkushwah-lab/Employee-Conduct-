@@ -61,8 +61,7 @@ urlpatterns = [
     path('leave/', include('leave.urls')),
     path('manager_leave/', include('manager_leave.urls')),
     path('managerpayroll/', include('managerpayroll.urls')),
-    path('api/', include('biometric.urls')),
-    path('iclock/', include('biometric.urls')),
+    path('', include('biometric.urls')),
 ]
 
 from django.views.static import serve
