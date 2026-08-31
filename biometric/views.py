@@ -107,8 +107,8 @@ def iclock_cdata(request):
     - GET: Device handshake, heartbeat & config option sync
     - POST: Punch log uploads (ATTLOG / table data)
     """
-    sn = (request.GET.get('SN') or request.GET.get('sn') or '').strip()
-    table = (request.GET.get('table') or '').upper()
+    sn = (request.GET.get('SN') or request.GET.get('sn') or '').strip().replace('\x00', '')
+    table = (request.GET.get('table') or '').upper().replace('\x00', '')
     source_ip = request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip() or request.META.get('REMOTE_ADDR')
 
     device = None
@@ -145,7 +145,7 @@ def iclock_cdata(request):
         return HttpResponse(response_text, content_type='text/plain')
 
     if request.method == 'POST':
-        body_text = request.body.decode('utf-8', errors='ignore')
+        body_text = request.body.decode('utf-8', errors='ignore').replace('\x00', '')
         inserted_count = 0
         if body_text:
             lines = [l.strip() for l in body_text.split('\n') if l.strip()]
@@ -209,7 +209,7 @@ def iclock_getrequest(request):
     """
     Standard ZKTeco / eSSL ADMS command polling endpoint for /iclock/getrequest.
     """
-    sn = (request.GET.get('SN') or request.GET.get('sn') or '').strip()
+    sn = (request.GET.get('SN') or request.GET.get('sn') or '').strip().replace('\x00', '')
     if sn:
         device = (
             BiometricDevice.objects.filter(device_id=sn).first()
@@ -238,7 +238,7 @@ def iclock_registry(request):
     """
     Standard ZKTeco / eSSL ADMS device registration endpoint for /iclock/registry.
     """
-    sn = (request.GET.get('SN') or request.GET.get('sn') or '').strip()
+    sn = (request.GET.get('SN') or request.GET.get('sn') or '').strip().replace('\x00', '')
     if sn:
         device = (
             BiometricDevice.objects.filter(device_id=sn).first()
