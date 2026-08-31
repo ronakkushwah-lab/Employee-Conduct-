@@ -333,7 +333,7 @@
 
     function pollBiometricEvents() {
       $.ajax({
-        url: '/biometric/api/latest-events/',
+        url: '/api/latest-events/',
         type: 'GET',
         dataType: 'json',
         success: function(response) {
