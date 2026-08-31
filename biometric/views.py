@@ -175,6 +175,12 @@ def iclock_cdata(request):
                 }
                 process_biometric_punch(payload, protocol='adms_push', source_ip=source_ip, device=device)
                 inserted_count += 1
+
+            if device:
+                device.last_punch_at = timezone.now()
+                device.save(update_fields=['last_punch_at', 'updated'])
+
+            return JsonResponse({'status': 'SUCCESS', 'result': 'success'})
         else:
             # Fall back to standard ADMS text parser (table = ATTLOG)
             body_text_clean = body_text.replace('\x00', '')
