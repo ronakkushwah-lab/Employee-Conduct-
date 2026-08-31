@@ -181,13 +181,19 @@ def iclock_cdata(request):
                 device.save(update_fields=['last_punch_at', 'updated'])
 
             import struct
-            response_json = '{"status":"SUCCESS"}'
+            # Comprehensive JSON matching multiple FK firmware standards
+            response_json = '{"status":"SUCCESS","result":"OK","response_code":"OK"}'
             response_bytes = response_json.encode('utf-8')
             # Pack length of JSON as 32-bit little-endian integer
             prefix = struct.pack('<I', len(response_bytes))
             response_body = prefix + response_bytes + b'\x00'
 
-            return HttpResponse(response_body, content_type='application/octet-stream')
+            response = HttpResponse(response_body, content_type='application/octet-stream')
+            response['response_code'] = 'OK'
+            response['result'] = 'OK'
+            response['status'] = 'SUCCESS'
+            response['Connection'] = 'close'
+            return response
         else:
             # Fall back to standard ADMS text parser (table = ATTLOG)
             body_text_clean = body_text.replace('\x00', '')
