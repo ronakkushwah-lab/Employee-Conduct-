@@ -293,3 +293,38 @@ def iclock_registry(request):
             device.last_seen_at = timezone.now()
             device.save(update_fields=['last_seen_at', 'updated'])
     return HttpResponse("OK\n", content_type='text/plain')
+
+
+def latest_events_api(request):
+    """
+    API endpoint for auto-refreshing biometric events and attendance in real time.
+    Returns latest event ID and event details as JSON.
+    """
+    events = BiometricEventLog.objects.select_related('employee', 'manager').order_by('-id')[:20]
+    data = []
+    latest_id = 0
+    if events:
+        latest_id = events[0].id
+
+    for e in events:
+        person_name = "Unmatched"
+        if e.employee:
+            person_name = f"{e.employee.employee_first_name} {e.employee.employee_last_name}"
+        elif e.manager:
+            person_name = f"{e.manager.manager_first_name} {e.manager.manager_last_name}"
+
+        data.append({
+            'id': e.id,
+            'user_id': e.biometric_user_id,
+            'person': person_name,
+            'protocol': e.get_protocol_display(),
+            'status': e.get_status_display(),
+            'punch_time': e.punch_time.strftime('%b. %d, %Y, %I:%M %p') if e.punch_time else '',
+        })
+
+    return JsonResponse({
+        'status': 'success',
+        'latest_id': latest_id,
+        'count': len(data),
+        'events': data,
+    })

@@ -16,6 +16,7 @@ urlpatterns = [
     path('api/attendance/manual-punch/', views.manual_punch, name='api_manual_punch'),
     path('api/attendance/http-push/', views.http_push, name='api_http_push'),
     path('api/attendance/biometric-heartbeat/', views.biometric_heartbeat, name='api_biometric_heartbeat'),
+    path('api/latest-events/', views.latest_events_api, name='api_latest_events'),
     # Standard IClock paths (root and /iclock/)
     path('cdata', views.iclock_cdata, name='cdata_no_slash'),
     path('cdata/', views.iclock_cdata, name='cdata'),

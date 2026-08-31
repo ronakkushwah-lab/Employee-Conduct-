@@ -191,12 +191,34 @@
      
    </script>
 
-     <script>
+   <script>
   	function getId(id) {
 		// alert(id)
 		var a =document.getElementById('delete');
 		a.href = "/administration/attendance_remove/{{company_id}}/{{company_staff_id}}/"+id;
 	}
 
+  (function() {
+    let lastKnownEventId = null;
+    function checkLiveWebhookPunches() {
+      if (typeof $ === 'undefined') return;
+      $.ajax({
+        url: '/biometric/api/latest-events/',
+        type: 'GET',
+        dataType: 'json',
+        success: function(response) {
+          if (response && response.status === 'success') {
+            if (lastKnownEventId !== null && response.latest_id !== lastKnownEventId) {
+              // New punch arrived! Refresh page automatically
+              window.location.reload();
+            } else if (lastKnownEventId === null) {
+              lastKnownEventId = response.latest_id;
+            }
+          }
+        }
+      });
+    }
+    setInterval(checkLiveWebhookPunches, 3000);
+  })();
    </script>
 

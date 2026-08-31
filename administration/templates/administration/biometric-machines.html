@@ -269,7 +269,12 @@
 
         <div class="card mt-3">
           <div class="card-body">
-            <h5 class="mb-3">Recent Biometric Events</h5>
+            <div class="d-flex align-items-center mb-3">
+              <h5 class="mb-0">Recent Biometric Events</h5>
+              <span class="badge bg-success ms-3" id="liveSyncBadge">
+                <i class="bx bx-radio-circle-marked"></i> Live Webhook Auto-Refresh Active
+              </span>
+            </div>
             <div class="table-responsive">
               <table class="table table-sm table-hover align-middle recent-events-table">
                 <thead>
@@ -322,5 +327,52 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/metisMenu/3.0.7/metisMenu.min.js"></script>
 <script src="https://unpkg.com/boxicons@2.1.2/dist/boxicons.js"></script>
 <script src="{% static 'asets/js/script.js' %}"></script>
+<script>
+  (function() {
+    let lastKnownEventId = null;
+
+    function pollBiometricEvents() {
+      $.ajax({
+        url: '/biometric/api/latest-events/',
+        type: 'GET',
+        dataType: 'json',
+        success: function(response) {
+          if (response && response.status === 'success') {
+            if (lastKnownEventId !== null && response.latest_id !== lastKnownEventId) {
+              updateTable(response.events);
+            } else if (lastKnownEventId === null) {
+              lastKnownEventId = response.latest_id;
+            }
+          }
+        }
+      });
+    }
+
+    function updateTable(events) {
+      let tbody = $('.recent-events-table tbody');
+      if (!events || events.length === 0) return;
+      
+      let html = '';
+      events.forEach(function(e) {
+        let person = (e.person === 'Unmatched') ? '<span class="text-muted">Unmatched</span>' : e.person;
+        html += '<tr class="table-success">' +
+          '<td>' + e.user_id + '</td>' +
+          '<td>' + person + '</td>' +
+          '<td>' + e.protocol + '</td>' +
+          '<td>' + e.status + '</td>' +
+          '<td>' + e.punch_time + '</td>' +
+          '</tr>';
+      });
+      tbody.html(html);
+      lastKnownEventId = events[0].id;
+
+      setTimeout(function() {
+        tbody.find('tr').removeClass('table-success');
+      }, 2500);
+    }
+
+    setInterval(pollBiometricEvents, 3000);
+  })();
+</script>
 </body>
 </html>
