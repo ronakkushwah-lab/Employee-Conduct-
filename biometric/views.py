@@ -147,7 +147,7 @@ def iclock_cdata(request):
     if request.method == 'POST':
         body_text = request.body.decode('utf-8', errors='ignore').replace('\x00', '')
         inserted_count = 0
-        if body_text:
+        if table == 'ATTLOG' and body_text:
             lines = [l.strip() for l in body_text.split('\n') if l.strip()]
             for line in lines:
                 # Handle key-value style (e.g. PIN=101\tTime=...)
