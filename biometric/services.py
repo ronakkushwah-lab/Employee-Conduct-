@@ -398,6 +398,18 @@ def process_biometric_punch(payload, protocol='manual', source_ip=None, device=N
             'message': event.message,
         }
 
+    # Process only punches from today (ignore past historical dates)
+    today = timezone.now().date()
+    if punch_time.date() < today:
+        event.status = BiometricEventLog.STATUS_IGNORED
+        event.message = f'Historical punch from {punch_time.date()} ignored; only today\'s punches create attendance.'
+        event.save(update_fields=['status', 'message'])
+        return {
+            'status': event.status,
+            'biometric_user_id': user_id,
+            'message': event.message,
+        }
+
     if employee:
         attendance, action = _apply_employee_punch(employee, punch_time)
         event.attendance = attendance
