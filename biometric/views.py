@@ -99,13 +99,24 @@ def biometric_heartbeat(request):
 from django.http import HttpResponse
 
 
+def _extract_json_from_body(body_text):
+    start = body_text.find('{')
+    end = body_text.rfind('}')
+    if start != -1 and end != -1 and end > start:
+        try:
+            return json.loads(body_text[start:end+1])
+        except json.JSONDecodeError:
+            return None
+    return None
+
+
 @csrf_exempt
 def iclock_cdata(request):
     """
     Standard ZKTeco / eSSL ADMS protocol endpoint for /iclock/cdata.
     Handles:
     - GET: Device handshake, heartbeat & config option sync
-    - POST: Punch log uploads (ATTLOG / table data)
+    - POST: Punch log uploads (ATTLOG / table data) or JSON Push logs
     """
     sn = (request.GET.get('SN') or request.GET.get('sn') or '').strip().replace('\x00', '')
     table = (request.GET.get('table') or '').upper().replace('\x00', '')
@@ -145,57 +156,77 @@ def iclock_cdata(request):
         return HttpResponse(response_text, content_type='text/plain')
 
     if request.method == 'POST':
-        body_text = request.body.decode('utf-8', errors='ignore').replace('\x00', '')
+        body_text = request.body.decode('utf-8', errors='ignore')
         inserted_count = 0
-        if table == 'ATTLOG' and body_text:
-            lines = [l.strip() for l in body_text.split('\n') if l.strip()]
-            for line in lines:
-                # Handle key-value style (e.g. PIN=101\tTime=...)
-                if '=' in line:
-                    kv = {}
-                    for item in line.replace('\t', ' ').split():
-                        if '=' in item:
-                            k, v = item.split('=', 1)
-                            kv[k.upper()] = v
-                    user_id = kv.get('PIN') or kv.get('USERID') or kv.get('USER_ID') or kv.get('ENROLLNUMBER')
-                    punch_time_str = kv.get('TIME') or kv.get('PUNCHTIME') or kv.get('DATETIME') or str(timezone.now())
-                    verify_mode = kv.get('STATUS') or kv.get('VERIFY') or ''
-                elif '\t' in line:
-                    # Tab separated: user_id \t punch_time \t verify_mode
-                    parts = [p.strip() for p in line.split('\t') if p.strip()]
-                    user_id = parts[0] if len(parts) > 0 else ''
-                    punch_time_str = parts[1] if len(parts) > 1 else str(timezone.now())
-                    verify_mode = parts[2] if len(parts) > 2 else ''
-                elif ',' in line:
-                    # Comma separated
-                    parts = [p.strip() for p in line.split(',') if p.strip()]
-                    user_id = parts[0] if len(parts) > 0 else ''
-                    punch_time_str = parts[1] if len(parts) > 1 else str(timezone.now())
-                    verify_mode = parts[2] if len(parts) > 2 else ''
-                else:
-                    # Space separated: "101 2026-08-25 13:10:00 1 1"
-                    parts = line.split()
-                    if len(parts) >= 3 and '-' in parts[1] and ':' in parts[2]:
-                        user_id = parts[0]
-                        punch_time_str = f"{parts[1]} {parts[2]}"
-                        verify_mode = parts[3] if len(parts) > 3 else ''
-                    elif len(parts) >= 1:
-                        user_id = parts[0]
-                        punch_time_str = str(timezone.now())
-                        verify_mode = ''
-                    else:
-                        continue
 
-                if user_id:
-                    payload = {
-                        'user_id': user_id,
-                        'punch_time': punch_time_str,
-                        'verify_mode': verify_mode,
-                        'device_id': sn or (device.device_id if device else '1'),
-                        'source_ip': source_ip,
-                    }
-                    process_biometric_punch(payload, protocol='adms_push', source_ip=source_ip, device=device)
-                    inserted_count += 1
+        # Try to parse as JSON Push Protocol (Secureye / ZK Cloud Push)
+        json_data = _extract_json_from_body(body_text)
+        if json_data:
+            user_id = str(json_data.get('user_id') or json_data.get('UserID') or '').strip()
+            # If user_id is present and not empty, it is an Attendance Punch!
+            if user_id:
+                io_time = str(json_data.get('io_time') or json_data.get('time') or '').strip()
+                payload = {
+                    'user_id': user_id,
+                    'punch_time': io_time or str(timezone.now()),
+                    'verify_mode': str(json_data.get('verify_mode') or ''),
+                    'device_id': sn or (device.device_id if device else '1'),
+                    'source_ip': source_ip,
+                }
+                process_biometric_punch(payload, protocol='adms_push', source_ip=source_ip, device=device)
+                inserted_count += 1
+        else:
+            # Fall back to standard ADMS text parser (table = ATTLOG)
+            body_text_clean = body_text.replace('\x00', '')
+            if table == 'ATTLOG' and body_text_clean:
+                lines = [l.strip() for l in body_text_clean.split('\n') if l.strip()]
+                for line in lines:
+                    # Handle key-value style (e.g. PIN=101\tTime=...)
+                    if '=' in line:
+                        kv = {}
+                        for item in line.replace('\t', ' ').split():
+                            if '=' in item:
+                                k, v = item.split('=', 1)
+                                kv[k.upper()] = v
+                        user_id = kv.get('PIN') or kv.get('USERID') or kv.get('USER_ID') or kv.get('ENROLLNUMBER')
+                        punch_time_str = kv.get('TIME') or kv.get('PUNCHTIME') or kv.get('DATETIME') or str(timezone.now())
+                        verify_mode = kv.get('STATUS') or kv.get('VERIFY') or ''
+                    elif '\t' in line:
+                        # Tab separated: user_id \t punch_time \t verify_mode
+                        parts = [p.strip() for p in line.split('\t') if p.strip()]
+                        user_id = parts[0] if len(parts) > 0 else ''
+                        punch_time_str = parts[1] if len(parts) > 1 else str(timezone.now())
+                        verify_mode = parts[2] if len(parts) > 2 else ''
+                    elif ',' in line:
+                        # Comma separated
+                        parts = [p.strip() for p in line.split(',') if p.strip()]
+                        user_id = parts[0] if len(parts) > 0 else ''
+                        punch_time_str = parts[1] if len(parts) > 1 else str(timezone.now())
+                        verify_mode = parts[2] if len(parts) > 2 else ''
+                    else:
+                        # Space separated: "101 2026-08-25 13:10:00 1 1"
+                        parts = line.split()
+                        if len(parts) >= 3 and '-' in parts[1] and ':' in parts[2]:
+                            user_id = parts[0]
+                            punch_time_str = f"{parts[1]} {parts[2]}"
+                            verify_mode = parts[3] if len(parts) > 3 else ''
+                        elif len(parts) >= 1:
+                            user_id = parts[0]
+                            punch_time_str = str(timezone.now())
+                            verify_mode = ''
+                        else:
+                            continue
+
+                    if user_id:
+                        payload = {
+                            'user_id': user_id,
+                            'punch_time': punch_time_str,
+                            'verify_mode': verify_mode,
+                            'device_id': sn or (device.device_id if device else '1'),
+                            'source_ip': source_ip,
+                        }
+                        process_biometric_punch(payload, protocol='adms_push', source_ip=source_ip, device=device)
+                        inserted_count += 1
 
         if device:
             device.last_punch_at = timezone.now()
