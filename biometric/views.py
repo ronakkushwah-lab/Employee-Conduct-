@@ -181,7 +181,7 @@ def iclock_cdata(request):
                 device.save(update_fields=['last_punch_at', 'updated'])
 
             import struct
-            response_json = '{"status":"success"}'
+            response_json = '{"status":"SUCCESS"}'
             response_bytes = response_json.encode('utf-8')
             # Pack length of JSON as 32-bit little-endian integer
             prefix = struct.pack('<I', len(response_bytes))
