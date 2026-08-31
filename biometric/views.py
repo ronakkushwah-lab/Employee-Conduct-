@@ -180,15 +180,7 @@ def iclock_cdata(request):
                 device.last_punch_at = timezone.now()
                 device.save(update_fields=['last_punch_at', 'updated'])
 
-            import struct
-            # Comprehensive JSON matching multiple FK firmware standards
-            response_json = '{"status":"SUCCESS","result":"OK","response_code":"OK"}'
-            response_bytes = response_json.encode('utf-8')
-            # Pack length of JSON as 32-bit little-endian integer
-            prefix = struct.pack('<I', len(response_bytes))
-            response_body = prefix + response_bytes + b'\x00'
-
-            response = HttpResponse(response_body, content_type='application/octet-stream')
+            response = HttpResponse('result=OK', content_type='text/plain')
             response['response_code'] = 'OK'
             response['result'] = 'OK'
             response['status'] = 'SUCCESS'
