@@ -372,7 +372,12 @@ def latest_events_api(request):
     API endpoint for auto-refreshing biometric events and attendance in real time.
     Returns latest event ID and event details as JSON.
     """
-    events = BiometricEventLog.objects.select_related('employee', 'manager').order_by('-id')[:20]
+    events = (
+        BiometricEventLog.objects.select_related('employee', 'manager')
+        .exclude(biometric_user_id__icontains='fk_name')
+        .exclude(biometric_user_id__icontains='{')
+        .order_by('-id')[:20]
+    )
     data = []
     latest_id = 0
     if events:
