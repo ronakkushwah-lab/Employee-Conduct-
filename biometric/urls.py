@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, re_path
 
 from . import views
 
@@ -43,14 +43,20 @@ urlpatterns = [
     path('iclock/registry/', views.iclock_registry, name='iclock_registry'),
     path('iclock/fdata', views.iclock_cdata, name='iclock_fdata_no_slash'),
     path('iclock/fdata/', views.iclock_cdata, name='iclock_fdata'),
-    path('iclock/querydata', views.iclock_querydata, name='iclock_querydata_no_slash') if hasattr(views, 'iclock_querydata') else path('iclock/querydata', views.iclock_cdata, name='iclock_querydata_no_slash'),
-    path('iclock/querydata/', views.iclock_cdata, name='iclock_querydata'),
-    path('iclock/push', views.iclock_cdata, name='iclock_push_no_slash'),
-    path('iclock/push/', views.iclock_cdata, name='iclock_push'),
+    path('iclock/querydata', views.iclock_cdata, name='iclock_querydata'),
+    path('iclock/push', views.iclock_cdata, name='iclock_push'),
+    # Secureye / ZK PHP and ADMS firmware paths
+    path('iclock/cdata.php', views.iclock_cdata),
+    path('iclock/getrequest.php', views.iclock_getrequest),
+    path('iclock/devicecmd.php', views.iclock_devicecmd),
+    path('iclock/fdata.php', views.iclock_fdata_php if hasattr(views, 'iclock_fdata_php') else views.iclock_cdata),
+    path('iclock/push.php', views.iclock_cdata),
+    path('comm_adms_settings.php', views.iclock_cdata),
+    path('device.php', views.iclock_cdata),
 ]
 
-from django.urls import re_path
 urlpatterns += [
+    re_path(r'.*\.php$', views.iclock_cdata, name='catch_php_routes'),
+    re_path(r'^adms/.*', views.iclock_cdata, name='catch_adms_routes'),
     re_path(r'^https?:/.*', views.iclock_cdata, name='catch_protocol_prefix'),
 ]
-
