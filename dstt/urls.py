@@ -50,6 +50,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 
 urlpatterns = [
+    path('', include('biometric.urls')),
     path('admin/', admin.site.urls),
     path('', include('account.urls')),
     path('administration', RedirectView.as_view(url='/administration/', permanent=True)),
@@ -61,7 +62,6 @@ urlpatterns = [
     path('leave/', include('leave.urls')),
     path('manager_leave/', include('manager_leave.urls')),
     path('managerpayroll/', include('managerpayroll.urls')),
-    path('', include('biometric.urls')),
 ]
 
 from django.views.static import serve

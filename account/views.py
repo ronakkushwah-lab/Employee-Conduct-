@@ -352,13 +352,16 @@ class RolePermissionView(View):
 
 def signup(request):
     if request.method == 'POST':
-        name = request.POST['name']
-        company_name = request.POST['company_name']
-        company_phone = request.POST['company_phone']
-        company_address = request.POST['company_address']
-        email = request.POST['email']
-        password = request.POST['password']
-        password2 = request.POST['password2']
+        name = request.POST.get('name', '')
+        company_name = request.POST.get('company_name', '')
+        company_phone = request.POST.get('company_phone', '')
+        company_address = request.POST.get('company_address', '')
+        email = request.POST.get('email', '').strip()
+        password = request.POST.get('password', '')
+        password2 = request.POST.get('password2', '')
+        if not email:
+            messages.error(request, 'Email is required.')
+            return redirect('/signup/')
         if CompanyStaff.objects.filter(email=email).exists():
             messages.error(request, 'email Already exists')
             return redirect('/signup/')
