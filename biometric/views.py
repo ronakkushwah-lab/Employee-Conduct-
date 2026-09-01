@@ -244,7 +244,12 @@ def iclock_cdata(request):
             device.last_punch_at = timezone.now()
             device.save(update_fields=['last_punch_at', 'updated'])
 
-        return HttpResponse("OK\n" if inserted_count == 0 else f"OK: {inserted_count}\n", content_type='text/plain')
+        response = HttpResponse("OK\n" if inserted_count == 0 else f"OK: {inserted_count}\n", content_type='text/plain')
+        response['response_code'] = 'OK'
+        response['result'] = 'OK'
+        response['status'] = 'SUCCESS'
+        response['Connection'] = 'close'
+        return response
 
 
 @csrf_exempt
