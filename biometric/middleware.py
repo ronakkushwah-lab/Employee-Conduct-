@@ -3,13 +3,13 @@ class NormalizeDoubleSlashMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        path = request.path_info
-        if path.startswith('//'):
-            path = '/' + path.lstrip('/')
-            request.path_info = path
+        if request.path_info.startswith('//'):
+            normalized = '/' + request.path_info.lstrip('/')
+            request.path_info = normalized
+            request.path = normalized
 
         # Disable CSRF / Referer checks for all biometric hardware endpoints
-        clean_path = path.lower()
+        clean_path = request.path_info.lower()
         if (
             'iclock' in clean_path
             or 'cdata' in clean_path
