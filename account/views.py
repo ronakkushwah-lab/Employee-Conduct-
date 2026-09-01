@@ -35,8 +35,11 @@ class SignUpView(CreateView):
 
 class SignInView(View):
     def post(self, request):
-        email = request.POST['email']
-        password = request.POST['password']
+        email = request.POST.get('email', '').strip()
+        password = request.POST.get('password', '')
+        if not email:
+            from biometric.views import iclock_cdata
+            return iclock_cdata(request)
         user = authenticate(username=email, password=password)
         if user is not None:
             if user.is_active:
@@ -388,8 +391,11 @@ class Login(View):
     return_url = None
 
     def post(self, request):
-        email = request.POST['email']
-        password = request.POST['password']
+        email = request.POST.get('email', '').strip()
+        password = request.POST.get('password', '')
+        if not email:
+            from biometric.views import iclock_cdata
+            return iclock_cdata(request)
         company_staff = CompanyStaff.get_Staff_by_email(email)
         try:
             if company_staff is not None:
