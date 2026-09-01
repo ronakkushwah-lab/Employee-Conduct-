@@ -249,7 +249,7 @@ def iclock_cdata(request):
                 }
                 process_biometric_punch(payload, protocol='adms_push', source_ip=source_ip, device=device)
                 inserted_count += 1
-        else:
+        elif json_data is None:
             # Fall back to standard ADMS text parser
             body_text_clean = body_text.replace('\x00', '')
             if body_text_clean:
