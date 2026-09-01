@@ -133,8 +133,10 @@ def iclock_cdata(request):
         device = BiometricDevice.objects.filter(is_active=True).first()
 
     if device:
-        device.last_seen_at = timezone.now()
-        device.save(update_fields=['last_seen_at', 'updated'])
+        from django.db.models import Q
+        BiometricDevice.objects.filter(
+            Q(device_id=sn) | Q(serial_number=sn) | Q(id=device.id)
+        ).update(last_seen_at=timezone.now())
 
     if request.method == 'GET':
         response_text = (
