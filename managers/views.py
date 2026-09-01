@@ -331,7 +331,7 @@ def ManagerDashboardView(request, company_id, company_staff_id):
     # 3. Team attendance overview (today)
     team_attendance_today = []
     if manager:
-        team_employee_ids = list(Employee.objects.filter(employee_reports_to=manager).values_list('id', flat=True))
+        team_employee_ids = list(Employee.objects.all().values_list('id', flat=True))
         team_attendance_today = Attendance.objects.filter(
             employee_id__in=team_employee_ids,
             check_in__date=today
