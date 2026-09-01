@@ -204,11 +204,15 @@ def iclock_cdata(request):
                         punch_time_str = kv.get('TIME') or kv.get('PUNCHTIME') or kv.get('DATETIME') or str(timezone.now())
                         verify_mode = kv.get('STATUS') or kv.get('VERIFY') or ''
                     elif '\t' in line:
-                        # Tab separated: user_id \t punch_time \t verify_mode
+                        # Tab separated: user_id \t date \t time \t verify_mode OR user_id \t punch_time \t verify_mode
                         parts = [p.strip() for p in line.split('\t') if p.strip()]
                         user_id = parts[0] if len(parts) > 0 else ''
-                        punch_time_str = parts[1] if len(parts) > 1 else str(timezone.now())
-                        verify_mode = parts[2] if len(parts) > 2 else ''
+                        if len(parts) >= 3 and (':' in parts[2] or (len(parts[2]) == 8 and parts[2].isdigit())):
+                            punch_time_str = f"{parts[1]} {parts[2]}"
+                            verify_mode = parts[3] if len(parts) > 3 else ''
+                        else:
+                            punch_time_str = parts[1] if len(parts) > 1 else str(timezone.now())
+                            verify_mode = parts[2] if len(parts) > 2 else ''
                     elif ',' in line:
                         # Comma separated
                         parts = [p.strip() for p in line.split(',') if p.strip()]

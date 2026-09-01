@@ -47,6 +47,9 @@ def parse_punch_time(value):
                     continue
         if parsed is None:
             parsed = timezone.now()
+        elif ':' not in val_str and parsed.hour == 0 and parsed.minute == 0:
+            now_time = timezone.localtime(timezone.now()).time()
+            parsed = datetime.combine(parsed.date(), now_time)
     if timezone.is_naive(parsed):
         parsed = timezone.make_aware(parsed, timezone.get_current_timezone())
     return parsed
