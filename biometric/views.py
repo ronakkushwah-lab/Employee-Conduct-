@@ -189,9 +189,9 @@ def iclock_cdata(request):
             response['Connection'] = 'close'
             return response
         else:
-            # Fall back to standard ADMS text parser (table = ATTLOG)
+            # Fall back to standard ADMS text parser
             body_text_clean = body_text.replace('\x00', '')
-            if table == 'ATTLOG' and body_text_clean:
+            if body_text_clean:
                 lines = [l.strip() for l in body_text_clean.split('\n') if l.strip()]
                 for line in lines:
                     # Handle key-value style (e.g. PIN=101\tTime=...)
