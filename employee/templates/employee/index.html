@@ -293,7 +293,28 @@
                         {"data": "working_hours", 'orderable': false},
                     ],
                 });
+        // Live Biometric Webhook Auto-Refresh
+        (function() {
+            let lastKnownEventId = null;
+            function checkLiveBiometricPunch() {
+                if (typeof $ === 'undefined') return;
+                $.ajax({
+                    url: '/api/latest-events/',
+                    type: 'GET',
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response && response.status === 'success') {
+                            if (lastKnownEventId !== null && response.latest_id !== lastKnownEventId) {
+                                window.location.reload();
+                            } else if (lastKnownEventId === null) {
+                                lastKnownEventId = response.latest_id;
+                            }
+                        }
+                    }
+                });
             }
+            setInterval(checkLiveBiometricPunch, 3000);
+        })();
         });
 
     </script>

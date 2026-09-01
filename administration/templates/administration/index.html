@@ -190,6 +190,29 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.3/dist/Chart.min.js"></script>
     <script src="{% static '/asets/js/Chart.extension.js' %}"></script>
     <script src="{% static '/asets/js/script.js' %}"></script>
+    <script>
+      (function() {
+        let lastKnownEventId = null;
+        function checkLiveBiometricPunch() {
+          if (typeof $ === 'undefined') return;
+          $.ajax({
+            url: '/api/latest-events/',
+            type: 'GET',
+            dataType: 'json',
+            success: function(response) {
+              if (response && response.status === 'success') {
+                if (lastKnownEventId !== null && response.latest_id !== lastKnownEventId) {
+                  window.location.reload();
+                } else if (lastKnownEventId === null) {
+                  lastKnownEventId = response.latest_id;
+                }
+              }
+            }
+          });
+        }
+        setInterval(checkLiveBiometricPunch, 3000);
+      })();
+    </script>
     
   </body>
 </html>
