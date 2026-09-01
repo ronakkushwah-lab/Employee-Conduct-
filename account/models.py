@@ -139,6 +139,12 @@ class CompanyStaff(models.Model):
                 self.role = self.ROLE_MANAGER
             elif self.is_employee:
                 self.role = self.ROLE_EMPLOYEE
+
+        # Hash plain-text password if created/edited from Django Admin
+        if self.password and not (self.password.startswith('pbkdf2_sha256$') or self.password.startswith('argon2') or self.password.startswith('bcrypt$')):
+            from django.contrib.auth.hashers import make_password
+            self.password = make_password(self.password)
+
         super().save(*args, **kwargs)
 
 
