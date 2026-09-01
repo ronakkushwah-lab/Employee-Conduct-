@@ -42,6 +42,10 @@ CSRF_TRUSTED_ORIGINS = [
     'https://*.ngrok.io',
 ]
 
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+USE_X_FORWARDED_HOST = True
+USE_X_FORWARDED_PORT = True
+
 # For development: Allow all origins (use only in development, not production)
 # Uncomment the line below if you want to allow all origins (less secure)
 # CSRF_TRUSTED_ORIGINS = ['*']
