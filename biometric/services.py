@@ -286,9 +286,18 @@ def _apply_employee_punch(employee, punch_time):
             source='biometric',
         ), 'check_in'
 
-    attendance.check_out = punch_time
-    attendance.source = 'biometric'
-    attendance.save(update_fields=['check_out', 'source', 'updated'])
+    # If existing check_in was dummy midnight (00:00:00), replace check_in with actual punch time
+    if attendance.check_in and attendance.check_in.hour == 0 and attendance.check_in.minute == 0 and attendance.check_in.second == 0:
+        attendance.check_in = punch_time
+        attendance.check_out = None
+        attendance.source = 'biometric'
+        attendance.save(update_fields=['check_in', 'check_out', 'source', 'updated'])
+        return attendance, 'check_in'
+
+    if attendance.check_in != punch_time:
+        attendance.check_out = punch_time
+        attendance.source = 'biometric'
+        attendance.save(update_fields=['check_out', 'source', 'updated'])
     return attendance, 'check_out'
 
 
@@ -307,8 +316,16 @@ def _apply_manager_punch(manager, punch_time):
             check_in=punch_time,
         ), 'check_in'
 
-    attendance.check_out = punch_time
-    attendance.save(update_fields=['check_out'])
+    # If existing check_in was dummy midnight (00:00:00), replace check_in with actual punch time
+    if attendance.check_in and attendance.check_in.hour == 0 and attendance.check_in.minute == 0 and attendance.check_in.second == 0:
+        attendance.check_in = punch_time
+        attendance.check_out = None
+        attendance.save(update_fields=['check_in', 'check_out'])
+        return attendance, 'check_in'
+
+    if attendance.check_in != punch_time:
+        attendance.check_out = punch_time
+        attendance.save(update_fields=['check_out'])
     return attendance, 'check_out'
 
 
