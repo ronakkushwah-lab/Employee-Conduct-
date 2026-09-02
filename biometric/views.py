@@ -100,14 +100,88 @@ from django.http import HttpResponse
 
 
 def _extract_json_from_body(body_text):
-    start = body_text.find('{')
-    end = body_text.rfind('}')
+    clean_text = body_text.replace('\x00', '').strip()
+    try:
+        data = json.loads(clean_text)
+        if isinstance(data, (dict, list)):
+            return data
+    except Exception:
+        pass
+
+    start = clean_text.find('{')
+    end = clean_text.rfind('}')
     if start != -1 and end != -1 and end > start:
         try:
-            return json.loads(body_text[start:end+1])
+            return json.loads(clean_text[start:end+1])
         except json.JSONDecodeError:
-            return None
+            pass
+
+    start_b = clean_text.find('[')
+    end_b = clean_text.rfind(']')
+    if start_b != -1 and end_b != -1 and end_b > start_b:
+        try:
+            return json.loads(clean_text[start_b:end_b+1])
+        except json.JSONDecodeError:
+            pass
+
     return None
+
+
+def extract_punches_from_json(json_data):
+    items = []
+    if isinstance(json_data, list):
+        items = json_data
+    elif isinstance(json_data, dict):
+        for key in ('data', 'logs', 'records', 'events', 'att_log', 'table_data', 'punches', 'list', 'rows'):
+            if isinstance(json_data.get(key), list):
+                items = json_data[key]
+                break
+        if not items:
+            items = [json_data]
+
+    punches = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        uid = (
+            item.get('user_id')
+            or item.get('UserID')
+            or item.get('UserId')
+            or item.get('PIN')
+            or item.get('pin')
+            or item.get('enroll_sn')
+            or item.get('EnrollSN')
+            or item.get('EnrollNumber')
+            or item.get('enroll_number')
+            or item.get('user')
+            or item.get('User')
+            or item.get('person_id')
+        )
+        if uid:
+            ptime = (
+                item.get('io_time')
+                or item.get('time')
+                or item.get('Time')
+                or item.get('punch_time')
+                or item.get('PunchTime')
+                or item.get('datetime')
+                or item.get('DATETIME')
+                or item.get('io_date')
+            )
+            vmode = (
+                item.get('verify_mode')
+                or item.get('VerifyMode')
+                or item.get('verify')
+                or item.get('status')
+                or item.get('io_mode')
+                or ''
+            )
+            punches.append({
+                'user_id': str(uid).strip(),
+                'punch_time': str(ptime).strip() if ptime else None,
+                'verify_mode': str(vmode).strip(),
+            })
+    return punches
 
 
 @csrf_exempt
@@ -133,8 +207,10 @@ def iclock_cdata(request):
         device = BiometricDevice.objects.filter(is_active=True).first()
 
     if device:
-        device.last_seen_at = timezone.now()
-        device.save(update_fields=['last_seen_at', 'updated'])
+        from django.db.models import Q
+        BiometricDevice.objects.filter(
+            Q(device_id=sn) | Q(serial_number=sn) | Q(id=device.id)
+        ).update(last_seen_at=timezone.now())
 
     if request.method == 'GET':
         response_text = (
@@ -142,9 +218,8 @@ def iclock_cdata(request):
             f"Stamp=9999\n"
             f"OpStamp=9999\n"
             f"PhotoStamp=0\n"
-            f"ErrorDelay=30\n"
-            f"Delay=5\n"
-            f"TransTimes=00:00;14:05\n"
+            f"ErrorDelay=5\n"
+            f"Delay=2\n"
             f"TransInterval=1\n"
             f"TransFlag=1111000000\n"
             f"TimeZone=5.5\n"
@@ -161,35 +236,23 @@ def iclock_cdata(request):
 
         # Try to parse as JSON Push Protocol (Secureye / ZK Cloud Push)
         json_data = _extract_json_from_body(body_text)
-        if json_data:
-            user_id = str(json_data.get('user_id') or json_data.get('UserID') or '').strip()
-            # If user_id is present and not empty, it is an Attendance Punch!
-            if user_id:
-                io_time = str(json_data.get('io_time') or json_data.get('time') or '').strip()
+        json_punches = extract_punches_from_json(json_data) if json_data else []
+
+        if json_punches:
+            for item in json_punches:
                 payload = {
-                    'user_id': user_id,
-                    'punch_time': io_time or str(timezone.now()),
-                    'verify_mode': str(json_data.get('verify_mode') or ''),
+                    'user_id': item['user_id'],
+                    'punch_time': item['punch_time'] or str(timezone.now()),
+                    'verify_mode': item['verify_mode'],
                     'device_id': sn or (device.device_id if device else '1'),
                     'source_ip': source_ip,
                 }
                 process_biometric_punch(payload, protocol='adms_push', source_ip=source_ip, device=device)
                 inserted_count += 1
-
-            if device:
-                device.last_punch_at = timezone.now()
-                device.save(update_fields=['last_punch_at', 'updated'])
-
-            response = HttpResponse('result=OK', content_type='text/plain')
-            response['response_code'] = 'OK'
-            response['result'] = 'OK'
-            response['status'] = 'SUCCESS'
-            response['Connection'] = 'close'
-            return response
-        else:
-            # Fall back to standard ADMS text parser (table = ATTLOG)
+        elif json_data is None:
+            # Fall back to standard ADMS text parser
             body_text_clean = body_text.replace('\x00', '')
-            if table == 'ATTLOG' and body_text_clean:
+            if body_text_clean:
                 lines = [l.strip() for l in body_text_clean.split('\n') if l.strip()]
                 for line in lines:
                     # Handle key-value style (e.g. PIN=101\tTime=...)
@@ -203,11 +266,15 @@ def iclock_cdata(request):
                         punch_time_str = kv.get('TIME') or kv.get('PUNCHTIME') or kv.get('DATETIME') or str(timezone.now())
                         verify_mode = kv.get('STATUS') or kv.get('VERIFY') or ''
                     elif '\t' in line:
-                        # Tab separated: user_id \t punch_time \t verify_mode
+                        # Tab separated: user_id \t date \t time \t verify_mode OR user_id \t punch_time \t verify_mode
                         parts = [p.strip() for p in line.split('\t') if p.strip()]
                         user_id = parts[0] if len(parts) > 0 else ''
-                        punch_time_str = parts[1] if len(parts) > 1 else str(timezone.now())
-                        verify_mode = parts[2] if len(parts) > 2 else ''
+                        if len(parts) >= 3 and (':' in parts[2] or (len(parts[2]) == 8 and parts[2].isdigit())):
+                            punch_time_str = f"{parts[1]} {parts[2]}"
+                            verify_mode = parts[3] if len(parts) > 3 else ''
+                        else:
+                            punch_time_str = parts[1] if len(parts) > 1 else str(timezone.now())
+                            verify_mode = parts[2] if len(parts) > 2 else ''
                     elif ',' in line:
                         # Comma separated
                         parts = [p.strip() for p in line.split(',') if p.strip()]
@@ -243,7 +310,12 @@ def iclock_cdata(request):
             device.last_punch_at = timezone.now()
             device.save(update_fields=['last_punch_at', 'updated'])
 
-        return HttpResponse("OK\n" if inserted_count == 0 else f"OK: {inserted_count}\n", content_type='text/plain')
+        response = HttpResponse("OK\n" if inserted_count == 0 else f"OK: {inserted_count}\n", content_type='text/plain')
+        response['response_code'] = 'OK'
+        response['result'] = 'OK'
+        response['status'] = 'SUCCESS'
+        response['Connection'] = 'close'
+        return response
 
 
 @csrf_exempt
@@ -300,7 +372,12 @@ def latest_events_api(request):
     API endpoint for auto-refreshing biometric events and attendance in real time.
     Returns latest event ID and event details as JSON.
     """
-    events = BiometricEventLog.objects.select_related('employee', 'manager').order_by('-id')[:20]
+    events = (
+        BiometricEventLog.objects.select_related('employee', 'manager')
+        .exclude(biometric_user_id__icontains='fk_name')
+        .exclude(biometric_user_id__icontains='{')
+        .order_by('-id')[:20]
+    )
     data = []
     latest_id = 0
     if events:

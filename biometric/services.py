@@ -47,6 +47,9 @@ def parse_punch_time(value):
                     continue
         if parsed is None:
             parsed = timezone.now()
+        elif ':' not in val_str and parsed.hour == 0 and parsed.minute == 0:
+            now_time = timezone.localtime(timezone.now()).time()
+            parsed = datetime.combine(parsed.date(), now_time)
     if timezone.is_naive(parsed):
         parsed = timezone.make_aware(parsed, timezone.get_current_timezone())
     return parsed
@@ -283,9 +286,18 @@ def _apply_employee_punch(employee, punch_time):
             source='biometric',
         ), 'check_in'
 
-    attendance.check_out = punch_time
-    attendance.source = 'biometric'
-    attendance.save(update_fields=['check_out', 'source', 'updated'])
+    # If existing check_in was dummy midnight (00:00:00), replace check_in with actual punch time
+    if attendance.check_in and attendance.check_in.hour == 0 and attendance.check_in.minute == 0 and attendance.check_in.second == 0:
+        attendance.check_in = punch_time
+        attendance.check_out = None
+        attendance.source = 'biometric'
+        attendance.save(update_fields=['check_in', 'check_out', 'source', 'updated'])
+        return attendance, 'check_in'
+
+    if attendance.check_in != punch_time:
+        attendance.check_out = punch_time
+        attendance.source = 'biometric'
+        attendance.save(update_fields=['check_out', 'source', 'updated'])
     return attendance, 'check_out'
 
 
@@ -304,8 +316,16 @@ def _apply_manager_punch(manager, punch_time):
             check_in=punch_time,
         ), 'check_in'
 
-    attendance.check_out = punch_time
-    attendance.save(update_fields=['check_out'])
+    # If existing check_in was dummy midnight (00:00:00), replace check_in with actual punch time
+    if attendance.check_in and attendance.check_in.hour == 0 and attendance.check_in.minute == 0 and attendance.check_in.second == 0:
+        attendance.check_in = punch_time
+        attendance.check_out = None
+        attendance.save(update_fields=['check_in', 'check_out'])
+        return attendance, 'check_in'
+
+    if attendance.check_in != punch_time:
+        attendance.check_out = punch_time
+        attendance.save(update_fields=['check_out'])
     return attendance, 'check_out'
 
 
@@ -398,11 +418,11 @@ def process_biometric_punch(payload, protocol='manual', source_ip=None, device=N
             'message': event.message,
         }
 
-    # Process only punches from today (ignore past historical dates)
-    today = timezone.now().date()
-    if punch_time.date() < today:
+    # Process punches within reasonable date window (up to 30 days old)
+    max_past_days = timezone.now().date() - timedelta(days=30)
+    if punch_time.date() < max_past_days:
         event.status = BiometricEventLog.STATUS_IGNORED
-        event.message = f'Historical punch from {punch_time.date()} ignored; only today\'s punches create attendance.'
+        event.message = f'Historical punch from {punch_time.date()} ignored (older than 30 days).'
         event.save(update_fields=['status', 'message'])
         return {
             'status': event.status,
