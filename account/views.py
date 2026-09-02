@@ -602,3 +602,33 @@ def hr_dashboard(request, company_id, company_staff_id):
     return render(request, 'account/hr_dashboard.html', context)
 
 
+def hr_biometric_monitor(request, company_id, company_staff_id):
+    company = get_object_or_404(Company, id=company_id)
+    staff = get_object_or_404(CompanyStaff, id=company_staff_id, company=company)
+
+    from biometric.models import BiometricDevice, BiometricEventLog
+    from django.db.models import Q
+
+    devices = BiometricDevice.objects.filter(company=company).order_by('name', 'id')
+    recent_events = (
+        BiometricEventLog.objects.filter(
+            Q(company=company) | Q(device__company=company) | Q(company__isnull=True)
+        )
+        .exclude(biometric_user_id__icontains='fk_name')
+        .exclude(biometric_user_id__icontains='{')
+        .select_related('device', 'employee', 'manager')
+        .order_by('-received_at', '-id')[:50]
+    )
+
+    context = {
+        'company': company,
+        'staff': staff,
+        'company_id': company_id,
+        'company_staff_id': company_staff_id,
+        'devices': devices,
+        'recent_events': recent_events,
+    }
+    return render(request, 'account/hr_biometric_monitor.html', context)
+
+
+
