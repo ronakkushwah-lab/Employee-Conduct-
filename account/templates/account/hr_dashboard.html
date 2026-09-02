@@ -146,67 +146,56 @@
             </div>
           </div>
 
-          <!-- Live Biometric Punches Table (Standard Rocker Table UI) -->
-          <div class="card radius-10 mt-3">
-            <div class="card-body">
-              <div class="d-flex align-items-center mb-3">
-                <div>
-                  <h6 class="mb-0"><i class='bx bx-time text-primary me-2'></i> Recent Biometric Attendance Events</h6>
-                  <small class="text-muted">Real-time attendance logs synced from biometric terminals</small>
-                </div>
+          <!-- Recent Biometric Events (Live Auto-Refresh Table) -->
+          <div class="card radius-10 mt-3 shadow-sm border-0">
+            <div class="card-body p-4">
+              <div class="d-flex align-items-center mb-4">
+                <h5 class="mb-0 fw-bold me-3 text-dark">Recent Biometric Events</h5>
+                <span class="badge" style="background-color: #0f766e; color: #ffffff; font-size: 0.8rem; font-weight: 600; padding: 6px 12px; border-radius: 6px;">
+                  <i class="bx bxs-circle me-1" style="font-size: 0.6rem; color: #6ee7b7;"></i> Live Webhook Auto-Refresh Active
+                </span>
                 <div class="ms-auto">
                   <a href="/administration/biometric-machines/{{ company_id }}/{{ company_staff_id }}" class="btn btn-sm btn-outline-secondary">View All Events</a>
                 </div>
               </div>
+
               <div class="table-responsive">
                 <table class="table align-middle mb-0 table-hover">
-                  <thead class="table-light">
-                    <tr>
-                      <th>Bio ID</th>
-                      <th>Staff Name</th>
-                      <th>Role</th>
-                      <th>Department</th>
-                      <th>Punch Timestamp</th>
-                      <th>Status</th>
+                  <thead>
+                    <tr style="border-bottom: 2px solid #edf2f7;">
+                      <th class="fw-bold py-3 text-dark">Biometric ID</th>
+                      <th class="fw-bold py-3 text-dark">Person</th>
+                      <th class="fw-bold py-3 text-dark">Protocol</th>
+                      <th class="fw-bold py-3 text-dark">Status</th>
+                      <th class="fw-bold py-3 text-dark">Punch Time</th>
                     </tr>
                   </thead>
                   <tbody>
                     {% for ev in recent_events %}
-                    <tr>
-                      <td><span class="badge bg-light-primary text-primary">#{{ ev.biometric_user_id }}</span></td>
-                      <td>
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                      <td class="py-3 text-dark fw-normal">{{ ev.biometric_user_id }}</td>
+                      <td class="py-3">
                         {% if ev.employee %}
-                          <h6 class="mb-0 font-14">{{ ev.employee.employee_first_name }} {{ ev.employee.employee_last_name }}</h6>
+                          <span class="text-dark fw-normal">{{ ev.employee.employee_first_name }} {{ ev.employee.employee_last_name }}</span>
                         {% elif ev.manager %}
-                          <h6 class="mb-0 font-14">{{ ev.manager.manager_first_name }} {{ ev.manager.manager_last_name }}</h6>
+                          <span class="text-dark fw-normal">{{ ev.manager.manager_first_name }} {{ ev.manager.manager_last_name }}</span>
                         {% else %}
-                          <h6 class="mb-0 font-14 text-muted">Unmapped User</h6>
+                          <span class="text-muted fw-normal" style="color: #94a3b8 !important;">Unmatched</span>
                         {% endif %}
                       </td>
-                      <td>
-                        {% if ev.employee %}
-                          <span class="badge bg-light-info text-info">Employee</span>
-                        {% elif ev.manager %}
-                          <span class="badge bg-light-success text-success">Manager</span>
+                      <td class="py-3 text-dark fw-normal">ADMS Push</td>
+                      <td class="py-3">
+                        {% if ev.employee or ev.manager %}
+                          <span class="text-dark fw-normal">Applied</span>
                         {% else %}
-                          <span class="badge bg-light-secondary text-secondary">Staff</span>
+                          <span class="text-muted fw-normal" style="color: #94a3b8 !important;">Unmatched</span>
                         {% endif %}
                       </td>
-                      <td>
-                        {% if ev.employee and ev.employee.employee_department %}
-                          {{ ev.employee.employee_department.department_name }}
-                        {% elif ev.manager and ev.manager.manager_department %}
-                          {{ ev.manager.manager_department.department_name }}
-                        {% else %}
-                          General
-                        {% endif %}
-                      </td>
-                      <td><span class="fw-semibold">{{ ev.received_at|date:"d M Y, h:i:s A" }}</span></td>
-                      <td><span class="badge bg-light-success text-success"><i class='bx bx-check-circle'></i> Recorded</span></td>
+                      <td class="py-3 text-dark fw-normal">{{ ev.received_at|date:"N j, Y, g:i a" }}</td>
                     </tr>
                     {% empty %}
                     <tr>
-                      <td colspan="6" class="text-center text-muted py-4">No recent biometric events. Punches will automatically appear here.</td>
+                      <td colspan="5" class="text-center text-muted py-4">No recent biometric events. Punches will automatically appear here.</td>
                     </tr>
                     {% endfor %}
                   </tbody>
