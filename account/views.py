@@ -572,11 +572,11 @@ def hr_dashboard(request, company_id, company_staff_id):
     company = get_object_or_404(Company, id=company_id)
     staff = get_object_or_404(CompanyStaff, id=company_staff_id, company=company)
 
-    total_employees = Employee.objects.filter(company=company).count()
-    total_managers = Manager.objects.filter(company=company).count()
+    from django.db.models import Q
+    total_employees = Employee.objects.filter(Q(user__company=company) | Q(user__isnull=True)).count()
+    total_managers = Manager.objects.filter(Q(user__company=company) | Q(user__isnull=True)).count()
     today_date = timezone.now().date()
     today_attendance = Attendance.objects.filter(
-        employee__company=company,
         check_in__date=today_date
     ).count()
 
