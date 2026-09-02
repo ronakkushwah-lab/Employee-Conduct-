@@ -221,7 +221,7 @@
                             </td>
                             <td class="fw-medium">{{ ev.received_at|date:"M d, Y h:i:s A" }}</td>
                             <td><span class="badge bg-light text-dark border">{{ ev.protocol|default:"adms_push" }}</span></td>
-                            <td>{{ ev.device.name|default:ev.device_sn }}</td>
+                            <td>{% if ev.device %}{{ ev.device.name }}{% else %}Terminal #1{% endif %}</td>
                             <td><code>{{ ev.source_ip|default:"Machine Push" }}</code></td>
                         </tr>
                         {% empty %}
