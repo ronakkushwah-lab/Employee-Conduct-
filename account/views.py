@@ -7,6 +7,7 @@ from django.contrib.auth.decorators import user_passes_test, login_required
 from django.utils.decorators import method_decorator
 from employee.models import Department, Designation, Employee, Attendance
 from managers.models import Manager
+from django.utils import timezone
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
