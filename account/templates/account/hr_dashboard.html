@@ -134,26 +134,26 @@
                   <tbody>
                     {% for ev in recent_events %}
                     <tr style="border-bottom: 1px solid #f1f5f9;">
-                      <td class="py-3"><span class="badge bg-light-primary text-primary">#{{ ev.biometric_user_id }}</span></td>
+                      <td class="py-3 text-dark fw-normal">{{ ev.biometric_user_id }}</td>
                       <td class="py-3">
                         {% if ev.employee %}
-                          <h6 class="mb-0 font-14 text-dark fw-semibold">{{ ev.employee.employee_first_name }} {{ ev.employee.employee_last_name }}</h6>
+                          <span class="text-dark fw-normal">{{ ev.employee.employee_first_name }} {{ ev.employee.employee_last_name }}</span>
                         {% elif ev.manager %}
-                          <h6 class="mb-0 font-14 text-dark fw-semibold">{{ ev.manager.manager_first_name }} {{ ev.manager.manager_last_name }}</h6>
+                          <span class="text-dark fw-normal">{{ ev.manager.manager_first_name }} {{ ev.manager.manager_last_name }}</span>
                         {% else %}
                           <span class="text-muted fw-normal" style="color: #94a3b8 !important;">Unmapped User</span>
                         {% endif %}
                       </td>
-                      <td class="py-3">
+                      <td class="py-3 text-dark fw-normal">
                         {% if ev.employee %}
-                          <span class="badge bg-light-info text-info">Employee</span>
+                          Employee
                         {% elif ev.manager %}
-                          <span class="badge bg-light-success text-success">Manager</span>
+                          Manager
                         {% else %}
-                          <span class="badge bg-light-secondary text-secondary">Staff</span>
+                          Staff
                         {% endif %}
                       </td>
-                      <td class="py-3 text-dark">
+                      <td class="py-3 text-dark fw-normal">
                         {% if ev.employee and ev.employee.employee_department %}
                           {{ ev.employee.employee_department.department_name }}
                         {% elif ev.manager and ev.manager.manager_department %}
@@ -162,12 +162,12 @@
                           General
                         {% endif %}
                       </td>
-                      <td class="py-3 text-dark fw-semibold">{{ ev.received_at|date:"d M Y, h:i:s A" }}</td>
-                      <td class="py-3">
+                      <td class="py-3 text-dark fw-normal">{{ ev.received_at|date:"d M Y, h:i:s A" }}</td>
+                      <td class="py-3 fw-normal">
                         {% if ev.employee or ev.manager %}
-                          <span class="badge bg-light-success text-success"><i class='bx bx-check-circle me-1'></i> Recorded</span>
+                          <span class="text-dark">Recorded</span>
                         {% else %}
-                          <span class="badge bg-light-secondary text-secondary">Unmatched</span>
+                          <span class="text-muted" style="color: #94a3b8 !important;">Unmatched</span>
                         {% endif %}
                       </td>
                     </tr>
