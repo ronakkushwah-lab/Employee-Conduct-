@@ -59,6 +59,12 @@
                           </a>
                         </li>
                         <li>
+                          <a href="{% url 'hr_dashboard' company_id=company_id company_staff_id=company_staff_id %}" class="{% if url_name == 'hr_dashboard' %}active{% endif %}">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            HR Portal
+                          </a>
+                        </li>
+                        <li>
                           <a href="{% url 'salary' company_id=company_id company_staff_id=company_staff_id %}" class="{% if url_name == 'salary' %}active{% endif %}">
                             <i class='bx bx-right-arrow-alt'></i>
                             Salary

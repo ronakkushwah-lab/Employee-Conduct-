@@ -317,6 +317,8 @@ def iclock_cdata(request):
         response['Connection'] = 'close'
         return response
 
+    return HttpResponse("OK\n", content_type='text/plain')
+
 
 @csrf_exempt
 def iclock_getrequest(request):
