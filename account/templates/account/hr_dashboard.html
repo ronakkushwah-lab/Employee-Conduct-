@@ -106,46 +106,6 @@
             </div>
           </div>
 
-          <!-- Quick HR Actions -->
-          <div class="row mt-3">
-            <div class="col-12 col-lg-6">
-              <div class="card radius-10">
-                <div class="card-body">
-                  <div class="d-flex align-items-center mb-3">
-                    <div>
-                      <h6 class="mb-0"><i class='bx bx-user-plus text-primary me-2'></i> Employee Directory</h6>
-                      <small class="text-muted">View all employees, update profiles, and manage staff members.</small>
-                    </div>
-                  </div>
-                  <a href="{% url 'all_employee' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-primary btn-sm">
-                    <i class='bx bx-list-ul'></i> Manage Employees
-                  </a>
-                  <a href="{% url 'registeremployee' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-outline-primary btn-sm ms-2">
-                    <i class='bx bx-plus'></i> Add New Employee
-                  </a>
-                </div>
-              </div>
-            </div>
-            <div class="col-12 col-lg-6">
-              <div class="card radius-10">
-                <div class="card-body">
-                  <div class="d-flex align-items-center mb-3">
-                    <div>
-                      <h6 class="mb-0"><i class='bx bx-fingerprint text-success me-2'></i> Live Biometric Monitor</h6>
-                      <small class="text-muted">Real-time terminal handshake, event audit log, and punch sync.</small>
-                    </div>
-                  </div>
-                  <a href="{% url 'hr_biometric_monitor' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-success btn-sm">
-                    <i class='bx bx-show'></i> View Biometric Devices & Logs
-                  </a>
-                  <a href="{% url 'attendancee' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-outline-success btn-sm ms-2">
-                    <i class='bx bx-calendar'></i> Attendance Sheet
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
-
           <!-- Recent Biometric Events (Live Auto-Refresh Table) -->
           <div class="card radius-10 mt-3 shadow-sm border-0">
             <div class="card-body p-4">
