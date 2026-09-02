@@ -117,10 +117,10 @@
                       <small class="text-muted">View all employees, update profiles, and manage staff members.</small>
                     </div>
                   </div>
-                  <a href="/administration/employee-list/{{ company_id }}/{{ company_staff_id }}" class="btn btn-primary btn-sm">
+                  <a href="{% url 'all_employee' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-primary btn-sm">
                     <i class='bx bx-list-ul'></i> Manage Employees
                   </a>
-                  <a href="/administration/registeremployee/{{ company_id }}/{{ company_staff_id }}" class="btn btn-outline-primary btn-sm ms-2">
+                  <a href="{% url 'registeremployee' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-outline-primary btn-sm ms-2">
                     <i class='bx bx-plus'></i> Add New Employee
                   </a>
                 </div>
@@ -135,10 +135,10 @@
                       <small class="text-muted">Real-time terminal handshake, event audit log, and punch sync.</small>
                     </div>
                   </div>
-                  <a href="/administration/biometric-machines/{{ company_id }}/{{ company_staff_id }}" class="btn btn-success btn-sm">
+                  <a href="{% url 'hr_biometric_monitor' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-success btn-sm">
                     <i class='bx bx-show'></i> View Biometric Devices & Logs
                   </a>
-                  <a href="/administration/employee-attendance-list/{{ company_id }}/{{ company_staff_id }}" class="btn btn-outline-success btn-sm ms-2">
+                  <a href="{% url 'attendancee' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-outline-success btn-sm ms-2">
                     <i class='bx bx-calendar'></i> Attendance Sheet
                   </a>
                 </div>
