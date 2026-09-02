@@ -209,6 +209,7 @@
 
         </div>
       </div>
+    </div> <!-- Close .wrapper opened in header.html -->
 
     <!-- Scripts (Standard HRMS Setup) -->
     <script src="{% static '/asets/js/bootstrap.bundle.min.js' %}"></script>
@@ -216,8 +217,21 @@
     <script src="{% static '/asets/plugins/simplebar/js/simplebar.min.js' %}"></script>
     <script src="{% static '/asets/plugins/metismenu/js/metisMenu.min.js' %}"></script>
     <script src="{% static '/asets/plugins/perfect-scrollbar/js/perfect-scrollbar.js' %}"></script>
-    <script src="{% static '/asets/js/app.js' %}"></script>
+    <script src="{% static '/asets/js/script.js' %}"></script>
     <script>
+      // Instantly dismiss preloader once DOM is ready
+      $(document).ready(function() {
+        $('#preloader').fadeOut(200);
+      });
+      window.addEventListener('load', function() {
+        var p = document.getElementById('preloader');
+        if (p) p.style.display = 'none';
+      });
+      setTimeout(function() {
+        var p = document.getElementById('preloader');
+        if (p) p.style.display = 'none';
+      }, 300);
+
       (function() {
         let lastKnownEventId = null;
         function checkLiveBiometricPunch() {
