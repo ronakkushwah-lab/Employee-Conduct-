@@ -582,6 +582,8 @@ def hr_dashboard(request, company_id, company_staff_id):
     staff = get_object_or_404(CompanyStaff, id=company_staff_id, company=company)
 
     from django.db.models import Q
+    from biometric.models import BiometricDevice, BiometricEventLog
+
     total_employees = Employee.objects.filter(Q(user__company=company) | Q(user__isnull=True)).count()
     total_managers = Manager.objects.filter(Q(user__company=company) | Q(user__isnull=True)).count()
     today_date = timezone.now().date()
@@ -589,15 +591,32 @@ def hr_dashboard(request, company_id, company_staff_id):
         check_in__date=today_date
     ).count()
 
+    devices_count = BiometricDevice.objects.filter(company=company).count()
+    recent_events = (
+        BiometricEventLog.objects.filter(
+            Q(company=company) | Q(device__company=company) | Q(company__isnull=True)
+        )
+        .exclude(biometric_user_id__icontains='fk_name')
+        .exclude(biometric_user_id__icontains='{')
+        .select_related('device', 'employee', 'manager')
+        .order_by('-received_at', '-id')[:10]
+    )
+
     context = {
         'company': company,
         'staff': staff,
         'company_id': company_id,
         'company_staff_id': company_staff_id,
+        'company_staff_authenticated': True,
+        'user_initials': 'HR',
         'total_employees': total_employees,
+        'employee_count': total_employees,
         'total_managers': total_managers,
+        'manager_count': total_managers,
         'today_attendance': today_attendance,
         'today_date': today_date,
+        'devices_count': devices_count,
+        'recent_events': recent_events,
     }
     return render(request, 'account/hr_dashboard.html', context)
 
