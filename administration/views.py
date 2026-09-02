@@ -768,7 +768,14 @@ def Update_manager_View(request, id):
 
 @custom_login_required
 def IndexView(request, company_id, company_staff_id):
-    # company_id = request.session.get('company')
+    staff = CompanyStaff.objects.filter(id=company_staff_id).first()
+    if staff and (staff.role == 'hr' or getattr(staff, 'is_hr', False)):
+        return redirect('hr_dashboard', company_id=company_id, company_staff_id=company_staff_id)
+    if staff and (staff.role == 'manager' or staff.is_manager) and not staff.is_company_admin:
+        return redirect('manager_dashboard', company_id=company_id, company_staff_id=company_staff_id)
+    if staff and (staff.role == 'employee' or staff.is_employee) and not staff.is_company_admin:
+        return redirect('employee_role_dashboard', company_id=company_id, company_staff_id=company_staff_id)
+
     if company_id:
         projects_count = Task.objects.filter(assigned_to__user__company__id=company_id).count()
         clients_count = Client.objects.filter(company_id=company_id).count()
@@ -780,8 +787,8 @@ def IndexView(request, company_id, company_staff_id):
             'employee_count': employee_count,
             'lead_count': lead_count,
             'company_id': company_id,
-            'company_staff_id': company_staff_id
-
+            'company_staff_id': company_staff_id,
+            'staff': staff,
         }
     else:
         context = {
