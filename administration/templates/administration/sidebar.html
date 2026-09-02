@@ -18,7 +18,7 @@
                     </div>
                   </div>
                   <ul class="metisMenu mm-show" id="menu">
-                    {% if staff.role == 'hr' or staff.is_hr %}
+                    {% if company_staff_is_hr or staff.role == 'hr' or staff.is_hr %}
                     <li class="{% if request.resolver_match.url_name == 'hr_dashboard' %}mm-active{% endif %}">
                       <a href="{% url 'hr_dashboard' company_id=company_id company_staff_id=company_staff_id %}">
                         <div class="parent-icon">
@@ -65,7 +65,7 @@
                             Attendance List
                           </a>
                         </li>
-                        {% if not staff.role == 'hr' and not staff.is_hr %}
+                        {% if not company_staff_is_hr and not staff.role == 'hr' and not staff.is_hr %}
                         <li>
                           <a href="{% url 'biometric_machines' company_id=company_id company_staff_id=company_staff_id %}" class="{% if url_name == 'biometric_machines' %}active{% endif %}">
                             <i class='bx bx-right-arrow-alt'></i>
@@ -131,7 +131,7 @@
 {# All Documents (Employees/Managers) links temporarily hidden as requested #}
                       </ul>
                     </li>
-                    {% if not staff.role == 'hr' and not staff.is_hr %}
+                    {% if not company_staff_is_hr and not staff.role == 'hr' and not staff.is_hr %}
                     <li class="{% if url_name == 'task-create' or url_name == 'projectlist' or url_name == 'All_entry' or url_name == 'task-detail' or url_name == 'manager-project-create' or url_name == 'managerprojectlist' %}mm-active{% endif %}">
                       <a class="has-arrow">
                         <div class="parent-icon">
@@ -305,7 +305,7 @@
                         </li>
                       </ul>
                     </li>
-                    {% if not staff.role == 'hr' and not staff.is_hr %}
+                    {% if not company_staff_is_hr and not staff.role == 'hr' and not staff.is_hr %}
                     <li class="{% if url_name == 'invoice-create' or url_name == 'invoice-list' %}mm-active{% endif %}">
                       <a href="{% url 'invoice-create' company_id=company_id company_staff_id=company_staff_id  %}" class="{% if url_name == 'invoice-create' or url_name == 'invoice-list' %}active{% endif %}">
                         <div class="parent-icon">
