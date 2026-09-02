@@ -165,9 +165,9 @@
                       <th>Bio ID</th>
                       <th>Staff Name</th>
                       <th>Role</th>
-                      <th>Timestamp</th>
-                      <th>Protocol</th>
-                      <th>Source</th>
+                      <th>Department</th>
+                      <th>Punch Timestamp</th>
+                      <th>Status</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -189,12 +189,20 @@
                         {% elif ev.manager %}
                           <span class="badge bg-light-success text-success">Manager</span>
                         {% else %}
-                          <span class="badge bg-light-secondary text-secondary">Unknown</span>
+                          <span class="badge bg-light-secondary text-secondary">Staff</span>
                         {% endif %}
                       </td>
-                      <td>{{ ev.received_at|date:"d M Y, h:i:s A" }}</td>
-                      <td><code>{{ ev.protocol|default:"adms_push" }}</code></td>
-                      <td>{{ ev.source_ip|default:"Terminal Push" }}</td>
+                      <td>
+                        {% if ev.employee and ev.employee.employee_department %}
+                          {{ ev.employee.employee_department.department_name }}
+                        {% elif ev.manager and ev.manager.manager_department %}
+                          {{ ev.manager.manager_department.department_name }}
+                        {% else %}
+                          General
+                        {% endif %}
+                      </td>
+                      <td><span class="fw-semibold">{{ ev.received_at|date:"d M Y, h:i:s A" }}</span></td>
+                      <td><span class="badge bg-light-success text-success"><i class='bx bx-check-circle'></i> Recorded</span></td>
                     </tr>
                     {% empty %}
                     <tr>
