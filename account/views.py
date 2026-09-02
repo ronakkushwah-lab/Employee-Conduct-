@@ -412,8 +412,8 @@ class Login(View):
                     actual_role = getattr(company_staff, 'role', None) or self._role_from_flags(company_staff)
                     expected_role = request.POST.get('login_role', '').lower()
                     if expected_role and expected_role != actual_role:
-                        if not (expected_role == 'admin' and actual_role == CompanyStaff.ROLE_SUPERADMIN):
-                            messages.error(request, f"Access Denied: You cannot log in from the {expected_role.capitalize()} page. Please select your correct role.")
+                        if not (expected_role == 'admin' and actual_role == CompanyStaff.ROLE_SUPERADMIN) and not (expected_role == 'hr' and (actual_role in [CompanyStaff.ROLE_ADMIN, CompanyStaff.ROLE_SUPERADMIN] or getattr(company_staff, 'is_hr', False))):
+                            messages.error(request, f"Access Denied: You cannot log in from the {expected_role.upper()} page. Please select your correct role.")
                             return HttpResponseRedirect('/')
 
                     company_staff.is_authenticated = True
@@ -422,6 +422,11 @@ class Login(View):
 
                     # Role-based redirect to dashboard
                     role = getattr(company_staff, 'role', None) or self._role_from_flags(company_staff)
+                    if expected_role == 'hr' and company_staff.company_id:
+                        return HttpResponseRedirect(reverse('hr_dashboard', kwargs={
+                            'company_id': company_staff.company_id,
+                            'company_staff_id': company_staff.pk,
+                        }))
                     if role == CompanyStaff.ROLE_SUPERADMIN:
                         return HttpResponseRedirect(reverse('superadmin_dashboard'))
                     if role == CompanyStaff.ROLE_ADMIN and company_staff.company_id:
@@ -469,6 +474,8 @@ class Login(View):
     @staticmethod
     def _role_from_flags(company_staff):
         """Fallback: derive role from legacy flags if role field is empty."""
+        if getattr(company_staff, 'is_hr', False):
+            return CompanyStaff.ROLE_HR
         if company_staff.is_company_admin:
             return CompanyStaff.ROLE_ADMIN
         if company_staff.is_manager:
