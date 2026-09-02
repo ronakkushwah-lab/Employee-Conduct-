@@ -432,6 +432,11 @@ class Login(View):
                             'company_id': company_staff.company_id,
                             'company_staff_id': company_staff.pk,
                         }))
+                    if role == CompanyStaff.ROLE_HR and company_staff.company_id:
+                        return HttpResponseRedirect(reverse('hr_dashboard', kwargs={
+                            'company_id': company_staff.company_id,
+                            'company_staff_id': company_staff.pk,
+                        }))
                     if role == CompanyStaff.ROLE_EMPLOYEE and company_staff.company_id:
                         # Go first to the simple employee landing dashboard
                         return HttpResponseRedirect(reverse('employee_role_dashboard', kwargs={
@@ -561,4 +566,30 @@ def reset_password(request):
             return JsonResponse({"status": "error", "email": user.email})
     except Exception:
         return JsonResponse({"status": "failed"})
+
+
+def hr_dashboard(request, company_id, company_staff_id):
+    company = get_object_or_404(Company, id=company_id)
+    staff = get_object_or_404(CompanyStaff, id=company_staff_id, company=company)
+
+    total_employees = Employee.objects.filter(company=company).count()
+    total_managers = Manager.objects.filter(company=company).count()
+    today_date = timezone.now().date()
+    today_attendance = Attendance.objects.filter(
+        employee__company=company,
+        check_in__date=today_date
+    ).count()
+
+    context = {
+        'company': company,
+        'staff': staff,
+        'company_id': company_id,
+        'company_staff_id': company_staff_id,
+        'total_employees': total_employees,
+        'total_managers': total_managers,
+        'today_attendance': today_attendance,
+        'today_date': today_date,
+    }
+    return render(request, 'account/hr_dashboard.html', context)
+
 
