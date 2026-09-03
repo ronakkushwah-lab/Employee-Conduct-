@@ -31,12 +31,30 @@
                 {% csrf_token %}
                     <div class="row mb-2">
                       <div class="col">
-                        <label for="user" class="form-label">User <span class="text-danger">*</span></label>
-                        <select class="form-select" aria-label="Default select example" id="user" name="manager_id" required>
-                        <option value="" selected disabled>Select Manager</option>
-                                  {% for i in assigned %}
-                          <option value="{{i.id}}">{{i.manager_email}}</option>
-                          	{% endfor %}
+                        <label for="user" class="form-label">Select Staff Member (Employee or Manager) <span class="text-danger">*</span></label>
+                        <select class="form-select" id="user" name="user_id" required>
+                          <option value="" selected disabled>-- Select Employee or Manager --</option>
+                          {% if assigned_employees %}
+                          <optgroup label="👥 Employees">
+                            {% for emp in assigned_employees %}
+                              <option value="emp_{{ emp.id }}">Employee: {{ emp.employee_first_name }} {{ emp.employee_last_name }} ({{ emp.employee_email }})</option>
+                            {% endfor %}
+                          </optgroup>
+                          {% endif %}
+                          {% if assigned_managers %}
+                          <optgroup label="👨‍💼 Managers">
+                            {% for mgr in assigned_managers %}
+                              <option value="mgr_{{ mgr.id }}">Manager: {{ mgr.manager_first_name }} {{ mgr.manager_last_name }} ({{ mgr.manager_email }})</option>
+                            {% endfor %}
+                          </optgroup>
+                          {% endif %}
+                          {% if assigned %}
+                          <optgroup label="👨‍💼 Managers">
+                            {% for i in assigned %}
+                              <option value="mgr_{{ i.id }}">Manager: {{ i.manager_first_name }} {{ i.manager_last_name }} ({{ i.manager_email }})</option>
+                            {% endfor %}
+                          </optgroup>
+                          {% endif %}
                         </select>
                       </div>                      
                     </div>

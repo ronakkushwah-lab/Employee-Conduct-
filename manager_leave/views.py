@@ -12,32 +12,47 @@ from django.views.generic import DetailView, ListView
 from django.db.models import Q
 
 
+from employee.models import Employee
+from leave.models import BalanceLeaves
+from django.contrib import messages
+
+
 def BalanceCreateView(request,company_id, company_staff_id):
     if company_id:
         if request.method == "POST":
             balancedays = request.POST.get("balancedays")
-            assign_id = request.POST.get("manager_id")
+            user_id = request.POST.get("user_id") or request.POST.get("manager_id") or request.POST.get("employee_id")
             
-            # Validate that a manager is selected
-            if not assign_id or assign_id == "":
-                from django.contrib import messages
-                messages.error(request, 'Please select a manager.')
-                return render(request,"manager_leave/add-leaves-balance.html",{
-                    'assigned':Manager.objects.filter(user__company__id=company_id),
-                    'company_id':company_id, 
-                    'company_staff_id':company_staff_id
+            # Validate that a staff member is selected
+            if not user_id or user_id == "":
+                messages.error(request, 'Please select an employee or manager.')
+                return render(request, "manager_leave/add-leaves-balance.html", {
+                    'assigned_managers': Manager.objects.filter(user__company__id=company_id),
+                    'assigned_employees': Employee.objects.filter(user__company__id=company_id),
+                    'company_id': company_id, 
+                    'company_staff_id': company_staff_id
                 })
             
-            assigned_to = Manager.objects.get(id=assign_id)
-            # company_staff = CompanyStaff.objects.get(id=company_staff_id)
-            # user = company_staff
-            # emp = Employee.objects.get(user = user)
+            if str(user_id).startswith('emp_'):
+                clean_id = str(user_id).replace('emp_', '')
+                emp = Employee.objects.get(id=clean_id)
+                BalanceLeaves.objects.create(balancedays=int(balancedays), user=emp)
+                messages.success(request, f'Leave balance of {balancedays} day(s) assigned to Employee {emp.employee_first_name} {emp.employee_last_name}!')
+            else:
+                clean_id = str(user_id).replace('mgr_', '')
+                mgr = Manager.objects.get(id=clean_id)
+                BalanceLeave.objects.create(balancedays=int(balancedays), user=mgr)
+                messages.success(request, f'Leave balance of {balancedays} day(s) assigned to Manager {mgr.manager_first_name} {mgr.manager_last_name}!')
 
-            BalanceLeave.objects.create(balancedays=balancedays, user=assigned_to)
             return redirect(f'/administration/balancelist/{company_id}/{company_staff_id}')
 
         else:
-            return render(request,"manager_leave/add-leaves-balance.html",{'assigned':Manager.objects.filter(user__company__id=company_id),'company_id':company_id, 'company_staff_id':company_staff_id})
+            return render(request, "manager_leave/add-leaves-balance.html", {
+                'assigned_managers': Manager.objects.filter(user__company__id=company_id),
+                'assigned_employees': Employee.objects.filter(user__company__id=company_id),
+                'company_id': company_id, 
+                'company_staff_id': company_staff_id
+            })
 
 
 class BalanceDetailView(DetailView, LoginRequiredMixin):
