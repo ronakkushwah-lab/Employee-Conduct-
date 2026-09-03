@@ -20,7 +20,7 @@ from employee.models import Employee
 from manageregularization.models import MRegularization
 from account.utils import custom_login_required
 from .forms import AttendanceForm, EmployeeForm
-from leave.models import Leave
+from leave.models import Leave, BalanceLeaves
 from managers.models import Manager, ManagerAttendance, ManagerPost
 from regularization.models import Regularization
 from resign.models import Resign
