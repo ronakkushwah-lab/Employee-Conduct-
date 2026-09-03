@@ -244,9 +244,15 @@
                           </a>
                         </li>
                         <li>
-                          <a href="{% url 'mbalance-leave' company_id=company_id company_staff_id=company_staff_id %}" class="{% if url_name == 'mbalance-leave' or url_name == 'add_leaves_balance' %}active{% endif %}">
+                          <a href="{% url 'add_leaves_balance' company_id=company_id company_staff_id=company_staff_id %}" class="{% if url_name == 'add_leaves_balance' %}active{% endif %}">
                             <i class='bx bx-right-arrow-alt'></i>
-                            Add Leaves Balance
+                            Add Employee Leave Balance
+                          </a>
+                        </li>
+                        <li>
+                          <a href="{% url 'mbalance-leave' company_id=company_id company_staff_id=company_staff_id %}" class="{% if url_name == 'mbalance-leave' %}active{% endif %}">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Add Manager Leave Balance
                           </a>
                         </li>
                         <li>

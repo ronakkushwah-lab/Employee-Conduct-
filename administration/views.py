@@ -1494,16 +1494,17 @@ def unreject_leave(request, id):
 
 
 def add_leaves_balance(request, company_id, company_staff_id):
-    """View for Add Leaves Balance page - handles both leave application and balance management"""
+    """View for Add Employee Leave Balance page"""
     # Handle leave balance assignment form submission
     if request.method == "POST" and 'balancedays' in request.POST:
         balancedays = request.POST.get("balancedays")
-        employee_id = request.POST.get("employee_id")
+        employee_id = request.POST.get("employee_id") or request.POST.get("user")
         try:
             if employee_id:
                 employee = Employee.objects.get(id=employee_id)
                 BalanceLeaves.objects.create(user=employee, balancedays=int(balancedays))
-                messages.success(request, f'Leave balance of {balancedays} day(s) assigned to {employee.employee_first_name} {employee.employee_last_name}!')
+                messages.success(request, f'Leave balance of {balancedays} day(s) assigned to Employee {employee.employee_first_name} {employee.employee_last_name}!')
+                return redirect(f'/administration/balancelist/{company_id}/{company_staff_id}')
             else:
                 messages.error(request, 'Please select an employee.')
         except Exception as e:
