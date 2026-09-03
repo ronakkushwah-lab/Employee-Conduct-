@@ -130,6 +130,14 @@ class Employee(models.Model):
     employee_experience_company_period_from = models.CharField(max_length=50, null=True)
     employee_experience_company_period_to = models.CharField(max_length=50, null=True)
 
+    @property
+    def avatar_url(self):
+        if self.employee_image:
+            return self.employee_image.url
+        if self.employee_gender and str(self.employee_gender).strip().lower() == 'female':
+            return '/static/asets/images/dummy-woman.png'
+        return '/static/asets/images/dummy-man.png'
+
     def __str__(self):
         return self.employee_email
 

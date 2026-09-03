@@ -34,14 +34,13 @@ def get_manager_display_name(company_staff_id):
 
 @register.simple_tag
 def get_manager_profile_image_url(company_staff_id):
-    """Return the manager's profile image URL for topbar; empty string if no image."""
+    """Return the manager's profile image URL or gender-based avatar for topbar."""
     if not company_staff_id:
-        return ""
+        return "/static/asets/images/dummy-man.png"
     try:
         staff = CompanyStaff.objects.get(id=company_staff_id)
         manager = staff.manager
-        if manager.manager_image:
-            return manager.manager_image.url
+        return manager.avatar_url
     except (CompanyStaff.DoesNotExist, Manager.DoesNotExist, AttributeError):
         pass
-    return ""
+    return "/static/asets/images/dummy-man.png"

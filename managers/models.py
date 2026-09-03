@@ -128,7 +128,13 @@ class Manager(models.Model):
             return f"EIC-{self.pk:03d}"
         if mid.upper().startswith("EIC-"):
             return mid
-        return f"EIC-{mid}"
+    @property
+    def avatar_url(self):
+        if self.manager_image:
+            return self.manager_image.url
+        if self.manager_gender and str(self.manager_gender).strip().lower() == 'female':
+            return '/static/asets/images/dummy-woman.png'
+        return '/static/asets/images/dummy-man.png'
 
     @property
     def get_full_name(self):
