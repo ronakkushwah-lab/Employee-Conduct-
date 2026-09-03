@@ -329,6 +329,19 @@ class Attendance(models.Model):
 
 
     @property
+    def formatted_working_hours(self):
+        if self.check_in and self.check_out:
+            total_seconds = int((self.check_out - self.check_in).total_seconds())
+            if total_seconds > 0:
+                hours = total_seconds // 3600
+                minutes = (total_seconds % 3600) // 60
+                return f"{hours}h {minutes}m"
+            return "0m"
+        elif self.check_in and not self.check_out:
+            return "In Progress"
+        return "-"
+
+    @property
     def working_hour(self):
         working_hour = None
         if self.check_in and self.check_out:
