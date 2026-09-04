@@ -55,11 +55,12 @@
                           <div class="row mb-2">
                             <div class="col">
                                <label for="assigned-to" class="form-label">Assigned to <span class="text-danger">*</span></label>
-                        <select class="form-select" aria-label="Default select example"  name="manager_id" >
-                          <option selected>Select Manager</option>
-                                  {% for i in rassigne %}
-                          <option value="{{i.id}}">{{i.manager_email}}</option>
-                          	{% endfor %}
+                        <select class="form-select" aria-label="Default select example" name="manager_id" required>
+                          {% for i in rassigne %}
+                          <option value="{{i.id}}" selected>{{i.manager_email}}</option>
+                          {% empty %}
+                          <option value="" disabled selected>No reporting manager assigned</option>
+                          {% endfor %}
                         </select>
                             </div>
                           </div>

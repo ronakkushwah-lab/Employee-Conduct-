@@ -535,11 +535,12 @@ def regularization_required_attendance(request,company_id, company_staff_id):
         return redirect('accounts:login')
     
     employee = Employee.objects.filter(user=company_staff).first()
+    assigned_manager = [employee.employee_reports_to] if (employee and employee.employee_reports_to) else []
     if not employee:
         messages.error(request, 'Employee profile not found.')
         return render(request,'employee/regularization.html',context={
             'atts': Attendance.objects.none(), 
-            'rassigne': Manager.objects.filter(user__company__id=company_id),
+            'rassigne': [],
             'company_id':company_id, 
             'company_staff_id':company_staff_id
         })
@@ -551,7 +552,7 @@ def regularization_required_attendance(request,company_id, company_staff_id):
                 atts = atts.exclude(id=att.id)
     return render(request,'employee/regularization.html',context={
         'atts':atts, 
-        'rassigne': Manager.objects.filter(user__company__id=company_id),
+        'rassigne': assigned_manager,
         'company_id':company_id, 
         'company_staff_id':company_staff_id
     })
@@ -1226,8 +1227,9 @@ def create_entry(request, company_id, company_staff_id):
             'display_title': f"{mt.title} (Manager: {mgr_name})",
         })
 
+    assigned_manager = [emp.employee_reports_to] if (emp and emp.employee_reports_to) else []
     context = {
-        'assigned': Manager.objects.filter(user__company__id=company_id),
+        'assigned': assigned_manager,
         'assigned_projects': assigned_projects,
         'company_id': company_id,
         'company_staff_id': company_staff_id
@@ -1242,7 +1244,7 @@ def create_entry(request, company_id, company_staff_id):
                 task = request.POST.get("task")
                 blocker_name = request.POST.get("blocker_name")
                 attachment = request.FILES.get("attachment")
-                assign_id = request.POST.get("manager_id")
+                assign_id = request.POST.get("manager_id") or (str(emp.employee_reports_to.id) if emp and emp.employee_reports_to else None)
 
                 if not all([start_time, end_time, project_id, task, assign_id]):
                     messages.error(request, 'All required fields must be filled.')
@@ -1300,8 +1302,6 @@ def create_entry(request, company_id, company_staff_id):
             return render(request, 'employee/create-timesheet.html', context)
 
 def create_leave(request,company_id, company_staff_id):
-    managers = Manager.objects.filter(user__company__id=company_id)
-    
     employee = None
     balance_summary = {'total_allocated': 0, 'used_days': 0, 'approved_days': 0, 'pending_days': 0, 'remaining_balance': 0}
     try:
@@ -1312,6 +1312,7 @@ def create_leave(request,company_id, company_staff_id):
     except CompanyStaff.DoesNotExist:
         pass
 
+    managers = [employee.employee_reports_to] if (employee and employee.employee_reports_to) else []
     ctx = {
         'leavetypes': Leave.objects.all(),
         'company_id': company_id,
@@ -1327,7 +1328,7 @@ def create_leave(request,company_id, company_staff_id):
                 leavetype = request.POST.get("leavetype")
                 reason = request.POST.get("reason")
                 description = request.POST.get("description", "")
-                manager_id = request.POST.get("manager_id")
+                manager_id = request.POST.get("manager_id") or (str(employee.employee_reports_to.id) if employee and employee.employee_reports_to else None)
                 
                 if not all([startdate, enddate, leavetype, reason, manager_id]):
                     messages.error(request, 'All required fields must be filled.')
@@ -1402,16 +1403,25 @@ def create_leave(request,company_id, company_staff_id):
 
 def create_resign(request,company_id, company_staff_id):
     if company_id:
+        try:
+            company_staff = CompanyStaff.objects.get(id=company_staff_id)
+        except CompanyStaff.DoesNotExist:
+            messages.error(request, 'Company staff not found.')
+            return redirect('accounts:login')
+
+        emp = Employee.objects.filter(user=company_staff).first()
+        assigned_manager = [emp.employee_reports_to] if (emp and emp.employee_reports_to) else []
+
         if request.method == "POST":
             try:
                 startdate = request.POST.get("startdate")
                 reason = request.POST.get("reason")
-                assign = request.POST.get("manager_id")
+                assign = request.POST.get("manager_id") or (str(emp.employee_reports_to.id) if emp and emp.employee_reports_to else None)
 
                 if not all([startdate, reason, assign]):
                     messages.error(request, 'All required fields must be filled.')
                     return render(request,"employee/apply-resignation.html",{
-                        'rassigned':Manager.objects.filter(user__company__id=company_id),
+                        'rassigned': assigned_manager,
                         'company_id':company_id, 
                         'company_staff_id':company_staff_id
                     })
@@ -1421,22 +1431,15 @@ def create_resign(request,company_id, company_staff_id):
                 except Manager.DoesNotExist:
                     messages.error(request, 'Selected manager not found.')
                     return render(request,"employee/apply-resignation.html",{
-                        'rassigned':Manager.objects.filter(user__company__id=company_id),
+                        'rassigned': assigned_manager,
                         'company_id':company_id, 
                         'company_staff_id':company_staff_id
                     })
                 
-                try:
-                    company_staff = CompanyStaff.objects.get(id=company_staff_id)
-                except CompanyStaff.DoesNotExist:
-                    messages.error(request, 'Company staff not found.')
-                    return redirect('accounts:login')
-                
-                emp = Employee.objects.filter(user=company_staff).first()
                 if not emp:
                     messages.error(request, 'Employee profile not found.')
                     return render(request,"employee/apply-resignation.html",{
-                        'rassigned':Manager.objects.filter(user__company__id=company_id),
+                        'rassigned': assigned_manager,
                         'company_id':company_id, 
                         'company_staff_id':company_staff_id
                     })
@@ -1462,14 +1465,14 @@ def create_resign(request,company_id, company_staff_id):
             except Exception as e:
                 messages.error(request, f'Error creating resignation request: {str(e)}')
                 return render(request,"employee/apply-resignation.html",{
-                    'rassigned':Manager.objects.filter(user__company__id=company_id),
+                    'rassigned': assigned_manager,
                     'company_id':company_id, 
                     'company_staff_id':company_staff_id
                 })
 
         else:
             return render(request,"employee/apply-resignation.html",{
-                'rassigned':Manager.objects.filter(user__company__id=company_id),
+                'rassigned': assigned_manager,
                 'company_id':company_id, 
                 'company_staff_id':company_staff_id
             })
@@ -1477,18 +1480,27 @@ def create_resign(request,company_id, company_staff_id):
 
 def create_regularization(request,company_id, company_staff_id):
     if company_id:
+        try:
+            company_staff = CompanyStaff.objects.get(id=company_staff_id)
+        except CompanyStaff.DoesNotExist:
+            messages.error(request, 'Company staff not found.')
+            return redirect('accounts:login')
+
+        emp = Employee.objects.filter(user=company_staff).first()
+        assigned_manager = [emp.employee_reports_to] if (emp and emp.employee_reports_to) else []
+
         if request.method == "POST":
             try:
                 from django.utils.dateparse import parse_datetime
                 check_in = request.POST.get("check_in")
                 check_out = request.POST.get("check_out")
                 reason = request.POST.get("reason")
-                assign_i = request.POST.get("manager_id")
+                assign_i = request.POST.get("manager_id") or (str(emp.employee_reports_to.id) if emp and emp.employee_reports_to else None)
 
                 if not all([check_in, check_out, reason, assign_i]):
                     messages.error(request, 'All required fields must be filled.')
                     return render(request,"employee/regularization.html",{
-                        'rassigne':Manager.objects.filter(user__company__id=company_id),
+                        'rassigne': assigned_manager,
                         'company_id':company_id, 
                         'company_staff_id':company_staff_id
                     })
@@ -1498,22 +1510,15 @@ def create_regularization(request,company_id, company_staff_id):
                 except Manager.DoesNotExist:
                     messages.error(request, 'Selected manager not found.')
                     return render(request,"employee/regularization.html",{
-                        'rassigne':Manager.objects.filter(user__company__id=company_id),
+                        'rassigne': assigned_manager,
                         'company_id':company_id, 
                         'company_staff_id':company_staff_id
                     })
                 
-                try:
-                    company_staff = CompanyStaff.objects.get(id=company_staff_id)
-                except CompanyStaff.DoesNotExist:
-                    messages.error(request, 'Company staff not found.')
-                    return redirect('accounts:login')
-                
-                emp = Employee.objects.filter(user=company_staff).first()
                 if not emp:
                     messages.error(request, 'Employee profile not found.')
                     return render(request,"employee/regularization.html",{
-                        'rassigne':Manager.objects.filter(user__company__id=company_id),
+                        'rassigne': assigned_manager,
                         'company_id':company_id, 
                         'company_staff_id':company_staff_id
                     })
@@ -1538,14 +1543,14 @@ def create_regularization(request,company_id, company_staff_id):
             except Exception as e:
                 messages.error(request, f'Error creating regularization request: {str(e)}')
                 return render(request,"employee/regularization.html",{
-                    'rassigne':Manager.objects.filter(user__company__id=company_id),
+                    'rassigne': assigned_manager,
                     'company_id':company_id, 
                     'company_staff_id':company_staff_id
                 })
 
         else:
             return render(request,"employee/regularization.html",{
-                'rassigne':Manager.objects.filter(user__company__id=company_id),
+                'rassigne': assigned_manager,
                 'company_id':company_id, 
                 'company_staff_id':company_staff_id
             })
