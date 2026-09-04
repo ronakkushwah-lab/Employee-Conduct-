@@ -1360,10 +1360,12 @@ def leaves_view(request, id):
 
 def approve_leave(request,company_id, company_staff_id, id):
     # Try ManagerLeave first, then Leave
+    is_manager_leave = False
     try:
         leave = ManagerLeave.objects.get(id=id)
         leave.approve_leave
         approved = True
+        is_manager_leave = True
     except ManagerLeave.DoesNotExist:
         try:
             leave = Leave.objects.get(id=id)
@@ -1374,12 +1376,27 @@ def approve_leave(request,company_id, company_staff_id, id):
                            extra_tags='alert alert-danger alert-dismissible show')
             return redirect(f'/administration/leaves/pending/all/{company_id}/{company_staff_id}')
 
-    # Send email notification
-    try:
-        from administration.email_notifications import send_leave_approval_notification
-        send_leave_approval_notification(leave, approved=True)
-    except Exception as e:
-        print(f"Error sending leave approval notification: {str(e)}")
+    # Send email notification in background thread to prevent HTTP 502 / freezing
+    def _send_approval_email_background(mgr_leave, leave_id):
+        try:
+            from administration.email_notifications import send_leave_approval_notification
+            if mgr_leave:
+                from manager_leave.models import ManagerLeave
+                target_leave = ManagerLeave.objects.filter(id=leave_id).first()
+            else:
+                from leave.models import Leave
+                target_leave = Leave.objects.filter(id=leave_id).first()
+            if target_leave:
+                send_leave_approval_notification(target_leave, approved=True)
+        except Exception as e:
+            print(f"Error sending leave approval notification: {str(e)}", flush=True)
+
+    import threading
+    threading.Thread(
+        target=_send_approval_email_background,
+        args=(is_manager_leave, leave.id),
+        daemon=True
+    ).start()
 
     messages.success(request, 'Leave successfully approved',
                    extra_tags='alert alert-success alert-dismissible show')
@@ -1460,9 +1477,11 @@ def leave_rejected_list(request,company_id, company_staff_id):
 def reject_leave(request,company_id, company_staff_id,id):
     dataset = dict()
     # Try ManagerLeave first, then Leave
+    is_manager_leave = False
     try:
         leave = ManagerLeave.objects.get(id=id)
         leave.reject_leave
+        is_manager_leave = True
     except ManagerLeave.DoesNotExist:
         try:
             leave = Leave.objects.get(id=id)
@@ -1472,12 +1491,27 @@ def reject_leave(request,company_id, company_staff_id,id):
                            extra_tags='alert alert-danger alert-dismissible show')
             return redirect(f'/administration/leaves/pending/all/{company_id}/{company_staff_id}')
     
-    # Send email notification
-    try:
-        from administration.email_notifications import send_leave_approval_notification
-        send_leave_approval_notification(leave, approved=False)
-    except Exception as e:
-        print(f"Error sending leave rejection notification: {str(e)}")
+    # Send email notification in background thread to prevent HTTP 502 / freezing
+    def _send_rejection_email_background(mgr_leave, leave_id):
+        try:
+            from administration.email_notifications import send_leave_approval_notification
+            if mgr_leave:
+                from manager_leave.models import ManagerLeave
+                target_leave = ManagerLeave.objects.filter(id=leave_id).first()
+            else:
+                from leave.models import Leave
+                target_leave = Leave.objects.filter(id=leave_id).first()
+            if target_leave:
+                send_leave_approval_notification(target_leave, approved=False)
+        except Exception as e:
+            print(f"Error sending leave rejection notification: {str(e)}", flush=True)
+
+    import threading
+    threading.Thread(
+        target=_send_rejection_email_background,
+        args=(is_manager_leave, leave.id),
+        daemon=True
+    ).start()
     
     messages.success(request, 'Leave is rejected', extra_tags='alert alert-success alert-dismissible show')
     return redirect(f'/administration/leaves/rejected/all/{company_id}/{company_staff_id}')

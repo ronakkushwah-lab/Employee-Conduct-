@@ -85,8 +85,8 @@
                                         </tr>
                                       </tbody>
                                     </table>
-                                    <a href="{% url 'userleaveapprove' company_id=company_id company_staff_id=company_staff_id id=leave.id  %}"  class="btn-outline-orangeyellow btn">Approve</a>
-                                    <a href="{% url 'rejected' company_id=company_id company_staff_id=company_staff_id id=leave.id %}" class="btn-outline-orangeyellow btn">Reject</a>
+                                    <a href="{% url 'userleaveapprove' company_id=company_id company_staff_id=company_staff_id id=leave.id  %}" onclick="this.classList.add('disabled'); this.innerText='Approving...';" class="btn-outline-orangeyellow btn">Approve</a>
+                                    <a href="{% url 'rejected' company_id=company_id company_staff_id=company_staff_id id=leave.id %}" onclick="this.classList.add('disabled'); this.innerText='Rejecting...';" class="btn-outline-orangeyellow btn">Reject</a>
                                   </div>
                                 </div>
                               </div>
