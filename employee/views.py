@@ -1359,6 +1359,18 @@ def create_leave(request,company_id, company_staff_id):
                     )
                     return render(request, "employee/apply-leaves.html", ctx)
 
+                # Prevent duplicate submission if same pending leave exists
+                existing_pending = Leave.objects.filter(
+                    user=employee,
+                    startdate=startdate,
+                    enddate=enddate,
+                    leavetype=leavetype,
+                    status='pending'
+                ).first()
+                if existing_pending:
+                    messages.warning(request, 'A pending leave request for these dates already exists.')
+                    return redirect(f'/employee/create_leave/{company_id}/{company_staff_id}')
+
                 # Dropdown se jo manager select hua (jiska email dropdown me dikh raha hai), usi par notification jayega
                 manager_obj = None
                 if manager_id:
@@ -1368,28 +1380,44 @@ def create_leave(request,company_id, company_staff_id):
 
                 leave = Leave.objects.create(user=employee, manager=manager_obj, startdate=startdate, enddate=enddate, leavetype=leavetype, reason=reason, description=description)
                 
-                # Employee ko confirmation (optional - pehle wala flow)
-                try:
-                    from administration.email_notifications import send_leave_submission_notification
-                    send_leave_submission_notification(leave, manager=manager_obj)
-                except Exception:
-                    pass
-                # Manager ko pakka email – sirf plain text, simple logic
-                if manager_obj:
-                    manager_email = (getattr(manager_obj, 'manager_email', None) or '').strip()
-                    if not manager_email and getattr(manager_obj, 'user', None):
-                        manager_email = (getattr(manager_obj.user, 'email', None) or '').strip()
-                    if manager_email:
-                        try:
-                            from administration.email_notifications import send_simple_email_to_manager
-                            emp_name = f"{employee.employee_first_name} {employee.employee_last_name}"
-                            send_simple_email_to_manager(
-                                manager_email,
-                                f"Leave applied by {emp_name} – Approve or Reject",
-                                f"Employee {emp_name} has applied for leave. Please log in to HRMS portal to approve or reject."
-                            )
-                        except Exception as e:
-                            print("LEAVE_MANAGER_EMAIL_ERROR:", str(e), flush=True)
+                # Send email notifications in background thread to prevent HTTP 502 / timeout
+                def _send_leave_emails_background(leave_id, mgr_id, emp_name):
+                    try:
+                        from leave.models import Leave as LModel
+                        from managers.models import Manager as MModel
+                        from administration.email_notifications import send_leave_submission_notification, send_simple_email_to_manager
+
+                        leave_rec = LModel.objects.filter(id=leave_id).first()
+                        mgr_rec = MModel.objects.filter(id=mgr_id).first() if mgr_id else None
+
+                        if leave_rec:
+                            try:
+                                send_leave_submission_notification(leave_rec, manager=mgr_rec)
+                            except Exception as e:
+                                print("LEAVE_NOTIFICATION_EMAIL_ERROR:", str(e), flush=True)
+
+                        if mgr_rec:
+                            mgr_email = (getattr(mgr_rec, 'manager_email', None) or '').strip()
+                            if not mgr_email and getattr(mgr_rec, 'user', None):
+                                mgr_email = (getattr(mgr_rec.user, 'email', None) or '').strip()
+                            if mgr_email:
+                                try:
+                                    send_simple_email_to_manager(
+                                        mgr_email,
+                                        f"Leave applied by {emp_name} – Approve or Reject",
+                                        f"Employee {emp_name} has applied for leave. Please log in to HRMS portal to approve or reject."
+                                    )
+                                except Exception as e:
+                                    print("LEAVE_MANAGER_EMAIL_ERROR:", str(e), flush=True)
+                    except Exception as err:
+                        print("BACKGROUND_LEAVE_EMAIL_ERROR:", str(err), flush=True)
+
+                import threading
+                threading.Thread(
+                    target=_send_leave_emails_background,
+                    args=(leave.id, manager_obj.id if manager_obj else None, f"{employee.employee_first_name} {employee.employee_last_name}"),
+                    daemon=True
+                ).start()
                 
                 messages.success(request, 'Leave request created successfully!')
                 return redirect(f'/employee/create_leave/{company_id}/{company_staff_id}')
@@ -1444,22 +1472,37 @@ def create_resign(request,company_id, company_staff_id):
                         'company_staff_id':company_staff_id
                     })
 
+                # Prevent duplicate pending resignation
+                existing_resign = Resign.objects.filter(user=emp, status='pending').first()
+                if existing_resign:
+                    messages.warning(request, 'A pending resignation request already exists.')
+                    return redirect(f'/employee/create_resign/{company_id}/{company_staff_id}')
+
                 resign = Resign.objects.create(user=emp, startdate=startdate, reason=reason, assigned_too=assigned_too)
-                # Manager ko pakka email – sirf plain text, simple logic
+                
+                # Send manager email in background thread
                 manager_email = (getattr(assigned_too, 'manager_email', None) or '').strip()
                 if not manager_email and getattr(assigned_too, 'user', None):
                     manager_email = (getattr(assigned_too.user, 'email', None) or '').strip()
                 if manager_email:
-                    try:
-                        from administration.email_notifications import send_simple_email_to_manager
-                        emp_name = f"{emp.employee_first_name} {emp.employee_last_name}"
-                        send_simple_email_to_manager(
-                            manager_email,
-                            f"Resignation applied by {emp_name}",
-                            f"Employee {emp_name} has submitted resignation. Please log in to HRMS portal to view and process."
-                        )
-                    except Exception as e:
-                        print("RESIGN_MANAGER_EMAIL_ERROR:", str(e), flush=True)
+                    def _send_resign_email_background(to_email, employee_fullname):
+                        try:
+                            from administration.email_notifications import send_simple_email_to_manager
+                            send_simple_email_to_manager(
+                                to_email,
+                                f"Resignation applied by {employee_fullname}",
+                                f"Employee {employee_fullname} has submitted resignation. Please log in to HRMS portal to view and process."
+                            )
+                        except Exception as e:
+                            print("RESIGN_MANAGER_EMAIL_ERROR:", str(e), flush=True)
+
+                    import threading
+                    threading.Thread(
+                        target=_send_resign_email_background,
+                        args=(manager_email, f"{emp.employee_first_name} {emp.employee_last_name}"),
+                        daemon=True
+                    ).start()
+
                 messages.success(request, 'Resignation request created successfully!')
                 return redirect(f'/employee/create_resign/{company_id}/{company_staff_id}')
             except Exception as e:

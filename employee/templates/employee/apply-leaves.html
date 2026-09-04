@@ -94,7 +94,7 @@
                       </div>
                     </div>
                     <div class="mt-4 mb-2 button-right">
-                      <button type="submit" class="btn btn-outline-orangeyellow">Submit</button>
+                      <button type="submit" id="submit-leave-btn" class="btn btn-outline-orangeyellow">Submit</button>
                     </div>
                   </form>
                 </div>
@@ -146,6 +146,15 @@
         
         startDateInput.addEventListener('change', calculateLeaveDays);
         endDateInput.addEventListener('change', calculateLeaveDays);
+
+        const form = document.querySelector('form');
+        const submitBtn = document.getElementById('submit-leave-btn');
+        if (form && submitBtn) {
+          form.addEventListener('submit', function() {
+            submitBtn.disabled = true;
+            submitBtn.innerText = 'Submitting...';
+          });
+        }
       });
     </script>
     
