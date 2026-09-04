@@ -1365,7 +1365,7 @@ def create_leave(request,company_id, company_staff_id):
                     startdate=startdate,
                     enddate=enddate,
                     leavetype=leavetype,
-                    status='pending'
+                    status__in=['pending', 'pending_manager', 'pending_hr']
                 ).first()
                 if existing_pending:
                     messages.warning(request, 'A pending leave request for these dates already exists.')
@@ -1378,7 +1378,21 @@ def create_leave(request,company_id, company_staff_id):
                     if not manager_obj:
                         messages.warning(request, 'Selected manager not found. Leave saved but manager will not receive email.')
 
-                leave = Leave.objects.create(user=employee, manager=manager_obj, startdate=startdate, enddate=enddate, leavetype=leavetype, reason=reason, description=description)
+                has_manager = bool(manager_obj or (employee and employee.employee_reports_to))
+                initial_status = 'pending_manager' if has_manager else 'pending_hr'
+                manager_approved = not has_manager
+
+                leave = Leave.objects.create(
+                    user=employee,
+                    manager=manager_obj or getattr(employee, 'employee_reports_to', None),
+                    startdate=startdate,
+                    enddate=enddate,
+                    leavetype=leavetype,
+                    reason=reason,
+                    description=description,
+                    status=initial_status,
+                    manager_approved=manager_approved
+                )
                 
                 # Send email notifications in background thread to prevent HTTP 502 / timeout
                 def _send_leave_emails_background(leave_id, mgr_id, emp_name):

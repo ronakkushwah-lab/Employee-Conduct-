@@ -1369,6 +1369,17 @@ def approve_leave(request,company_id, company_staff_id, id):
     except ManagerLeave.DoesNotExist:
         try:
             leave = Leave.objects.get(id=id)
+            # Enforce leave approval hierarchy: employee leave requires manager approval first
+            if getattr(leave, 'manager', None) and not leave.manager_approved:
+                mgr = leave.manager
+                manager_name = f"{mgr.manager_first_name} {mgr.manager_last_name}" if hasattr(mgr, 'manager_first_name') else str(mgr)
+                messages.error(
+                    request,
+                    f'Cannot approve: This leave requires prior approval from reporting manager ({manager_name}).',
+                    extra_tags='alert alert-warning alert-dismissible show'
+                )
+                return redirect(f'/administration/leaves/pending/all/{company_id}/{company_staff_id}')
+
             leave.approve_leave
             approved = True
         except Leave.DoesNotExist:

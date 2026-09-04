@@ -602,3 +602,73 @@ def send_document_submission_notification(document, user_type='employee'):
     except Exception as e:
         print(f"Error sending document submission notification: {str(e)}")
         return False
+
+
+def send_leave_manager_approval_notification(leave):
+    """
+    Called when reporting manager approves an employee's leave.
+    1. Notifies employee that manager has approved and leave is forwarded to HR.
+    2. Notifies HR/Admin that leave is approved by manager and awaiting final HR action.
+    """
+    try:
+        from employee.models import Employee
+        if not hasattr(leave, 'user') or not isinstance(leave.user, Employee):
+            return False
+
+        employee = leave.user
+        employee_name = f"{employee.employee_first_name} {employee.employee_last_name}"
+        employee_email = employee.employee_email
+
+        manager = getattr(leave, 'manager', None) or getattr(employee, 'employee_reports_to', None)
+        manager_name = f"{manager.manager_first_name} {manager.manager_last_name}" if manager else "Reporting Manager"
+
+        context = {
+            'employee_name': employee_name,
+            'employee_id': getattr(employee, 'employee_id', 'N/A'),
+            'manager_name': manager_name,
+            'leave_type': (leave.leavetype or '').title(),
+            'start_date': leave.startdate.strftime('%B %d, %Y') if leave.startdate else 'N/A',
+            'end_date': leave.enddate.strftime('%B %d, %Y') if leave.enddate else 'N/A',
+            'reason': leave.reason or 'N/A',
+            'leave_days': (leave.enddate - leave.startdate).days + 1 if (leave.startdate and leave.enddate) else 0,
+            'status': 'Pending HR Approval',
+        }
+
+        # 1. Notify employee
+        subject_emp = f"Leave Approved by Manager ({manager_name}) - Pending HR Approval"
+        send_email_notification(
+            subject=subject_emp,
+            recipient_email=employee_email,
+            template_name='leave_manager_approved_employee',
+            context=context,
+            recipient_name=employee_name
+        )
+
+        # 2. Notify HR admin (CompanyStaff is_admin=True)
+        hr_emails = []
+        try:
+            from administration.models import CompanyStaff
+            hr_staffs = CompanyStaff.objects.filter(is_admin=True, is_active=True).exclude(email__isnull=True).exclude(email='')
+            for hs in hr_staffs:
+                if hs.email and hs.email.strip() not in hr_emails:
+                    hr_emails.append(hs.email.strip())
+        except Exception:
+            pass
+
+        if not hr_emails:
+            hr_emails = [COMPANY_EMAIL]
+
+        subject_hr = f"Action Required: Manager {manager_name} Approved Leave for {employee_name} (Pending HR)"
+        for hr_email in hr_emails:
+            send_email_notification(
+                subject=subject_hr,
+                recipient_email=hr_email,
+                template_name='leave_manager_approved_hr',
+                context=context,
+                recipient_name="HR Administrator"
+            )
+        return True
+    except Exception as e:
+        logger.exception("send_leave_manager_approval_notification failed: %s", str(e))
+        return False
+

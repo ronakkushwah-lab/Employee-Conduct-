@@ -1444,8 +1444,10 @@ def leave_list(request, company_id, company_staff_id):
         company_staff = CompanyStaff.objects.get(id=company_staff_id)
         try:
             manager = company_staff.manager
-            leaves = Leave.objects.all_pending_leaves().filter(user__employee_reports_to=manager)
-        except Manager.DoesNotExist:
+            leaves = Leave.objects.all_pending_leaves().filter(
+                Q(manager=manager) | Q(user__employee_reports_to=manager)
+            ).distinct().order_by('-created')
+        except Exception:
             leaves = Leave.objects.none()
         return render(request, 'managers/employee-leaves.html', {'leave_list': leaves, 'title': 'Leaves list - pending (your team)', 'company_id': company_id, 'company_staff_id': company_staff_id})
 
@@ -1479,12 +1481,26 @@ def leaves_view(request, id):
 
 def approve_leave(request,company_id, company_staff_id, id):
     if company_id:
-
         leave = get_object_or_404(Leave, id=id)
 
-        leave.approve_leave
+        # Manager approves: sets manager_approved=True, status='pending_hr'
+        leave.approve_by_manager
 
-        messages.success(request, 'Leave successfully approved')
+        # Send background email notifications (non-blocking)
+        def _send_manager_approval_email(leave_id):
+            try:
+                from administration.email_notifications import send_leave_manager_approval_notification
+                target_leave = Leave.objects.filter(id=leave_id).first()
+                if target_leave:
+                    send_leave_manager_approval_notification(target_leave)
+            except Exception as e:
+                print(f"Error sending manager leave approval email: {e}", flush=True)
+
+        import threading
+        threading.Thread(target=_send_manager_approval_email, args=(leave.id,), daemon=True).start()
+
+        messages.success(request, 'Leave approved and forwarded to HR for final approval.',
+                         extra_tags='alert alert-success alert-dismissible show')
         return redirect(f'/managers/leave_list/{company_id}/{company_staff_id}')
 
 
@@ -1539,11 +1555,24 @@ def leave_rejected_list(request):
 
 def reject_leave(request,company_id, company_staff_id, id):
     if company_id:
-        dataset = dict()
         leave = get_object_or_404(Leave, id=id)
         leave.reject_leave
+
+        def _send_manager_rejection_email(leave_id):
+            try:
+                from administration.email_notifications import send_leave_approval_notification
+                target_leave = Leave.objects.filter(id=leave_id).first()
+                if target_leave:
+                    send_leave_approval_notification(target_leave, approved=False)
+            except Exception as e:
+                print(f"Error sending manager rejection email: {e}", flush=True)
+
+        import threading
+        threading.Thread(target=_send_manager_rejection_email, args=(leave.id,), daemon=True).start()
+
         messages.success(request, 'Leave is rejected', extra_tags='alert alert-success alert-dismissible show')
         return redirect(f'/managers/leave_list/{company_id}/{company_staff_id}')
+
 
 
 def unreject_leave(request, id):

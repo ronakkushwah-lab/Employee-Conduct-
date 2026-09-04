@@ -30,26 +30,40 @@
                       <thead>
                         <tr>
                           <th>Type</th>
+                          <th>Start Date</th>
+                          <th>End Date</th>
                           <th>Day(s)</th>
+                          <th>Reporting Manager</th>
                           <th>Status</th>
                         </tr>
                       </thead>
                       <tbody>
                        	{% for leave in leave_list %}
                         <tr>
-                          <td>{{ leave.leavetype}}</td>
-                          <td>{{ leave.leave_days}}</td>
+                          <td><strong>{{ leave.leavetype }}</strong></td>
+                          <td>{{ leave.startdate }}</td>
+                          <td>{{ leave.enddate }}</td>
+                          <td>{{ leave.leave_days }}</td>
+                          <td>{{ leave.manager|default:"Direct / HR" }}</td>
                           {% if leave.status == 'rejected' %}
                             <td><span class="status-badge status-rejected">REJECTED</span></td>
                           {% elif leave.status == 'cancelled' or leave.status == 'canceled' %}
                             <td><span class="status-badge status-rejected">CANCELLED</span></td>
                           {% elif leave.is_approved %}
                             <td><span class="status-badge status-approved">APPROVED</span></td>
+                          {% elif leave.manager_approved or leave.status == 'pending_hr' %}
+                            <td><span class="badge bg-info text-dark"><i class="fa fa-check-circle me-1"></i>Manager Approved (Pending HR)</span></td>
+                          {% elif leave.status == 'pending_manager' %}
+                            <td><span class="badge bg-warning text-dark"><i class="fa fa-clock me-1"></i>Pending Manager Approval</span></td>
                           {% else %}
                             <td><span class="status-badge status-pending">{{ leave.status|upper }}</span></td>
                           {% endif %}
                         </tr>
-                          {% endfor %}
+                        {% empty %}
+                        <tr>
+                          <td colspan="6" class="text-center text-muted py-4">No leave applications found.</td>
+                        </tr>
+                        {% endfor %}
                       </tbody>
                     </table>
                   </div>

@@ -36,8 +36,10 @@ class Leave(models.Model):
     description = models.TextField(verbose_name=_('Description'), 
                                    help_text='detailed description of the leave', null=True, blank=True)
 
-    status = models.CharField(max_length=12, default='pending')  # pending,approved,rejected,cancelled
-    is_approved = models.BooleanField(default=False)  # hide
+    status = models.CharField(max_length=30, default='pending_manager')  # pending_manager,pending_hr,approved,rejected,cancelled
+    is_approved = models.BooleanField(default=False)  # final HR approval
+    manager_approved = models.BooleanField(default=False)
+    manager_approved_at = models.DateTimeField(null=True, blank=True)
 
     updated = models.DateTimeField(auto_now=True, auto_now_add=False)
     created = models.DateTimeField(auto_now=False, auto_now_add=True)
@@ -74,6 +76,13 @@ class Leave(models.Model):
         return self.is_approved == True
 
     @property
+    def approve_by_manager(self):
+        self.manager_approved = True
+        self.manager_approved_at = timezone.now()
+        self.status = 'pending_hr'
+        self.save()
+
+    @property
     def approve_leave(self):
         if not self.is_approved:
             self.is_approved = True
@@ -98,7 +107,7 @@ class Leave(models.Model):
     def unapprove_leave(self):
         if self.is_approved:
             self.is_approved = False
-            self.status = 'pending'
+            self.status = 'pending_manager'
             self.save()
 
     @property
@@ -123,6 +132,7 @@ class Leave(models.Model):
         return reverse("balance-leave")
 
     def to_json(self):
+        mgr_name = f"{self.manager.manager_first_name} {self.manager.manager_last_name}".strip() if self.manager else "No Manager Assigned"
         leave_details_dict = {
             'id': self.id,
             'startdate': self.startdate,
@@ -132,7 +142,11 @@ class Leave(models.Model):
             'leavetype': self.leavetype,
             'leave_days': self.leave_days,
             'created': self.created,
-            }
+            'manager_approved': self.manager_approved,
+            'manager_name': mgr_name,
+            'has_manager': bool(self.manager),
+            'is_manager_leave': False,
+        }
         return leave_details_dict
 
 

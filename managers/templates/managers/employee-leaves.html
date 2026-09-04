@@ -38,56 +38,87 @@
                       <tbody>
                       {% for leave in leave_list %}
                         <tr>
-                          <td>{{ leave.user }}</td>
-                          <td>{{ leave.leavetype}}</td>
-                          <td>{{ leave.status }}</td>
+                          <td><strong>{{ leave.user }}</strong></td>
+                          <td>{{ leave.leavetype }}</td>
                           <td>
-                            <button type="button" class="btn btn-outline-orangeyellow" data-bs-toggle="modal" data-bs-target="#viewpendingleavesModal" id="viewBtn">
-                              View
+                            {% if leave.manager_approved %}
+                              <span class="badge bg-info text-dark"><i class="bx bx-check-circle"></i> Approved by You (Pending HR)</span>
+                            {% else %}
+                              <span class="badge bg-warning text-dark"><i class="bx bx-time"></i> Pending Your Approval</span>
+                            {% endif %}
+                          </td>
+                          <td>
+                            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#viewpendingleavesModal_{{ leave.id }}">
+                              View Details
                             </button>
-                            <div class="modal" id="viewpendingleavesModal">
-                              <div class="modal-dialog w-80">
+                            <div class="modal fade" id="viewpendingleavesModal_{{ leave.id }}" tabindex="-1" aria-hidden="true">
+                              <div class="modal-dialog">
                                 <div class="modal-content">
                                   <div class="modal-header">
-                                    <h5 class="modal-title" id="exampleModalLabel">View Leaves</h5>
+                                    <h5 class="modal-title">Leave Request: {{ leave.user }}</h5>
                                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                   </div>
                                   <div class="modal-body">
-                                    <table class="table table-fluid table-bordered table-hover">
+                                    <table class="table table-bordered table-sm mb-3">
                                       <tbody>
                                         <tr>
+                                          <th style="width: 35%;">Employee</th>
+                                          <td>{{ leave.user }}</td>
+                                        </tr>
+                                        <tr>
                                           <th>Start Date</th>
-                                          <td>2 May, 2022</td>
+                                          <td>{{ leave.startdate }}</td>
                                         </tr>
                                         <tr>
                                           <th>End Date</th>
-                                          <td>4 May, 2022</td>
+                                          <td>{{ leave.enddate }}</td>
                                         </tr>
                                         <tr>
                                           <th>Duration</th>
-                                          <td>2</td>
+                                          <td>{{ leave.leave_days }} day(s)</td>
                                         </tr>
                                         <tr>
                                           <th>Type</th>
-                                          <td>Sick</td>
+                                          <td>{{ leave.leavetype }}</td>
                                         </tr>
                                         <tr>
                                           <th>Reason</th>
-                                          <td>abcd</td>
-                                        </tr>                                      
+                                          <td>{{ leave.reason|default:"N/A" }}</td>
+                                        </tr>
                                         <tr>
-                                          <th>Created</th>
-                                          <td>2 May, 2022, 4:20 AM</td>
+                                          <th>Status</th>
+                                          <td>
+                                            {% if leave.manager_approved %}
+                                              <span class="badge bg-info text-dark">Approved by You (Pending HR)</span>
+                                            {% else %}
+                                              <span class="badge bg-warning text-dark">Pending Your Approval</span>
+                                            {% endif %}
+                                          </td>
+                                        </tr>
+                                        <tr>
+                                          <th>Submitted</th>
+                                          <td>{{ leave.created }}</td>
                                         </tr>
                                       </tbody>
                                     </table>
-                                    <a href="{% url 'muserleaveapprove' company_id=company_id company_staff_id=company_staff_id id=leave.id %}" class="btn-outline-orangeyellow btn">Approve</a>
-                                    <a href="{% url 'muserleavecancel' company_id=company_id company_staff_id=company_staff_id id=leave.id %}" class="btn-outline-orangeyellow btn">Reject</a>
+                                    <div class="d-flex align-items-center justify-content-end gap-2">
+                                      {% if not leave.manager_approved %}
+                                        <a href="{% url 'muserleaveapprove' company_id=company_id company_staff_id=company_staff_id id=leave.id %}" onclick="this.classList.add('disabled'); this.innerText='Approving...';" class="btn btn-success"><i class="bx bx-check"></i> Approve & Forward to HR</a>
+                                        <a href="{% url 'mrejected' company_id=company_id company_staff_id=company_staff_id id=leave.id %}" onclick="this.classList.add('disabled'); this.innerText='Rejecting...';" class="btn btn-danger"><i class="bx bx-x"></i> Reject</a>
+                                      {% else %}
+                                        <span class="text-success me-auto small"><i class="bx bx-check-circle"></i> Approved by you. Awaiting HR action.</span>
+                                        <a href="{% url 'mrejected' company_id=company_id company_staff_id=company_staff_id id=leave.id %}" onclick="this.classList.add('disabled'); this.innerText='Rejecting...';" class="btn btn-outline-danger btn-sm"><i class="bx bx-x"></i> Reject</a>
+                                      {% endif %}
+                                    </div>
                                   </div>
                                 </div>
                               </div>
                             </div>
                           </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                          <td colspan="4" class="text-center text-muted py-4">No pending leave requests from your team.</td>
                         </tr>
                         {% endfor %}
                       </tbody>

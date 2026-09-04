@@ -31,69 +31,130 @@
                         <tr>
                           <th>User</th>
                           <th>Type</th>
+                          <th>Reporting Manager</th>
+                          <th>Manager Approval</th>
                           <th>Status</th>
                           <th>Action</th>
                         </tr>
                       </thead>
                       <tbody>
-                      	  	{% for leave in leave_list %}
+                      	{% for leave in leave_list %}
                         <tr>
-                          <td>{{ leave.user }}</td>
-                          <td>{{ leave.leavetype}}</td>
+                          <td><strong>{{ leave.user }}</strong></td>
+                          <td>{{ leave.leavetype }}</td>
+                          <td>{{ leave.manager|default:"Direct / HR" }}</td>
+                          <td>
+                            {% if leave.manager %}
+                              {% if leave.manager_approved %}
+                                <span class="badge bg-success"><i class="fa fa-check-circle me-1"></i>Manager Approved</span>
+                              {% else %}
+                                <span class="badge bg-warning text-dark"><i class="fa fa-clock me-1"></i>Awaiting Manager</span>
+                              {% endif %}
+                            {% else %}
+                              <span class="badge bg-info text-dark">Direct (No Mgr)</span>
+                            {% endif %}
+                          </td>
                           <td><span class="status-badge status-pending">{{ leave.status|upper }}</span></td>
                           <td>
-                            <button type="button" class="btn btn-outline-orangeyellow" data-bs-toggle="modal" data-bs-target="#viewpendingleavesModal" id="viewBtn"  onclick="leave_details_fetch('{{leave.pk}}')">
+                            <button type="button" class="btn btn-outline-orangeyellow" data-bs-toggle="modal" data-bs-target="#viewpendingleavesModal_{{ leave.id }}">
                               View
                             </button>
-                            <div class="modal" id="viewpendingleavesModal">
+                            <div class="modal fade" id="viewpendingleavesModal_{{ leave.id }}" tabindex="-1" aria-hidden="true">
                               <div class="modal-dialog w-80">
                                 <div class="modal-content">
                                   <div class="modal-header">
-                                    <h5 class="modal-title" id="exampleModalLabel">View Leaves</h5>
+                                    <h5 class="modal-title">Leave Request: {{ leave.user }}</h5>
                                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                   </div>
                                   <div class="modal-body">
                                     <table class="table table-fluid table-bordered table-hover">
                                       <tbody>
                                         <tr>
+                                          <th>Employee</th>
+                                          <td>{{ leave.user }}</td>
+                                        </tr>
+                                        <tr>
+                                          <th>Reporting Manager</th>
+                                          <td>{{ leave.manager|default:"None / Direct to HR" }}</td>
+                                        </tr>
+                                        <tr>
+                                          <th>Manager Approval</th>
+                                          <td>
+                                            {% if leave.manager %}
+                                              {% if leave.manager_approved %}
+                                                <span class="badge bg-success"><i class="fa fa-check-circle me-1"></i>Manager Approved</span>
+                                                {% if leave.manager_approved_at %}<small class="text-muted d-block mt-1">on {{ leave.manager_approved_at }}</small>{% endif %}
+                                              {% else %}
+                                                <span class="badge bg-warning text-dark"><i class="fa fa-clock me-1"></i>Awaiting Manager Approval</span>
+                                              {% endif %}
+                                            {% else %}
+                                              <span class="badge bg-info text-dark">Not Required (Direct to HR)</span>
+                                            {% endif %}
+                                          </td>
+                                        </tr>
+                                        <tr>
                                           <th>Start Date</th>
-                                           <td id="leave_startdate_heading"></td>
+                                          <td>{{ leave.startdate }}</td>
                                         </tr>
                                         <tr>
                                           <th>End Date</th>
-                                           <td id="leave_enddate_heading"></td>
+                                          <td>{{ leave.enddate }}</td>
                                         </tr>
                                         <tr>
                                           <th>Duration</th>
-                                          <td id="leave_days_heading"></td>
+                                          <td>{{ leave.leave_days }} day(s)</td>
                                         </tr>
                                         <tr>
                                           <th>Type</th>
-                                          <td id="leave_leavetype_heading"></td>
+                                          <td>{{ leave.leavetype }}</td>
                                         </tr>
                                         <tr>
                                           <th>Reason</th>
-                                            <td id="leave_reason_heading"></td>
+                                          <td>{{ leave.reason|default:"N/A" }}</td>
                                         </tr>
                                         <tr>
                                           <th>Status</th>
-                                            <td id="leave_status_heading"></td>
+                                          <td><span class="badge bg-secondary">{{ leave.status }}</span></td>
                                         </tr>
                                         <tr>
-                                          <th>Created</th>
-                                            <td id="leave_created_heading"></td>
+                                          <th>Submitted</th>
+                                          <td>{{ leave.created }}</td>
                                         </tr>
                                       </tbody>
                                     </table>
-                                    <a href="{% url 'userleaveapprove' company_id=company_id company_staff_id=company_staff_id id=leave.id  %}" onclick="this.classList.add('disabled'); this.innerText='Approving...';" class="btn-outline-orangeyellow btn">Approve</a>
-                                    <a href="{% url 'rejected' company_id=company_id company_staff_id=company_staff_id id=leave.id %}" onclick="this.classList.add('disabled'); this.innerText='Rejecting...';" class="btn-outline-orangeyellow btn">Reject</a>
+
+                                    {% if leave.manager and not leave.manager_approved %}
+                                      <div class="alert alert-warning py-2 px-3 small mt-2 mb-3">
+                                        <i class="fa fa-exclamation-triangle me-1"></i>
+                                        <strong>Hierarchy Rule:</strong> Reporting manager (<strong>{{ leave.manager }}</strong>) must approve this leave first before HR can grant final approval.
+                                      </div>
+                                    {% endif %}
+
+                                    <div class="d-flex align-items-center justify-content-end gap-2 mt-3">
+                                      {% if leave.manager and not leave.manager_approved %}
+                                        <button class="btn btn-secondary disabled" disabled title="Awaiting Manager Approval">
+                                          <i class="fa fa-lock me-1"></i> Locked (Needs Manager Approval)
+                                        </button>
+                                      {% else %}
+                                        <a href="{% url 'userleaveapprove' company_id=company_id company_staff_id=company_staff_id id=leave.id %}" onclick="this.classList.add('disabled'); this.innerText='Approving...';" class="btn btn-success">
+                                          <i class="fa fa-check me-1"></i> Final Approve
+                                        </a>
+                                      {% endif %}
+                                      <a href="{% url 'rejected' company_id=company_id company_staff_id=company_staff_id id=leave.id %}" onclick="this.classList.add('disabled'); this.innerText='Rejecting...';" class="btn btn-danger">
+                                        <i class="fa fa-times me-1"></i> Reject
+                                      </a>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
                             </div>
                           </td>
-                          	    {% endfor %}
                         </tr>
+                        {% empty %}
+                        <tr>
+                          <td colspan="6" class="text-center text-muted py-4">No pending leave requests found.</td>
+                        </tr>
+                        {% endfor %}
                       </tbody>
                     </table>
                   </div>
