@@ -402,12 +402,145 @@ def All_Employee_View(request, company_id, company_staff_id):
         
         logged_in_staff = CompanyStaff.objects.filter(id=company_staff_id).first()
         is_admin = bool(logged_in_staff and (logged_in_staff.is_company_admin or logged_in_staff.role in [CompanyStaff.ROLE_ADMIN, CompanyStaff.ROLE_SUPERADMIN]))
+        is_hr = bool(logged_in_staff and (logged_in_staff.is_hr or logged_in_staff.role == CompanyStaff.ROLE_HR))
+        is_admin_or_hr = is_admin or is_hr
 
         return render(request, 'administration/all-employees.html',
                     {'Employees': AllEmployee, 'max_employee_id': next_employee_id, 'departments': departments,
                     'reports_to': reports_to, 'company_id' : company_id, 'company_staff_id':company_staff_id,
-                    'is_admin': is_admin
+                    'is_admin': is_admin, 'is_hr': is_hr, 'is_admin_or_hr': is_admin_or_hr
                     })
+
+
+@custom_login_required
+def Promote_Employee_To_Manager_View(request, company_id, company_staff_id):
+    """
+    Allows Admin or HR to promote an Employee to a Manager.
+    Creates/updates Manager profile, updates CompanyStaff role/flags,
+    preserves historical employee data, and dispatches promotion notification.
+    """
+    actor = CompanyStaff.objects.filter(id=company_staff_id, company_id=company_id).first()
+    is_allowed = bool(actor and (actor.is_company_admin or actor.role in [CompanyStaff.ROLE_ADMIN, CompanyStaff.ROLE_SUPERADMIN, CompanyStaff.ROLE_HR] or actor.is_hr))
+    
+    if not is_allowed:
+        messages.error(request, "Permission Denied: Only Admin or HR can promote employees to Manager.")
+        return redirect(f'/administration/all_employee/{company_id}/{company_staff_id}')
+
+    if request.method == "POST":
+        try:
+            employee_pk = request.POST.get('employee_pk') or request.POST.get('employee_id')
+            if not employee_pk:
+                messages.error(request, "Invalid employee selected for promotion.")
+                return redirect(f'/administration/all_employee/{company_id}/{company_staff_id}')
+
+            employee = Employee.objects.filter(id=employee_pk, user__company_id=company_id).first()
+            if not employee:
+                messages.error(request, "Employee not found.")
+                return redirect(f'/administration/all_employee/{company_id}/{company_staff_id}')
+
+            manager_designation = request.POST.get('manager_designation', '').strip() or employee.employee_designation or 'Manager'
+            manager_salary = request.POST.get('manager_salary', '').strip() or employee.employee_salary or '350000'
+            department_id = request.POST.get('department_id') or request.POST.get('manager_department')
+            manager_id_code = request.POST.get('manager_id_code', '').strip() or employee.employee_id
+
+            if manager_id_code and not manager_id_code.upper().startswith('EIC-'):
+                manager_id_code = f"EIC-{manager_id_code}"
+
+            dept = None
+            if department_id:
+                dept = Department.objects.filter(id=department_id, company_id=company_id).first()
+            if not dept:
+                dept = employee.employee_department
+
+            user = employee.user
+            if not user:
+                messages.error(request, "User account not linked to employee.")
+                return redirect(f'/administration/all_employee/{company_id}/{company_staff_id}')
+
+            # Create or update Manager profile
+            manager = Manager.objects.filter(user=user).first()
+            if not manager:
+                manager = Manager(
+                    user=user,
+                    manager_first_name=employee.employee_first_name,
+                    manager_last_name=employee.employee_last_name,
+                    manager_email=employee.employee_email,
+                    manager_joining_date=employee.employee_joining_date,
+                    manager_department=dept,
+                    manager_designation=manager_designation,
+                    manager_id=manager_id_code,
+                    biometric_id=employee.biometric_id,
+                    manager_phone=employee.employee_phone,
+                    manager_salary=manager_salary,
+                    manager_birth_date=getattr(employee, 'employee_birth_date', None),
+                    manager_gender=getattr(employee, 'employee_gender', None),
+                    manager_father=getattr(employee, 'employee_father', None),
+                    manager_mother=getattr(employee, 'employee_mother', None),
+                    manager_address=getattr(employee, 'employee_address', None),
+                    manager_pin_code=getattr(employee, 'employee_pin_code', None),
+                    manager_state=getattr(employee, 'employee_state', None),
+                    manager_country=getattr(employee, 'employee_country', None),
+                    manager_status='Active',
+                    manager_tel=getattr(employee, 'employee_tel', None),
+                    manager_nationality=getattr(employee, 'employee_nationality', None),
+                    manager_religion=getattr(employee, 'employee_religion', None),
+                    manager_marital_status=getattr(employee, 'employee_marital_status', None),
+                    manager_emergency_primary_name=getattr(employee, 'employee_emergency_primary_name', None),
+                    manager_emergency_primary_relationship=getattr(employee, 'employee_emergency_primary_relationship', None),
+                    manager_emergency_primary_phone1=getattr(employee, 'employee_emergency_primary_phone1', None),
+                    manager_emergency_primary_phone2=getattr(employee, 'employee_emergency_primary_phone2', None),
+                    manager_education_institution=getattr(employee, 'employee_education_institution', None),
+                    manager_education_subject=getattr(employee, 'employee_education_subject', None),
+                    manager_education_starting_date=getattr(employee, 'employee_education_starting_date', None),
+                    manager_education_complete_date=getattr(employee, 'employee_education_complete_date', None),
+                    manager_education_degree=getattr(employee, 'employee_education_degree', None),
+                    manager_education_grade=getattr(employee, 'employee_education_grade', None),
+                    manager_experience_company_name=getattr(employee, 'employee_experience_company_name', None),
+                    manager_experience_company_location=getattr(employee, 'employee_experience_company_location', None),
+                    manager_experience_company_job_position=getattr(employee, 'employee_experience_company_job_position', None),
+                    manager_experience_company_period_from=getattr(employee, 'employee_experience_company_period_from', None),
+                    manager_experience_company_period_to=getattr(employee, 'employee_experience_company_period_to', None),
+                )
+                if employee.employee_image:
+                    manager.manager_image = employee.employee_image
+                manager.save()
+            else:
+                manager.manager_designation = manager_designation
+                manager.manager_department = dept
+                manager.manager_salary = manager_salary
+                manager.manager_id = manager_id_code
+                manager.manager_status = 'Active'
+                if employee.biometric_id and not manager.biometric_id:
+                    manager.biometric_id = employee.biometric_id
+                manager.save()
+
+            # Upgrade CompanyStaff role
+            user.role = CompanyStaff.ROLE_MANAGER
+            user.is_manager = True
+            user.save()
+
+            # Update employee record details
+            employee.employee_designation = manager_designation
+            if dept:
+                employee.employee_department = dept
+            employee.employee_salary = manager_salary
+            employee.save()
+
+            # Send promotion notification
+            try:
+                from administration.email_notifications import send_promotion_notification
+                send_promotion_notification(manager, new_designation=manager_designation, new_department=dept)
+            except Exception as e:
+                print(f"Error sending promotion notification: {str(e)}")
+
+            messages.success(request, f"{employee.employee_first_name} {employee.employee_last_name} has been promoted to Manager successfully!")
+            return redirect(f'/administration/all_manager/{company_id}/{company_staff_id}')
+
+        except Exception as e:
+            messages.error(request, f"Error promoting employee: {str(e)}")
+            return redirect(f'/administration/all_employee/{company_id}/{company_staff_id}')
+
+    return redirect(f'/administration/all_employee/{company_id}/{company_staff_id}')
 
 
 def All_Employee_List_View(request):

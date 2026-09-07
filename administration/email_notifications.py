@@ -672,3 +672,31 @@ def send_leave_manager_approval_notification(leave):
         logger.exception("send_leave_manager_approval_notification failed: %s", str(e))
         return False
 
+
+def send_promotion_notification(manager_instance, new_designation=None, new_department=None, promoted_by=None):
+    """
+    Send congratulatory email notification to employee promoted to Manager.
+    """
+    try:
+        recipient_name = f"{manager_instance.manager_first_name} {manager_instance.manager_last_name}"
+        recipient_email = manager_instance.manager_email
+        designation = new_designation or manager_instance.manager_designation or 'Manager'
+        dept_name = str(new_department or manager_instance.manager_department or 'Management')
+        
+        subject = f"Congratulations! You have been promoted to {designation}"
+        plain_body = f"""Dear {recipient_name},
+
+Congratulations! You have been promoted to the role of {designation} in the {dept_name} Department.
+
+Your account has been upgraded with Manager privileges. You can now log in to the HRMS portal to access your Manager Dashboard, view your team members, and manage attendance & leaves.
+
+Portal: {settings.GMAIL_REDIRECT_URL if hasattr(settings, 'GMAIL_REDIRECT_URL') else 'HRMS Portal'}
+
+Best regards,
+{COMPANY_NAME}
+"""
+        return send_simple_email_to_manager(recipient_email, subject, plain_body)
+    except Exception as e:
+        logger.exception("send_promotion_notification failed: %s", str(e))
+        return False
+

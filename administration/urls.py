@@ -19,6 +19,7 @@ urlpatterns = [
     path('all_employee_list/',views.All_Employee_List_View,name='all_employee_list' ),
     path('edit_employee/<int:company_id>/<int:company_staff_id>', views.Employee_Edit_View, name='edit_employee'),
     path('registeremployee/<int:company_id>/<int:company_staff_id>',views.Register_Employee_View,name='registeremployee' ),
+    path('promote_employee/<int:company_id>/<int:company_staff_id>', views.Promote_Employee_To_Manager_View, name='promote_employee'),
 
     path(f'all_manager/<int:company_id>/<int:company_staff_id>', views.All_manager_View, name='all_manager'),
     path('all_manager_list/', views.All_manager_List_View, name='all_manager_list'),
