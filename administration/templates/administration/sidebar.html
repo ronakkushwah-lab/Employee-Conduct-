@@ -31,7 +31,7 @@
                     </li>
 
                     <li class="menu-label">My Personal Space</li>
-                    <li class="{% if url_name == 'attendance' or url_name == 'create_leave' or url_name == 'leaves_list' or url_name == 'regularization_required_attendance' or url_name == 'regularization_table' or url_name == 'edit_profile' %}mm-active{% endif %}">
+                    <li class="{% if url_name == 'attendance' or url_name == 'create_leave' or url_name == 'staffleavetable' or url_name == 'regularization_required' or url_name == 'staffregularizationtable' or url_name == 'employee_profile' %}mm-active{% endif %}">
                       <a class="has-arrow">
                         <div class="parent-icon">
                           <i class="bx bx-user-circle"></i>
@@ -40,7 +40,7 @@
                           <span>My Self-Service</span>
                         </div>
                       </a>
-                      <ul class="mm-collapse {% if url_name == 'attendance' or url_name == 'create_leave' or url_name == 'leaves_list' or url_name == 'regularization_required_attendance' or url_name == 'regularization_table' or url_name == 'edit_profile' %}mm-show{% endif %}">
+                      <ul class="mm-collapse {% if url_name == 'attendance' or url_name == 'create_leave' or url_name == 'staffleavetable' or url_name == 'regularization_required' or url_name == 'staffregularizationtable' or url_name == 'employee_profile' %}mm-show{% endif %}">
                         <li>
                           <a href="{% url 'attendance' company_id=company_id company_staff_id=company_staff_id %}" class="{% if url_name == 'attendance' %}active{% endif %}">
                             <i class='bx bx-right-arrow-alt'></i>
@@ -54,25 +54,25 @@
                           </a>
                         </li>
                         <li>
-                          <a href="{% url 'leaves_list' company_id=company_id company_staff_id=company_staff_id %}" class="{% if url_name == 'leaves_list' %}active{% endif %}">
+                          <a href="{% url 'staffleavetable' company_id=company_id company_staff_id=company_staff_id %}" class="{% if url_name == 'staffleavetable' %}active{% endif %}">
                             <i class='bx bx-right-arrow-alt'></i>
-                            My Leave History
+                            Leave Status
                           </a>
                         </li>
                         <li>
-                          <a href="{% url 'regularization_required_attendance' company_id=company_id company_staff_id=company_staff_id %}" class="{% if url_name == 'regularization_required_attendance' %}active{% endif %}">
+                          <a href="{% url 'regularization_required' company_id=company_id company_staff_id=company_staff_id %}" class="{% if url_name == 'regularization_required' %}active{% endif %}">
                             <i class='bx bx-right-arrow-alt'></i>
                             Apply Regularization
                           </a>
                         </li>
                         <li>
-                          <a href="{% url 'regularization_table' company_id=company_id company_staff_id=company_staff_id %}" class="{% if url_name == 'regularization_table' %}active{% endif %}">
+                          <a href="{% url 'staffregularizationtable' company_id=company_id company_staff_id=company_staff_id %}" class="{% if url_name == 'staffregularizationtable' %}active{% endif %}">
                             <i class='bx bx-right-arrow-alt'></i>
                             Regularization Status
                           </a>
                         </li>
                         <li>
-                          <a href="{% url 'edit_profile' company_id=company_id company_staff_id=company_staff_id %}" class="{% if url_name == 'edit_profile' %}active{% endif %}">
+                          <a href="{% url 'employee_profile' company_id=company_id company_staff_id=company_staff_id %}" class="{% if url_name == 'employee_profile' %}active{% endif %}">
                             <i class='bx bx-right-arrow-alt'></i>
                             My Profile
                           </a>
