@@ -6,6 +6,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http.response import HttpResponseRedirect
 from django.contrib.auth import update_session_auth_hash
 from django.shortcuts import redirect, render, get_object_or_404
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views import generic
 from django.views.generic import View
 from django.contrib.auth.hashers import  make_password
@@ -375,6 +376,7 @@ def EmployeeDashboardView(request, company_id, company_staff_id):
     return render(request, "employee/index.html", ctx)
 
 
+@ensure_csrf_cookie
 def leave_creation(request,company_id, company_staff_id):
     if company_id:
         try:
@@ -1347,6 +1349,7 @@ def create_entry(request, company_id, company_staff_id):
         else:
             return render(request, 'employee/create-timesheet.html', context)
 
+@ensure_csrf_cookie
 def create_leave(request,company_id, company_staff_id):
     employee = None
     balance_summary = {'total_allocated': 0, 'used_days': 0, 'approved_days': 0, 'pending_days': 0, 'remaining_balance': 0}

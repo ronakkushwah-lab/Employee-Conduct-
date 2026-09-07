@@ -33,7 +33,9 @@ ALLOWED_HOSTS = ['*']
 # CSRF Trusted Origins for Render, ngrok and other external domains
 CSRF_TRUSTED_ORIGINS = [
     'https://employee-conduct-mcak.onrender.com',
+    'http://employee-conduct-mcak.onrender.com',
     'https://*.onrender.com',
+    'http://*.onrender.com',
     'http://localhost:8000',
     'http://127.0.0.1:8000',
     'https://maryetta-semiacademical-eufemia.ngrok-free.dev',
@@ -46,9 +48,11 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 USE_X_FORWARDED_HOST = True
 USE_X_FORWARDED_PORT = True
 
-# For development: Allow all origins (use only in development, not production)
-# Uncomment the line below if you want to allow all origins (less secure)
-# CSRF_TRUSTED_ORIGINS = ['*']
+CSRF_COOKIE_SECURE = False
+SESSION_COOKIE_SECURE = False
+CSRF_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_HTTPONLY = False
 
 DATE_INPUT_FORMATS = ('%d/%m/%Y','%d-%m-%Y','%Y-%m-%d')
 

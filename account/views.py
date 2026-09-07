@@ -5,6 +5,7 @@ from django.views.generic import TemplateView, CreateView
 from django.contrib.auth.models import Group, Permission
 from django.contrib.auth.decorators import user_passes_test, login_required
 from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_protect
 from employee.models import Department, Designation, Employee, Attendance
 from managers.models import Manager
 from django.utils import timezone
@@ -35,6 +36,7 @@ class SignUpView(CreateView):
     template_name = 'account/signup.html'
 
 
+@method_decorator(ensure_csrf_cookie, name='dispatch')
 class SignInView(View):
     def post(self, request):
         email = request.POST.get('email', '').strip()
@@ -389,6 +391,7 @@ def signup(request):
     return render(request, 'account/signup.html')
 
 
+@method_decorator(ensure_csrf_cookie, name='dispatch')
 class Login(View):
     return_url = None
 

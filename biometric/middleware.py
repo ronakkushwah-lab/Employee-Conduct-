@@ -8,7 +8,7 @@ class NormalizeDoubleSlashMiddleware:
             request.path_info = normalized
             request.path = normalized
 
-        # Disable CSRF / Referer checks for all biometric hardware endpoints
+        # Disable CSRF / Referer checks ONLY for biometric hardware endpoints, NOT the web root /
         clean_path = request.path_info.lower()
         if (
             'iclock' in clean_path
@@ -19,7 +19,7 @@ class NormalizeDoubleSlashMiddleware:
             or 'fdata' in clean_path
             or 'push' in clean_path
             or clean_path.endswith('.php')
-            or clean_path == '/'
+            or ('sn' in request.GET and clean_path == '/')
         ):
             request._dont_enforce_csrf_checks = True
 
