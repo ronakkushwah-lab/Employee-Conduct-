@@ -648,15 +648,65 @@ def Employee_Edit_View(request, company_id,company_staff_id):
             return redirect(f'/administration/all_employee/{company_id}/{company_staff_id}')
 
 
+def _delete_employee_and_staff(cursor, employee):
+    """Unlink all references to this employee, delete employee related rows, then delete Employee and CompanyStaff."""
+    eid, cid = employee.id, employee.user_id
+    try:
+        cursor.execute("UPDATE biometric_biometriceventlog SET employee_id = NULL, attendance_id = NULL WHERE employee_id = %s", [eid])
+    except Exception:
+        pass
+    cursor.execute("DELETE FROM employee_attendance WHERE employee_id = %s", [eid])
+    cursor.execute("DELETE FROM leave_leave WHERE user_id = %s", [eid])
+    cursor.execute("DELETE FROM leave_balanceleaves WHERE user_id = %s", [eid])
+    cursor.execute("DELETE FROM resign_resign WHERE user_id = %s", [eid])
+    cursor.execute("DELETE FROM regularization_regularization WHERE user_id = %s", [eid])
+    cursor.execute("DELETE FROM employee_entries WHERE user_id = %s", [eid])
+    cursor.execute("DELETE FROM payroll_salary WHERE employee_id = %s", [eid])
+    cursor.execute("DELETE FROM managers_employeenotification WHERE user_id = %s", [eid])
+    try:
+        cursor.execute("DELETE FROM administration_task_assigned_to WHERE employee_id = %s", [eid])
+    except Exception:
+        pass
+    try:
+        cursor.execute("DELETE FROM administration_mtask_assigned_to WHERE employee_id = %s", [eid])
+    except Exception:
+        pass
+
+    # If this staff also has a manager profile, delete that as well
+    if cid:
+        cursor.execute("SELECT id FROM managers_manager WHERE user_id = %s", [cid])
+        mgr_ids = [row[0] for row in cursor.fetchall()]
+        for mid in mgr_ids:
+            cursor.execute("UPDATE employee_employee SET employee_reports_to_id = NULL WHERE employee_reports_to_id = %s", [mid])
+            cursor.execute("UPDATE leave_leave SET manager_id = NULL WHERE manager_id = %s", [mid])
+            cursor.execute("UPDATE resign_resign SET assigned_too_id = NULL WHERE assigned_too_id = %s", [mid])
+            cursor.execute("UPDATE regularization_regularization SET r_assigned_to_id = NULL WHERE r_assigned_to_id = %s", [mid])
+            cursor.execute("UPDATE manager_leave_managerleave SET user_id = NULL, assigned_to_id = NULL WHERE user_id = %s OR assigned_to_id = %s", [mid, mid])
+            cursor.execute("UPDATE manager_leave_balanceleave SET user_id = NULL WHERE user_id = %s", [mid])
+            cursor.execute("UPDATE manager_resign_managerresign SET user_id = NULL, assigned_too_id = NULL WHERE user_id = %s OR assigned_too_id = %s", [mid, mid])
+            cursor.execute("UPDATE manageregularization_mregularization SET user_id = NULL WHERE user_id = %s", [mid])
+            cursor.execute("DELETE FROM administration_asign WHERE assigned_to_id = %s", [mid])
+            cursor.execute("DELETE FROM managers_managerattendance WHERE manager_id = %s", [mid])
+            cursor.execute("DELETE FROM managerpayroll_salary WHERE manager_id = %s", [mid])
+            cursor.execute("DELETE FROM managers_managerpost WHERE user_id = %s", [mid])
+            try:
+                cursor.execute("UPDATE biometric_biometriceventlog SET manager_id = NULL, manager_attendance_id = NULL WHERE manager_id = %s", [mid])
+            except Exception:
+                pass
+            cursor.execute("DELETE FROM managers_manager WHERE id = %s", [mid])
+
+    cursor.execute("DELETE FROM employee_employee WHERE id = %s", [eid])
+    if cid:
+        cursor.execute("DELETE FROM account_companystaff WHERE id = %s", [cid])
+
+
 def Remove_Employee_List(request, id):
     try:
-        employees = Employee.objects.get(id=id)
-        try:
-            User.objects.get(id=employees.user.id).delete()
-        except User.DoesNotExist:
-            pass  # User already deleted or doesn't exist
-        employees.delete()
-        messages.success(request, "deleted successfully")
+        employee = Employee.objects.get(id=id)
+        with transaction.atomic():
+            with connection.cursor() as cursor:
+                _delete_employee_and_staff(cursor, employee)
+        messages.success(request, "Employee deleted successfully")
     except Employee.DoesNotExist:
         messages.error(request, "Employee not found.")
     except Exception as e:
@@ -664,33 +714,27 @@ def Remove_Employee_List(request, id):
     return HttpResponseRedirect('/administration/all_employee_list')
 
 
-def Remove_Employee(request, id,company_id,company_staff_id):
+def Remove_Employee(request, id, company_id, company_staff_id):
     try:
-        employees = Employee.objects.get(id=id, user__company_id=company_id)
-        employee_user_id = employees.user.id if employees.user else None
-        
-        # Only delete CompanyStaff if it exists and is not the current admin's CompanyStaff
-        if employee_user_id and employee_user_id != company_staff_id:
-            try:
-                employee_company_staff = CompanyStaff.objects.get(id=employee_user_id)
-                employee_company_staff.delete()
-            except CompanyStaff.DoesNotExist:
-                pass  # CompanyStaff already deleted or doesn't exist
-        
-        # Delete the employee record
-        employees.delete()
+        employee = Employee.objects.get(id=id, user__company_id=company_id)
+        if employee.user_id == company_staff_id:
+            messages.error(request, "You cannot delete your own logged-in staff account.")
+            return redirect(f'/administration/all_employee/{company_id}/{company_staff_id}')
+
+        with transaction.atomic():
+            with connection.cursor() as cursor:
+                _delete_employee_and_staff(cursor, employee)
         messages.success(request, "Employee deleted successfully")
     except Employee.DoesNotExist:
         messages.error(request, "Employee not found.")
     except Exception as e:
         messages.error(request, f"Error deleting employee: {str(e)}")
-    
+
     # Verify company_staff_id exists before redirecting
     try:
         CompanyStaff.objects.get(id=company_staff_id, company_id=company_id)
         return redirect(f'/administration/all_employee/{company_id}/{company_staff_id}')
     except CompanyStaff.DoesNotExist:
-        # If admin CompanyStaff doesn't exist, redirect to a safe page
         messages.error(request, "Session expired. Please login again.")
         return redirect('/')
 
@@ -871,8 +915,8 @@ def All_manager_List_View(request):
 
 
 def _delete_manager_and_staff(cursor, manager):
-    """Unlink all references to this manager, then delete Manager, then CompanyStaff.
-    Order matters: Manager has FK to CompanyStaff, so delete Manager before CompanyStaff.
+    """Unlink all references to this manager, then delete Manager, attached Employee (if promoted/dual-role), then CompanyStaff.
+    Order matters: Manager and Employee have FK to CompanyStaff, so delete them before CompanyStaff.
     """
     mid, cid = manager.id, manager.user_id
     # 1) Unlink / nullify all FKs pointing to this manager
@@ -898,10 +942,43 @@ def _delete_manager_and_staff(cursor, manager):
     cursor.execute("DELETE FROM managers_managerattendance WHERE manager_id = %s", [mid])
     cursor.execute("DELETE FROM managerpayroll_salary WHERE manager_id = %s", [mid])
     cursor.execute("DELETE FROM managers_managerpost WHERE user_id = %s", [mid])
-    # 3) Delete Manager first (it references CompanyStaff)
+    try:
+        cursor.execute("UPDATE biometric_biometriceventlog SET manager_id = NULL, manager_attendance_id = NULL WHERE manager_id = %s", [mid])
+    except Exception:
+        pass
+
+    # 3) Unlink & delete any Employee profile linked to this user (e.g. promoted staff or dual-role staff)
+    if cid:
+        cursor.execute("SELECT id FROM employee_employee WHERE user_id = %s", [cid])
+        emp_ids = [row[0] for row in cursor.fetchall()]
+        for eid in emp_ids:
+            try:
+                cursor.execute("UPDATE biometric_biometriceventlog SET employee_id = NULL, attendance_id = NULL WHERE employee_id = %s", [eid])
+            except Exception:
+                pass
+            cursor.execute("DELETE FROM employee_attendance WHERE employee_id = %s", [eid])
+            cursor.execute("DELETE FROM leave_leave WHERE user_id = %s", [eid])
+            cursor.execute("DELETE FROM leave_balanceleaves WHERE user_id = %s", [eid])
+            cursor.execute("DELETE FROM resign_resign WHERE user_id = %s", [eid])
+            cursor.execute("DELETE FROM regularization_regularization WHERE user_id = %s", [eid])
+            cursor.execute("DELETE FROM employee_entries WHERE user_id = %s", [eid])
+            cursor.execute("DELETE FROM payroll_salary WHERE employee_id = %s", [eid])
+            cursor.execute("DELETE FROM managers_employeenotification WHERE user_id = %s", [eid])
+            try:
+                cursor.execute("DELETE FROM administration_task_assigned_to WHERE employee_id = %s", [eid])
+            except Exception:
+                pass
+            try:
+                cursor.execute("DELETE FROM administration_mtask_assigned_to WHERE employee_id = %s", [eid])
+            except Exception:
+                pass
+            cursor.execute("DELETE FROM employee_employee WHERE id = %s", [eid])
+
+    # 4) Delete Manager first (it references CompanyStaff)
     cursor.execute("DELETE FROM managers_manager WHERE id = %s", [mid])
-    # 4) Then delete CompanyStaff
-    cursor.execute("DELETE FROM account_companystaff WHERE id = %s", [cid])
+    # 5) Then delete CompanyStaff
+    if cid:
+        cursor.execute("DELETE FROM account_companystaff WHERE id = %s", [cid])
 
 
 def Remove_manager_List(request, id,company_id, company_staff_id):
