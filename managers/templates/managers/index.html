@@ -261,20 +261,40 @@
                             url: "{% url 'attendanc_post' company_id=company_id company_staff_id=company_staff_id %}",
                             type: "POST",
                             data: $("#hddfields").serialize(),
+                            dataType: 'json',
                             success: function (response) {
-                                if (response.status == "SUCCESS") {
+                                var status = (typeof response === 'string') ? (JSON.parse(response)).status : (response && response.status);
+                                if (status === "SUCCESS") {
                                     $.confirm({
                                         title: 'Success!',
-                                        content: 'Data Saved!',
+                                        content: (response && response.message) || 'Data Saved!',
                                         buttons: {
                                             Ok: function () {
-                                                location.reload()
+                                                location.reload();
                                             },
                                         }
                                     });
+                                } else {
+                                    $.confirm({
+                                        title: 'Error',
+                                        content: (response && response.error) || 'Could not save attendance.',
+                                        buttons: { Ok: function () {} }
+                                    });
                                 }
+                            },
+                            error: function (xhr, status, error) {
+                                var errMsg = 'Could not save attendance. Please try again.';
+                                try {
+                                    var errObj = JSON.parse(xhr.responseText);
+                                    if (errObj && errObj.error) errMsg = errObj.error;
+                                } catch(e) {}
+                                $.confirm({
+                                    title: 'Error',
+                                    content: errMsg,
+                                    buttons: { Ok: function () {} }
+                                });
                             }
-                        })
+                        });
                     },
                     close: function () {
                     }

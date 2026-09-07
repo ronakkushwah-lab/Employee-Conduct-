@@ -264,9 +264,14 @@
                                 }
                             },
                             error: function (xhr, status, error) {
+                                var errMsg = 'Could not save attendance. Please try again.';
+                                try {
+                                    var errObj = JSON.parse(xhr.responseText);
+                                    if (errObj && errObj.error) errMsg = errObj.error;
+                                } catch(e) {}
                                 $.confirm({
                                     title: 'Error',
-                                    content: 'Could not save attendance. Please try again.',
+                                    content: errMsg,
                                     buttons: { Ok: function () {} }
                                 });
                             }

@@ -585,8 +585,50 @@ def attendance_post(request, company_id, company_staff_id):
         
         employee = Employee.objects.filter(user=company_staff).first()
         if not employee:
+            # Fallback to manager profile if user is a manager
+            from managers.models import Manager, ManagerAttendance
+            manager = Manager.objects.filter(user=company_staff).first()
+            if manager:
+                now = timezone.now()
+                today_date = now.date()
+                att_mgr = None
+                if attendance_id and attendance_id.isdigit():
+                    att_mgr = ManagerAttendance.objects.filter(id=int(attendance_id), manager=manager).first()
+                if is_check_in:
+                    if not att_mgr:
+                        att_mgr = ManagerAttendance.objects.filter(
+                            manager=manager,
+                            check_in__date=today_date,
+                            check_out__isnull=True
+                        ).order_by('-id').first()
+                    if not att_mgr:
+                        att_mgr = ManagerAttendance(manager=manager, check_in=now)
+                    else:
+                        if not att_mgr.check_in:
+                            att_mgr.check_in = now
+                    att_mgr.save()
+                    msg = 'Checked in successfully!'
+                else:
+                    if not att_mgr:
+                        att_mgr = ManagerAttendance.objects.filter(
+                            manager=manager,
+                            check_in__date=today_date
+                        ).order_by('-id').first()
+                    if not att_mgr:
+                        att_mgr = ManagerAttendance(manager=manager, check_in=now, check_out=now)
+                    else:
+                        if not att_mgr.check_in:
+                            att_mgr.check_in = now
+                        att_mgr.check_out = now
+                    att_mgr.save()
+                    msg = 'Checked out successfully!'
+                if is_ajax:
+                    return JsonResponse({'status': 'SUCCESS', 'message': msg}, status=200)
+                messages.success(request, msg)
+                return redirect('dashboard', company_id=company_id, company_staff_id=company_staff_id)
+
             if is_ajax:
-                return JsonResponse({'status': "FAILED", 'error': 'Employee profile not found'}, status=404)
+                return JsonResponse({'status': "FAILED", 'error': 'No employee or manager profile found for this staff account. Please ensure an employee or manager profile is created.'}, status=404)
             messages.error(request, 'Employee profile not found')
             return redirect('accounts:login')
             
@@ -594,8 +636,8 @@ def attendance_post(request, company_id, company_staff_id):
         today_date = now.date()
         
         attendance_obj = None
-        if attendance_id:
-            attendance_obj = Attendance.objects.filter(id=attendance_id, employee=employee).first()
+        if attendance_id and attendance_id.isdigit():
+            attendance_obj = Attendance.objects.filter(id=int(attendance_id), employee=employee).first()
             
         if is_check_in:
             if not attendance_obj:
