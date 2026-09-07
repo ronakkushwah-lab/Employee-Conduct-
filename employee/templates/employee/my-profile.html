@@ -616,6 +616,53 @@
                       </div>
                     </div>
                   </div>
+                  <!-- Assigned Projects Section -->
+                  <div class="row mt-3">
+                    <div class="col-12">
+                      <div class="profile-section-card">
+                        <div class="profile-section-header d-flex justify-content-between align-items-center">
+                          <span><i class="bx bx-briefcase me-1"></i> Assigned Projects ({{ tasks|length }})</span>
+                          <a href="{% url 'task-list' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-sm btn-outline-primary" style="font-size: 12px;">View in My Projects</a>
+                        </div>
+                        <div class="table-responsive">
+                          <table class="table table-fluid table-hover table-striped mb-0">
+                            <thead>
+                              <tr>
+                                <th width="15%">Assigned Date</th>
+                                <th width="25%">Project</th>
+                                <th width="25%">Assigned By / Manager</th>
+                                <th>Description</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {% for task in tasks %}
+                              <tr>
+                                <td>{{ task.created_date|date:"F d, Y" }}</td>
+                                <td><strong>{{ task.title }}</strong></td>
+                                <td>
+                                  {% if task.user %}
+                                    <span class="fw-bold">{{ task.user.manager_first_name }} {{ task.user.manager_last_name }}</span><br>
+                                    <span class="text-muted small">{{ task.user.manager_email }}</span>
+                                  {% elif task.assigned_to.employee_reports_to %}
+                                    <span class="fw-bold">{{ task.assigned_to.employee_reports_to.manager_first_name }} {{ task.assigned_to.employee_reports_to.manager_last_name }}</span><br>
+                                    <span class="text-muted small">{{ task.assigned_to.employee_reports_to.manager_email }}</span>
+                                  {% else %}
+                                    <span class="badge bg-secondary">Admin</span>
+                                  {% endif %}
+                                </td>
+                                <td>{{ task.description|default:"-"|linebreaksbr }}</td>
+                              </tr>
+                              {% empty %}
+                              <tr>
+                                <td colspan="4" class="text-center text-muted py-3">No projects assigned yet.</td>
+                              </tr>
+                              {% endfor %}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

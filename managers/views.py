@@ -1265,23 +1265,59 @@ def create_mregularizations(request,company_id, company_staff_id):
             return render(request, "managers/regularization.html", {'rassigne': Manager.objects.all()},{'company_id':company_id, 'company_staff_id':company_staff_id})
 
 
-def add_project(request,company_id, company_staff_id):
+def add_project(request, company_id, company_staff_id):
     if company_id:
-        if request.method == "POST":
-            title = request.POST.get("title")
-            description = request.POST.get("description")
-
-            assign_i = request.POST.get("employee_id")
-            assigned_t = Employee.objects.get(id=assign_i)
+        try:
             company_staff = CompanyStaff.objects.get(id=company_staff_id)
-            user = company_staff
-            emp = Manager.objects.get(user=user)
+        except CompanyStaff.DoesNotExist:
+            messages.error(request, 'Company staff account not found.')
+            return redirect('/')
+
+        emp = getattr(company_staff, 'manager', None) or Manager.objects.filter(user=company_staff).first()
+
+        if request.method == "POST":
+            title = request.POST.get("title", "").strip()
+            description = request.POST.get("description", "").strip()
+            assign_i = request.POST.get("employee_id", "").strip()
+
+            if not title:
+                messages.error(request, 'Project title is required.')
+                return redirect(f'/managers/add_project/{company_id}/{company_staff_id}')
+
+            if not assign_i or not str(assign_i).isdigit():
+                messages.error(request, 'Please select an employee.')
+                return redirect(f'/managers/add_project/{company_id}/{company_staff_id}')
+
+            assigned_t = Employee.objects.filter(id=int(assign_i)).first()
+            if not assigned_t:
+                messages.error(request, 'Selected employee profile not found.')
+                return redirect(f'/managers/add_project/{company_id}/{company_staff_id}')
 
             MTask.objects.create(user=emp, title=title, description=description, assigned_to=assigned_t)
+
+            # Send real-time notification to employee
+            try:
+                mgr_name = f"{emp.manager_first_name} {emp.manager_last_name}".strip() if emp else "Manager"
+                EmployeeNotification.objects.create(
+                    user=assigned_t,
+                    notifications=f"New project assigned: '{title}' by {mgr_name}."
+                )
+            except Exception:
+                pass
+
+            messages.success(request, f'Project "{title}" assigned to {assigned_t.employee_first_name} {assigned_t.employee_last_name} successfully!')
             return redirect(f'/managers/mprojectlist/{company_id}/{company_staff_id}')
 
         else:
-            return render(request, "managers/add-project.html", {'addProject': Employee.objects.filter(user__company__id=company_id),'company_id':company_id, 'company_staff_id':company_staff_id})
+            employees_qs = Employee.objects.filter(
+                Q(user__company__id=company_id) | Q(user__company_id=company_id) | (Q(employee_reports_to=emp) if emp else Q())
+            ).distinct().order_by('employee_first_name', 'employee_last_name')
+
+            return render(request, "managers/add-project.html", {
+                'addProject': employees_qs,
+                'company_id': company_id, 
+                'company_staff_id': company_staff_id
+            })
 
 
 def add_leave(request, company_id, company_staff_id):

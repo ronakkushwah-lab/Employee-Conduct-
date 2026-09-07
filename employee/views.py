@@ -229,14 +229,30 @@ def employee_profile_view(request,company_id, company_staff_id):
                 # Redirect even on error to prevent form resubmission
                 return redirect('employee_profile', company_id=company_id, company_staff_id=company_staff_id)
         
+        # Fetch assigned projects (from Admin Task and Manager MTask)
+        emp_ids = list(Employee.objects.filter(
+            Q(user=company_staff) | 
+            Q(employee_email__iexact=company_staff.email) | 
+            (Q(employee_email__iexact=profile.employee_email) if profile else Q())
+        ).values_list('id', flat=True))
+
+        admin_tasks = Task.objects.filter(Q(assigned_to__id__in=emp_ids) | Q(assigned_to__user=company_staff))
+        if company_id:
+            admin_tasks = admin_tasks.filter(company_id=company_id)
+        manager_tasks = MTask.objects.filter(Q(assigned_to__id__in=emp_ids) | Q(assigned_to__user=company_staff))
+        tasks = list(admin_tasks) + list(manager_tasks)
+        tasks.sort(key=lambda x: x.created_date, reverse=True)
+
         return render(request, 'employee/my-profile.html', {
             'profile': profile,
+            'tasks': tasks,
             'company_id': company_id, 
             'company_staff_id': company_staff_id
         })
     
     return render(request, 'employee/my-profile.html', {
         'profile': profile,
+        'tasks': [],
         'company_id': company_id, 
         'company_staff_id': company_staff_id
     })
@@ -373,6 +389,21 @@ def EmployeeDashboardView(request, company_id, company_staff_id):
     # My Notifications
     my_notifications = EmployeeNotification.objects.filter(user=employee).order_by('-id')[:8]
     ctx['my_notifications'] = my_notifications
+
+    # My Projects (Tasks from Admin and Manager)
+    emp_ids = list(Employee.objects.filter(
+        Q(user=company_staff) | 
+        Q(employee_email__iexact=company_staff.email) | 
+        (Q(employee_email__iexact=employee.employee_email) if employee else Q())
+    ).values_list('id', flat=True))
+
+    admin_tasks = Task.objects.filter(Q(assigned_to__id__in=emp_ids) | Q(assigned_to__user=company_staff))
+    if company_id:
+        admin_tasks = admin_tasks.filter(company_id=company_id)
+    manager_tasks = MTask.objects.filter(Q(assigned_to__id__in=emp_ids) | Q(assigned_to__user=company_staff))
+    my_tasks = list(admin_tasks) + list(manager_tasks)
+    my_tasks.sort(key=lambda x: x.created_date, reverse=True)
+    ctx['my_tasks'] = my_tasks[:5]
 
     return render(request, "employee/index.html", ctx)
 
@@ -846,20 +877,25 @@ def taskList(request,company_id, company_staff_id):
     
     employee = Employee.objects.filter(user=company_staff).first()
     if not employee:
-        messages.error(request, 'Employee profile not found.')
-        context['tasks'] = Task.objects.none()
-        context['company_id'] = company_id
-        context['company_staff_id'] = company_staff_id
-        return render(request, 'employee/my-project.html', context)
-    
-    admin_tasks = Task.objects.filter(assigned_to__id=employee.id, company_id=company_id)
-    manager_tasks = MTask.objects.filter(assigned_to__id=employee.id)
+        employee = Employee.objects.filter(employee_email__iexact=company_staff.email).first()
+
+    emp_ids = list(Employee.objects.filter(
+        Q(user=company_staff) | 
+        Q(employee_email__iexact=company_staff.email) | 
+        (Q(employee_email__iexact=employee.employee_email) if employee else Q())
+    ).values_list('id', flat=True))
+
+    admin_tasks = Task.objects.filter(Q(assigned_to__id__in=emp_ids) | Q(assigned_to__user=company_staff))
+    if company_id:
+        admin_tasks = admin_tasks.filter(company_id=company_id)
+    manager_tasks = MTask.objects.filter(Q(assigned_to__id__in=emp_ids) | Q(assigned_to__user=company_staff))
     
     # Combine both and sort by created_date descending
     tasks = list(admin_tasks) + list(manager_tasks)
     tasks.sort(key=lambda x: x.created_date, reverse=True)
     
     context['tasks'] = tasks
+    context['employee'] = employee
     context['company_id'] = company_id
     context['company_staff_id'] = company_staff_id
     return render(request, 'employee/my-project.html', context)

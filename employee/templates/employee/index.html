@@ -155,6 +155,54 @@
             </div>
           </div>
 
+          <!-- My Assigned Projects -->
+          <div class="row mt-3">
+            <div class="col-12">
+              <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                  <h6 class="mb-0">My Assigned Projects ({{ my_tasks|length }})</h6>
+                  <a href="{% url 'task-list' company_id company_staff_id %}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                  {% if my_tasks %}
+                  <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Project</th>
+                          <th>Assigned By</th>
+                          <th>Description</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for task in my_tasks %}
+                        <tr>
+                          <td>{{ task.created_date|date:"d M Y" }}</td>
+                          <td><strong>{{ task.title }}</strong></td>
+                          <td>
+                            {% if task.user %}
+                              {{ task.user.manager_first_name }} {{ task.user.manager_last_name }}
+                            {% elif task.assigned_to.employee_reports_to %}
+                              {{ task.assigned_to.employee_reports_to.manager_first_name }} {{ task.assigned_to.employee_reports_to.manager_last_name }}
+                            {% else %}
+                              Admin
+                            {% endif %}
+                          </td>
+                          <td>{{ task.description|truncatewords:10|default:"-" }}</td>
+                        </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                  {% else %}
+                  <p class="text-muted mb-0">No projects assigned yet.</p>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Notifications -->
           <div class="row mt-3">
             <div class="col-12">
