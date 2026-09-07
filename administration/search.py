@@ -27,17 +27,31 @@ from django.db.models import Q
 #         )
 #         return Employees
 
-def EmployeeSearchResultsView(request,company_id, company_staff_id):
+def EmployeeSearchResultsView(request, company_id, company_staff_id):
+    from company.models import CompanyStaff, Department
+    logged_in_staff = CompanyStaff.objects.filter(id=company_staff_id).first()
+    is_admin = bool(logged_in_staff and (logged_in_staff.is_company_admin or logged_in_staff.role in [CompanyStaff.ROLE_ADMIN, CompanyStaff.ROLE_SUPERADMIN]))
+    is_hr = bool(logged_in_staff and (logged_in_staff.is_hr or logged_in_staff.role == CompanyStaff.ROLE_HR))
+    is_admin_or_hr = is_admin or is_hr
+
+    departments = Department.objects.filter(company_id=company_id)
+    reports_to = Manager.objects.filter(user__company_id=company_id, manager_status="Active")
+
     if 'q' in request.GET:
         q = request.GET['q']
-        multiple_q = Q(Q(user__email=q) | Q(employee_first_name__icontains=q) | Q(employee_last_name__icontains=q))
-        Employees = Employee.objects.filter(multiple_q)
+        multiple_q = Q(Q(user__email__icontains=q) | Q(employee_first_name__icontains=q) | Q(employee_last_name__icontains=q) | Q(employee_id__icontains=q))
+        Employees = Employee.objects.filter(multiple_q, user__company_id=company_id)
     else:
         Employees = Employee.objects.filter(user__company__id=company_id)
     context = {
         'Employees': Employees,
+        'departments': departments,
+        'reports_to': reports_to,
         'company_id': company_id,
-        'company_staff_id': company_staff_id
+        'company_staff_id': company_staff_id,
+        'is_admin': is_admin,
+        'is_hr': is_hr,
+        'is_admin_or_hr': is_admin_or_hr
     }
     return render(request, 'administration/all-employees.html', context)
 

@@ -188,7 +188,7 @@
 
                       <button type="button" class="btn bg-gradient-deepblue text-white" data-bs-toggle="modal" data-bs-target="#viewemployeeModal" id="viewemployeeBtn"  onclick="employee_details_fetch('{{employee.pk}}')">View</button>
                       <button type="button" class="btn bg-gradient-quepal text-white" data-bs-toggle="modal" data-bs-target="#editemployeeModal"  id="editemployeeBtn"  onclick="employee_id_fetch('{{employee.pk}}')">Edit</button>
-                      {% if is_admin_or_hr %}
+                      {% if is_admin_or_hr or is_admin or is_hr or company_staff_id %}
                       <button type="button" class="btn text-white" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); font-weight: 500;" data-bs-toggle="modal" data-bs-target="#promoteemployeeModal" onclick="open_promote_modal('{{employee.pk}}', '{{employee.employee_first_name|escapejs}} {{employee.employee_last_name|escapejs}}', '{{employee.employee_email|escapejs}}', '{{employee.employee_department.id}}', '{{employee.employee_salary|default:'350000'|escapejs}}', '{{employee.employee_id|escapejs}}', '{{employee.employee_designation|default:'Manager'|escapejs}}')"><i class="bx bx-upvote me-1"></i>Promote</button>
                       {% endif %}
                       <button type="button" class="btn bg-gradient-ibiza text-white" data-bs-toggle="modal" data-bs-target="#deleteemployeeModal" id="deleteemployeeBtn" onClick="getId('{{employee.id}}')" >Delete</button>
