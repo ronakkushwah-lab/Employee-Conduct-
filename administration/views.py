@@ -300,11 +300,19 @@ def Register_Employee_View(request,company_id, company_staff_id):
             if company_id:
                 try:
                     if (employee_password == employee_confirm_password):
-                        user = CompanyStaff.objects.create(email=employee_email, password=employee_password,company_id=company_id)
+                        selected_role = request.POST.get('employee_role', 'employee').strip().lower()
+                        user = CompanyStaff.objects.create(email=employee_email, password=employee_password, company_id=company_id)
                         user.password = make_password(user.password)
                         user.full_name = employee_first_name + ' ' + employee_last_name
                         user.is_active = True
-                        user.is_employee = True
+                        if selected_role == 'hr':
+                            user.role = CompanyStaff.ROLE_HR
+                            user.is_hr = True
+                            user.is_employee = True
+                        else:
+                            user.role = CompanyStaff.ROLE_EMPLOYEE
+                            user.is_hr = False
+                            user.is_employee = True
                         user.save()
                         register_employee = Employee(user=user, employee_salary=employee_salary,
                                                      employee_first_name=employee_first_name,
@@ -442,6 +450,20 @@ def Employee_Edit_View(request, company_id,company_staff_id):
             
             employee_obj.update(**employee_models_fields_dict)
             emp_id = request.POST.get('employee_id')
+
+            # Check if role is being updated
+            employee_role = request.POST.get('employee_role')
+            if employee_role and employee_instance and employee_instance.user:
+                staff_user = employee_instance.user
+                if employee_role.strip().lower() == 'hr':
+                    staff_user.role = CompanyStaff.ROLE_HR
+                    staff_user.is_hr = True
+                    staff_user.is_employee = True
+                else:
+                    staff_user.role = CompanyStaff.ROLE_EMPLOYEE
+                    staff_user.is_hr = False
+                    staff_user.is_employee = True
+                staff_user.save()
 
             if 'employee_image' in request.FILES:
                 employee_obj = employee_obj.first()

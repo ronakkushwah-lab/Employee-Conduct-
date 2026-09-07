@@ -50,6 +50,89 @@
             </div>
           </div>
 
+          <!-- HR Personal Workspace & Attendance Quick Punch Card -->
+          <div class="card radius-10 shadow-sm border-0 mb-4" style="background: #ffffff; border-left: 5px solid #0d6efd !important;">
+            <div class="card-body p-4">
+              <div class="row align-items-center">
+                <!-- Left: Profile & Reporting Manager Info -->
+                <div class="col-lg-5 col-md-12 border-end pe-lg-4 mb-3 mb-lg-0">
+                  <div class="d-flex align-items-center">
+                    <div class="avatar-box me-3">
+                      {% if hr_employee.employee_image %}
+                        <img src="{{ hr_employee.employee_image.url }}" class="rounded-circle shadow-sm" style="width: 58px; height: 58px; object-fit: cover;">
+                      {% else %}
+                        <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm" style="width: 58px; height: 58px; background: linear-gradient(135deg, #0d6efd, #6610f2); font-size: 1.25rem;">
+                          HR
+                        </div>
+                      {% endif %}
+                    </div>
+                    <div>
+                      <h5 class="mb-1 fw-bold text-dark">{{ hr_employee.get_full_name|default:staff.email }} <span class="badge bg-warning text-dark ms-1" style="font-size: 0.72rem;">HR Staff</span></h5>
+                      <p class="mb-1 text-muted small"><i class="bx bx-id-card me-1"></i><strong>Emp ID:</strong> {{ hr_employee.employee_id|default:"EIC-028" }} &nbsp;|&nbsp; <i class="bx bx-fingerprint me-1"></i><strong>Bio ID:</strong> {{ hr_employee.biometric_id|default:staff.id }}</p>
+                      <p class="mb-0 small text-primary">
+                        <i class="bx bx-user-check me-1"></i><strong>Reports To (Manager):</strong> 
+                        {% if hr_manager %}
+                          <span class="fw-semibold">{{ hr_manager.manager_first_name }} {{ hr_manager.manager_last_name }}</span> ({{ hr_manager.manager_email }})
+                        {% else %}
+                          <span class="text-muted">No manager assigned</span>
+                        {% endif %}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Middle: Personal Today's Attendance Info -->
+                <div class="col-lg-4 col-md-7 border-end pe-lg-4 mb-3 mb-md-0">
+                  <div class="row text-center g-2">
+                    <div class="col-4">
+                      <div class="p-2 rounded bg-light">
+                        <span class="text-muted d-block small mb-1">Check In</span>
+                        <strong class="text-dark small">{% if hr_attendance and hr_attendance.check_in %}{{ hr_attendance.check_in|date:"h:i A" }}{% else %}--:--{% endif %}</strong>
+                      </div>
+                    </div>
+                    <div class="col-4">
+                      <div class="p-2 rounded bg-light">
+                        <span class="text-muted d-block small mb-1">Check Out</span>
+                        <strong class="text-dark small">{% if hr_attendance and hr_attendance.check_out %}{{ hr_attendance.check_out|date:"h:i A" }}{% else %}--:--{% endif %}</strong>
+                      </div>
+                    </div>
+                    <div class="col-4">
+                      <div class="p-2 rounded bg-light">
+                        <span class="text-muted d-block small mb-1">Worked</span>
+                        <strong class="text-success small">{{ hr_hours_num|default:"0h 0m" }}</strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Right: 1-Click Punch & Self-Service Links -->
+                <div class="col-lg-3 col-md-5 ps-lg-4 text-center text-md-end">
+                  {% if hr_is_check_in == 'Completed' %}
+                    <span class="badge bg-success py-2 px-3 mb-2 d-inline-block rounded-3"><i class="bx bx-check-double me-1"></i>Punch Completed Today</span>
+                  {% else %}
+                    <form action="{% url 'attendance_post' company_id=company_id company_staff_id=company_staff_id %}" method="post" class="d-inline-block mb-2">
+                      {% csrf_token %}
+                      <input type="hidden" name="is_check_in" value="{% if hr_is_check_in == 'Check Out' %}0{% else %}1{% endif %}">
+                      <input type="hidden" name="attendance_id" value="{{ hr_attendance.id|default:'' }}">
+                      <button type="submit" class="btn btn-sm {% if hr_is_check_in == 'Check Out' %}btn-danger{% else %}btn-primary{% endif %} px-3 py-2 rounded-3 shadow-sm fw-semibold">
+                        <i class="bx {% if hr_is_check_in == 'Check Out' %}bx-log-out-circle{% else %}bx-log-in-circle{% endif %} me-1"></i>
+                        {{ hr_is_check_in }}
+                      </button>
+                    </form>
+                  {% endif %}
+                  <div class="d-flex justify-content-center justify-content-md-end gap-2 mt-1">
+                    <a href="{% url 'attendance' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-outline-secondary btn-xs small py-1 px-2" style="font-size: 0.78rem;" title="View Monthly Attendance Calendar">
+                      <i class="bx bx-calendar me-1"></i>My Attendance
+                    </a>
+                    <a href="{% url 'create_leave' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-outline-primary btn-xs small py-1 px-2" style="font-size: 0.78rem;" title="Apply Leave to Manager">
+                      <i class="bx bx-calendar-plus me-1"></i>Apply Leave
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Metric Cards Grid (Standard HRMS Rocker Theme) -->
           <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 row-cols-xl-4">
             <div class="col">

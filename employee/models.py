@@ -181,10 +181,15 @@ class Employee(models.Model):
             'employee_experience_company_period_from': self.employee_experience_company_period_from,
             'employee_experience_company_period_to': self.employee_experience_company_period_to,
             'employee_reports_to': self.employee_reports_to_id if self.employee_reports_to_id else None,
-            'biometric_id': self.biometric_id or ''
+            'biometric_id': self.biometric_id or '',
+            'employee_role': getattr(self.user, 'role', 'employee') if self.user else 'employee',
+            'is_hr': bool(self.user and (self.user.role == 'hr' or getattr(self.user, 'is_hr', False)))
         }
         return employee_details_dict
 
+    @property
+    def is_hr(self):
+        return bool(self.user and (self.user.role == 'hr' or getattr(self.user, 'is_hr', False)))
 
     @property
     def formatted_employee_id(self):

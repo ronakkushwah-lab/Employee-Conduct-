@@ -412,7 +412,14 @@ class Login(View):
                     actual_role = getattr(company_staff, 'role', None) or self._role_from_flags(company_staff)
                     expected_role = request.POST.get('login_role', '').lower()
                     if expected_role and expected_role != actual_role:
-                        if not (expected_role == 'admin' and actual_role == CompanyStaff.ROLE_SUPERADMIN) and not (expected_role == 'hr' and (actual_role in [CompanyStaff.ROLE_ADMIN, CompanyStaff.ROLE_SUPERADMIN] or getattr(company_staff, 'is_hr', False))):
+                        is_allowed = False
+                        if expected_role == 'admin' and actual_role == CompanyStaff.ROLE_SUPERADMIN:
+                            is_allowed = True
+                        elif expected_role == 'hr' and (actual_role in [CompanyStaff.ROLE_ADMIN, CompanyStaff.ROLE_SUPERADMIN, CompanyStaff.ROLE_HR] or getattr(company_staff, 'is_hr', False)):
+                            is_allowed = True
+                        elif expected_role == 'employee' and (actual_role == CompanyStaff.ROLE_HR or getattr(company_staff, 'is_hr', False) or getattr(company_staff, 'is_employee', False)):
+                            is_allowed = True
+                        if not is_allowed:
                             messages.error(request, f"Access Denied: You cannot log in from the {expected_role.upper()} page. Please select your correct role.")
                             return HttpResponseRedirect('/')
 
@@ -422,6 +429,11 @@ class Login(View):
 
                     # Role-based redirect to dashboard
                     role = getattr(company_staff, 'role', None) or self._role_from_flags(company_staff)
+                    if expected_role == 'employee' and company_staff.company_id and (role == CompanyStaff.ROLE_HR or getattr(company_staff, 'is_hr', False)):
+                        return HttpResponseRedirect(reverse('employee_role_dashboard', kwargs={
+                            'company_id': company_staff.company_id,
+                            'company_staff_id': company_staff.pk,
+                        }))
                     if expected_role == 'hr' and company_staff.company_id:
                         return HttpResponseRedirect(reverse('hr_dashboard', kwargs={
                             'company_id': company_staff.company_id,
@@ -602,6 +614,32 @@ def hr_dashboard(request, company_id, company_staff_id):
         .order_by('-received_at', '-id')[:10]
     )
 
+    # Personal HR Employee profile & Reporting Manager
+    hr_employee = Employee.objects.filter(user=staff).first()
+    hr_manager = hr_employee.employee_reports_to if hr_employee else None
+    hr_attendance = None
+    hr_is_check_in = 'Check In'
+    hr_hours_num = ''
+    if hr_employee:
+        today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_end = timezone.now().replace(hour=23, minute=59, second=59, microsecond=999999)
+        hr_attendance = Attendance.objects.filter(
+            employee=hr_employee,
+            check_in__gte=today_start,
+            check_in__lte=today_end
+        ).first()
+
+        if hr_attendance:
+            if hr_attendance.check_out and hr_attendance.check_in:
+                time_diff = hr_attendance.check_out - hr_attendance.check_in
+                total_seconds = int(time_diff.total_seconds())
+                hours = total_seconds // 3600
+                minutes = (total_seconds % 3600) // 60
+                hr_hours_num = f"{hours}h {minutes}m"
+                hr_is_check_in = 'Completed'
+            elif hr_attendance.check_in and not hr_attendance.check_out:
+                hr_is_check_in = 'Check Out'
+
     context = {
         'company': company,
         'staff': staff,
@@ -617,6 +655,11 @@ def hr_dashboard(request, company_id, company_staff_id):
         'today_date': today_date,
         'devices_count': devices_count,
         'recent_events': recent_events,
+        'hr_employee': hr_employee,
+        'hr_manager': hr_manager,
+        'hr_attendance': hr_attendance,
+        'hr_is_check_in': hr_is_check_in,
+        'hr_hours_num': hr_hours_num,
     }
     return render(request, 'account/hr_dashboard.html', context)
 

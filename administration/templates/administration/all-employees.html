@@ -106,6 +106,15 @@
                                 </select>
                             </div>
                             <div class="col-md-6">
+                              <label for="employee_role_add" class="form-label">System Role <span class="text-danger">*</span></label>
+                              <select class="form-select" name="employee_role" id="employee_role_add" required>
+                                <option value="employee" selected>Employee</option>
+                                <option value="hr">HR (Human Resources)</option>
+                              </select>
+                            </div>
+                          </div>
+                          <div class="row mb-2">
+                            <div class="col-md-6">
                               <label for="employee_biometric_id_add" class="form-label">Biometric ID</label>
                               <input type="text" name="biometric_id" class="form-control" placeholder="e.g. 101" id="employee_biometric_id_add">
                             </div>
@@ -161,7 +170,14 @@
                     </div>
                     <div class="info mb-3 text-center">
                       <h5 class="mt-3 mb-0">{{employee.employee_first_name}} {{employee.employee_last_name}}</h5>
-                      <div>{{employee.employee_department}} </div>
+                      <div>
+                        {{employee.employee_department}} 
+                        {% if employee.is_hr or employee.user.role == 'hr' or employee.user.is_hr %}
+                          <span class="badge bg-warning text-dark ms-1" style="font-size: 0.72rem; border-radius: 4px;">HR Role</span>
+                        {% else %}
+                          <span class="badge bg-primary text-white ms-1" style="font-size: 0.72rem; border-radius: 4px;">Employee</span>
+                        {% endif %}
+                      </div>
                     </div>
                     <div class="profile-button text-center">
 
@@ -415,6 +431,13 @@
                                         </div>
                                       </div>
                                       <div class="row mb-2">
+                                        <div class="col-md-6">
+                                          <label for="employee_role_edit" class="form-label">System Role <span class="text-danger">*</span></label>
+                                          <select class="form-select" id="employee_role_edit" name="employee_role" aria-label="Select Role">
+                                            <option value="employee">Employee</option>
+                                            <option value="hr">HR (Human Resources)</option>
+                                          </select>
+                                        </div>
                                         <div class="col-md-6">
                                           <label for="employee_biometric_id_edit" class="form-label">Biometric ID</label>
                                           <input type="text" class="form-control" id="employee_biometric_id_edit" name="biometric_id" placeholder="e.g. 101">
@@ -809,6 +832,8 @@
             employee_status_edit.value = res['employee_status']
             if (employee_reports_to_edit) employee_reports_to_edit.value = res['employee_reports_to'] || '';
             if (employee_biometric_id_edit) employee_biometric_id_edit.value = res['biometric_id'] || '';
+            var employee_role_edit = document.getElementById("employee_role_edit");
+            if (employee_role_edit) employee_role_edit.value = res['employee_role'] || (res['is_hr'] ? 'hr' : 'employee');
 
             employee_detail_info_headings.value = res['employee_first_name'] + ' ' + res['employee_last_name'];
             employee_father_heading_edit.value = res['employee_father']
