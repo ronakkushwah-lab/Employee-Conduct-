@@ -289,8 +289,9 @@ def ManagerDashboardView(request, company_id, company_staff_id):
     att = None
     if manager:
         att = ManagerAttendance.objects.filter(
-            Q(check_in__gte=today) & Q(check_in__lt=tomorrow) & Q(manager=manager)
-        ).first()
+            manager=manager,
+            check_in__date=tz.localdate()
+        ).order_by('-id').first()
     ctx['attendance'] = att
     ctx['company_id'] = company_id
     ctx['company_staff_id'] = company_staff_id
@@ -470,8 +471,9 @@ def attendance(request, company_id, company_staff_id):
     att = None
     if manager:
         att = ManagerAttendance.objects.filter(
-            Q(check_in__gte=today) & Q(check_in__lt=tomorrow) & Q(manager=manager)
-        ).first()
+            manager=manager,
+            check_in__date=tz.localdate()
+        ).order_by('-id').first()
 
     ctx['attendance'] = att
     ctx['company_id'] = company_id

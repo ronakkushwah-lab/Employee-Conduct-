@@ -75,7 +75,7 @@
                 </ul>
                 <div class="card-footer bg-transparent m-auto">
                   {% if not is_complete_attendance %}
-                  <button class="btn btn-outline-orangeyellow" id="check_in" type="button" onclick="attend()">{{ is_check_in }}</button>
+                  <button class="btn btn-outline-orangeyellow" id="check_in" type="button" onclick="attend(event)" style="cursor:pointer; min-width: 130px; font-weight: 600;">{{ is_check_in }}</button>
                   {% endif %}
                 </div>
               </div>
@@ -232,54 +232,111 @@
             }
         });
 
-        function attend() {
-            $.confirm({
-                title: 'Attendance!',
-                content: 'Do you want to continue?',
-                buttons: {
-                    Ok: function () {
-                        $.ajax({
-                            url: "{% url 'attendance_post' company_id=company_id company_staff_id=company_staff_id %}",
-                            type: "POST",
-                            data: $("#hddfields").serialize(),
-                            dataType: 'json',
-                            success: function (response) {
-                                var status = (typeof response === 'string') ? (JSON.parse(response)).status : (response && response.status);
-                                if (status === "SUCCESS") {
-                                    $.confirm({
-                                        title: 'Success!',
-                                        content: 'Data Saved!',
-                                        buttons: {
-                                            Ok: function () {
-                                                location.reload();
-                                            },
+        var isAttendanceSubmitting = false;
+
+        function attend(e) {
+            if (e && e.preventDefault) e.preventDefault();
+            if (isAttendanceSubmitting) return;
+
+            var $btn = $("#check_in");
+            var currentText = $btn.text().trim() || "Check In";
+            var actionTitle = currentText;
+
+            function doSubmitAttendance() {
+                isAttendanceSubmitting = true;
+                $btn.prop('disabled', true).text('Processing...');
+
+                var postData = $("#hddfields").serialize();
+                if (!postData) {
+                    var token = $('input[name="csrfmiddlewaretoken"]').val() || $('[name=csrfmiddlewaretoken]').val();
+                    var isCheckInVal = $('#is_check_in').val() || currentText;
+                    var attendanceIdVal = $('#attendance_id').val() || '';
+                    postData = {
+                        'csrfmiddlewaretoken': token,
+                        'is_check_in': isCheckInVal,
+                        'attendance_id': attendanceIdVal
+                    };
+                }
+
+                $.ajax({
+                    url: "{% url 'attendance_post' company_id=company_id company_staff_id=company_staff_id %}",
+                    type: "POST",
+                    data: postData,
+                    dataType: 'json',
+                    success: function (response) {
+                        var status = (typeof response === 'string') ? (JSON.parse(response)).status : (response && response.status);
+                        var msg = (response && response.message) || 'Attendance recorded successfully!';
+
+                        if (status === "SUCCESS") {
+                            if (typeof $.confirm === 'function') {
+                                $.confirm({
+                                    title: 'Success!',
+                                    content: msg,
+                                    buttons: {
+                                        Ok: function () {
+                                            location.reload();
                                         }
-                                    });
-                                } else {
-                                    $.confirm({
-                                        title: 'Error',
-                                        content: (response && response.error) || 'Could not save attendance.',
-                                        buttons: { Ok: function () {} }
-                                    });
-                                }
-                            },
-                            error: function (xhr, status, error) {
-                                var errMsg = 'Could not save attendance. Please try again.';
-                                try {
-                                    var errObj = JSON.parse(xhr.responseText);
-                                    if (errObj && errObj.error) errMsg = errObj.error;
-                                } catch(e) {}
+                                    }
+                                });
+                            } else {
+                                alert(msg);
+                                location.reload();
+                            }
+                        } else {
+                            isAttendanceSubmitting = false;
+                            $btn.prop('disabled', false).text(currentText);
+                            var errMsg = (response && response.error) || 'Could not save attendance.';
+                            if (typeof $.confirm === 'function') {
                                 $.confirm({
                                     title: 'Error',
                                     content: errMsg,
                                     buttons: { Ok: function () {} }
                                 });
+                            } else {
+                                alert('Error: ' + errMsg);
                             }
-                        });
+                        }
                     },
-                    close: function () {}
+                    error: function (xhr, status, error) {
+                        isAttendanceSubmitting = false;
+                        $btn.prop('disabled', false).text(currentText);
+                        var errMsg = 'Could not save attendance. Please try again.';
+                        try {
+                            var errObj = JSON.parse(xhr.responseText);
+                            if (errObj && errObj.error) errMsg = errObj.error;
+                        } catch(e) {}
+
+                        if (typeof $.confirm === 'function') {
+                            $.confirm({
+                                title: 'Error',
+                                content: errMsg,
+                                buttons: { Ok: function () {} }
+                            });
+                        } else {
+                            alert('Error: ' + errMsg);
+                        }
+                    }
+                });
+            }
+
+            if (typeof $.confirm === 'function') {
+                $.confirm({
+                    title: 'Attendance Confirmation',
+                    content: 'Do you want to proceed with ' + actionTitle + '?',
+                    buttons: {
+                        Ok: function () {
+                            doSubmitAttendance();
+                        },
+                        Cancel: function () {
+                            // Cancelled
+                        }
+                    }
+                });
+            } else {
+                if (window.confirm('Do you want to proceed with ' + actionTitle + '?')) {
+                    doSubmitAttendance();
                 }
-            });
+            }
         }
 
         $(document).ready(function () {
@@ -296,30 +353,32 @@
                         {"data": "check_in"},
                         {"data": "check_out"},
                         {"data": "working_hours", 'orderable': false},
-                    ],
-                });
-        // Live Biometric Webhook Auto-Refresh
-        (function() {
-            let lastKnownEventId = null;
-            function checkLiveBiometricPunch() {
-                if (typeof $ === 'undefined') return;
-                $.ajax({
-                    url: '/api/latest-events/',
-                    type: 'GET',
-                    dataType: 'json',
-                    success: function(response) {
-                        if (response && response.status === 'success') {
-                            if (lastKnownEventId !== null && response.latest_id !== lastKnownEventId) {
-                                window.location.reload();
-                            } else if (lastKnownEventId === null) {
-                                lastKnownEventId = response.latest_id;
-                            }
-                        }
-                    }
+                    ]
                 });
             }
-            setInterval(checkLiveBiometricPunch, 3000);
-        })();
+
+            // Live Biometric Webhook Auto-Refresh
+            (function() {
+                let lastKnownEventId = null;
+                function checkLiveBiometricPunch() {
+                    if (typeof $ === 'undefined') return;
+                    $.ajax({
+                        url: '/api/latest-events/',
+                        type: 'GET',
+                        dataType: 'json',
+                        success: function(response) {
+                            if (response && response.status === 'success') {
+                                if (lastKnownEventId !== null && response.latest_id !== lastKnownEventId) {
+                                    window.location.reload();
+                                } else if (lastKnownEventId === null) {
+                                    lastKnownEventId = response.latest_id;
+                                }
+                            }
+                        }
+                    });
+                }
+                setInterval(checkLiveBiometricPunch, 3000);
+            })();
         });
 
     </script>

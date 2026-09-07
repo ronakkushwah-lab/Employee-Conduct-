@@ -339,8 +339,9 @@ def EmployeeDashboardView(request, company_id, company_staff_id):
         return render(request, "employee/index.html", ctx)
 
     att = Attendance.objects.filter(
-        Q(check_in__gte=today) & Q(check_in__lt=tomorrow) & Q(employee=employee)
-    ).first()
+        employee=employee,
+        check_in__date=timezone.localdate()
+    ).order_by('-id').first()
     ctx['attendance'] = att
     ctx['company_id'] = company_id
     ctx['company_staff_id'] = company_staff_id
@@ -506,9 +507,10 @@ def attendance(request,company_id, company_staff_id):
         ctx.update(_attendance_month_context(Attendance.objects.none(), request))
         return render(request, 'employee/attendance-info.html', ctx)
     
-    att = Attendance.objects.filter(Q(check_in__gt=today)
-                                    & Q(check_in__lt=tomorrow)
-                                    & Q(employee=employee)).first()
+    att = Attendance.objects.filter(
+        employee=employee,
+        check_in__date=timezone.localdate()
+    ).order_by('-id').first()
     ctx['attendance'] = att
     ctx['company_id'] = company_id
     ctx['company_staff_id'] = company_staff_id
