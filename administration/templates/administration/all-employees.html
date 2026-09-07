@@ -107,10 +107,15 @@
                             </div>
                             <div class="col-md-6">
                               <label for="employee_role_add" class="form-label">System Role <span class="text-danger">*</span></label>
+                              {% if is_admin %}
                               <select class="form-select" name="employee_role" id="employee_role_add" required>
                                 <option value="employee" selected>Employee</option>
                                 <option value="hr">HR (Human Resources)</option>
                               </select>
+                              {% else %}
+                              <input type="text" class="form-control bg-light" value="Employee (Standard Staff)" readonly>
+                              <input type="hidden" name="employee_role" value="employee">
+                              {% endif %}
                             </div>
                           </div>
                           <div class="row mb-2">
@@ -433,10 +438,15 @@
                                       <div class="row mb-2">
                                         <div class="col-md-6">
                                           <label for="employee_role_edit" class="form-label">System Role <span class="text-danger">*</span></label>
+                                          {% if is_admin %}
                                           <select class="form-select" id="employee_role_edit" name="employee_role" aria-label="Select Role">
                                             <option value="employee">Employee</option>
                                             <option value="hr">HR (Human Resources)</option>
                                           </select>
+                                          {% else %}
+                                          <input type="text" class="form-control bg-light" id="employee_role_display" value="Employee" readonly>
+                                          <input type="hidden" id="employee_role_edit" name="employee_role" value="employee">
+                                          {% endif %}
                                         </div>
                                         <div class="col-md-6">
                                           <label for="employee_biometric_id_edit" class="form-label">Biometric ID</label>
@@ -833,7 +843,10 @@
             if (employee_reports_to_edit) employee_reports_to_edit.value = res['employee_reports_to'] || '';
             if (employee_biometric_id_edit) employee_biometric_id_edit.value = res['biometric_id'] || '';
             var employee_role_edit = document.getElementById("employee_role_edit");
-            if (employee_role_edit) employee_role_edit.value = res['employee_role'] || (res['is_hr'] ? 'hr' : 'employee');
+            var employee_role_display = document.getElementById("employee_role_display");
+            var roleVal = res['employee_role'] || (res['is_hr'] ? 'hr' : 'employee');
+            if (employee_role_edit) employee_role_edit.value = roleVal;
+            if (employee_role_display) employee_role_display.value = roleVal === 'hr' ? 'HR (Human Resources)' : 'Employee (Standard Staff)';
 
             employee_detail_info_headings.value = res['employee_first_name'] + ' ' + res['employee_last_name'];
             employee_father_heading_edit.value = res['employee_father']

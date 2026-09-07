@@ -300,6 +300,9 @@ def Register_Employee_View(request,company_id, company_staff_id):
             if company_id:
                 try:
                     if (employee_password == employee_confirm_password):
+                        creator = CompanyStaff.objects.filter(id=company_staff_id).first()
+                        is_creator_admin = bool(creator and (creator.is_company_admin or creator.role in [CompanyStaff.ROLE_ADMIN, CompanyStaff.ROLE_SUPERADMIN]))
+
                         selected_role = request.POST.get('employee_role', '').strip().lower()
                         dept_name = employee_department.department_name.strip().upper() if employee_department else ''
                         is_hr_dept = 'HR' in dept_name or 'HUMAN RESOURCE' in dept_name or selected_role == 'hr'
@@ -308,7 +311,9 @@ def Register_Employee_View(request,company_id, company_staff_id):
                         user.password = make_password(user.password)
                         user.full_name = employee_first_name + ' ' + employee_last_name
                         user.is_active = True
-                        if is_hr_dept:
+                        
+                        # Only Admin can create or appoint an HR user
+                        if is_creator_admin and is_hr_dept:
                             user.role = CompanyStaff.ROLE_HR
                             user.is_hr = True
                             user.is_employee = True
@@ -395,9 +400,13 @@ def All_Employee_View(request, company_id, company_staff_id):
         # Next employee_id will be max_num + 1, formatted as EIC-001, EIC-002, etc.
         next_employee_id = max_num + 1
         
+        logged_in_staff = CompanyStaff.objects.filter(id=company_staff_id).first()
+        is_admin = bool(logged_in_staff and (logged_in_staff.is_company_admin or logged_in_staff.role in [CompanyStaff.ROLE_ADMIN, CompanyStaff.ROLE_SUPERADMIN]))
+
         return render(request, 'administration/all-employees.html',
                     {'Employees': AllEmployee, 'max_employee_id': next_employee_id, 'departments': departments,
-                    'reports_to': reports_to, 'company_id' : company_id, 'company_staff_id':company_staff_id
+                    'reports_to': reports_to, 'company_id' : company_id, 'company_staff_id':company_staff_id,
+                    'is_admin': is_admin
                     })
 
 
@@ -455,6 +464,9 @@ def Employee_Edit_View(request, company_id,company_staff_id):
             emp_id = request.POST.get('employee_id')
 
             # Check if role or department is being updated
+            editor = CompanyStaff.objects.filter(id=company_staff_id).first()
+            is_editor_admin = bool(editor and (editor.is_company_admin or editor.role in [CompanyStaff.ROLE_ADMIN, CompanyStaff.ROLE_SUPERADMIN]))
+
             employee_role = str(request.POST.get('employee_role', '')).strip().lower()
             dept_id = employee_models_fields_dict.get('employee_department')
             dept_obj = None
@@ -471,16 +483,17 @@ def Employee_Edit_View(request, company_id,company_staff_id):
 
             if employee_instance and employee_instance.user:
                 staff_user = employee_instance.user
-                if is_hr_role:
-                    staff_user.role = CompanyStaff.ROLE_HR
-                    staff_user.is_hr = True
-                    staff_user.is_employee = True
-                    staff_user.save()
-                elif employee_role == 'employee':
-                    staff_user.role = CompanyStaff.ROLE_EMPLOYEE
-                    staff_user.is_hr = False
-                    staff_user.is_employee = True
-                    staff_user.save()
+                if is_editor_admin:
+                    if is_hr_role:
+                        staff_user.role = CompanyStaff.ROLE_HR
+                        staff_user.is_hr = True
+                        staff_user.is_employee = True
+                        staff_user.save()
+                    elif employee_role == 'employee':
+                        staff_user.role = CompanyStaff.ROLE_EMPLOYEE
+                        staff_user.is_hr = False
+                        staff_user.is_employee = True
+                        staff_user.save()
 
             if 'employee_image' in request.FILES:
                 employee_obj = employee_obj.first()
