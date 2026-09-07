@@ -558,73 +558,119 @@ def regularization_required_attendance(request,company_id, company_staff_id):
     })
 
 
-def attendance_post(request,company_id, company_staff_id):
-    if company_id:
+def attendance_post(request, company_id, company_staff_id):
+    if not company_id:
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.POST.get('ajax') == '1':
+            return JsonResponse({'status': "FAILED", 'error': 'Invalid company_id'}, status=400)
+        messages.error(request, 'Invalid company_id')
+        return redirect('accounts:login')
+
+    is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.POST.get('ajax') == '1' or 'application/json' in request.headers.get('accept', '')
+
+    try:
+        is_check_in_raw = str(request.POST.get('is_check_in', '')).strip().lower()
+        is_check_in = is_check_in_raw in ['1', 'true', 'check in', 'check_in', 'checkin']
+        
+        attendance_id = request.POST.get('attendance_id', '').strip()
+        
         try:
-            is_check_in = request.POST['is_check_in']
-            attendance_id = request.POST.get('attendance_id', '')
-            
-            # Get existing attendance or create new one
-            if attendance_id and attendance_id.strip():
-                attendance_obj = Attendance.objects.filter(id=attendance_id).first()
-                if not attendance_obj:
-                    attendance_obj = Attendance()
-            else:
-                attendance_obj = Attendance()
-            
-            if is_check_in == attendance_type.check_in.value:
-                attendance_obj.check_in = timezone.now()
-            else:
-                attendance_obj.check_out = timezone.now()
-            
-            try:
-                company_staff = CompanyStaff.objects.get(id=company_staff_id)
-            except CompanyStaff.DoesNotExist:
+            company_staff = CompanyStaff.objects.get(id=company_staff_id)
+        except CompanyStaff.DoesNotExist:
+            if is_ajax:
                 return JsonResponse({'status': "FAILED", 'error': 'Company staff not found'}, status=404)
-            
-            employee = Employee.objects.filter(user=company_staff).first()
-            if not employee:
+            messages.error(request, 'Company staff not found')
+            return redirect('accounts:login')
+        
+        employee = Employee.objects.filter(user=company_staff).first()
+        if not employee:
+            if is_ajax:
                 return JsonResponse({'status': "FAILED", 'error': 'Employee profile not found'}, status=404)
+            messages.error(request, 'Employee profile not found')
+            return redirect('accounts:login')
             
-            attendance_obj.employee = employee
-            # Set source field to 'manual' if not already set
-            if not attendance_obj.source:
-                attendance_obj.source = 'manual'
+        now = timezone.now()
+        today_date = now.date()
+        
+        attendance_obj = None
+        if attendance_id:
+            attendance_obj = Attendance.objects.filter(id=attendance_id, employee=employee).first()
             
+        if is_check_in:
+            if not attendance_obj:
+                attendance_obj = Attendance.objects.filter(
+                    employee=employee,
+                    check_in__date=today_date,
+                    check_out__isnull=True
+                ).order_by('-id').first()
+                
+            if not attendance_obj:
+                attendance_obj = Attendance(employee=employee, check_in=now)
+            else:
+                if not attendance_obj.check_in:
+                    attendance_obj.check_in = now
+            attendance_obj.source = attendance_obj.source or 'manual'
             attendance_obj.save()
+            action = 'check_in'
+            msg = 'Checked in successfully!'
+        else:
+            if not attendance_obj:
+                attendance_obj = Attendance.objects.filter(
+                    employee=employee,
+                    check_in__date=today_date
+                ).order_by('-id').first()
+                
+            if not attendance_obj:
+                attendance_obj = Attendance(employee=employee, check_in=now, check_out=now)
+            else:
+                if not attendance_obj.check_in:
+                    attendance_obj.check_in = now
+                attendance_obj.check_out = now
+                
+            attendance_obj.source = attendance_obj.source or 'manual'
+            attendance_obj.save()
+            action = 'check_out'
+            msg = 'Checked out successfully!'
 
-            # Return success immediately so "Data Saved!" shows instantly; send email in background
-            def _send_notification_later():
-                try:
-                    from administration.email_notifications import send_attendance_notification
-                    action = 'check_in' if is_check_in == attendance_type.check_in.value else 'check_out'
-                    send_attendance_notification(attendance_obj, action=action)
-                except Exception as e:
-                    print(f"Error sending attendance notification: {str(e)}")
-            import threading
-            threading.Thread(target=_send_notification_later, daemon=True).start()
-
-            return JsonResponse({'status': 'SUCCESS'}, status=200)
-        except KeyError as e:
+        # Return success immediately; send email in background
+        def _send_notification_later():
             try:
-                error_msg = 'Missing required field: {}'.format(str(e))
-            except:
-                error_msg = 'Missing required field'
+                from administration.email_notifications import send_attendance_notification
+                send_attendance_notification(attendance_obj, action=action)
+            except Exception as e:
+                print(f"Error sending attendance notification: {str(e)}")
+        import threading
+        threading.Thread(target=_send_notification_later, daemon=True).start()
+
+        if is_ajax:
+            return JsonResponse({'status': 'SUCCESS', 'message': msg}, status=200)
+        messages.success(request, msg)
+        referer = request.META.get('HTTP_REFERER')
+        if referer:
+            return redirect(referer)
+        if getattr(company_staff, 'role', '') == 'hr' or getattr(company_staff, 'is_hr', False):
+            return redirect('hr_dashboard', company_id=company_id, company_staff_id=company_staff_id)
+        return redirect('employee_dashboard', company_id=company_id, company_staff_id=company_staff_id)
+
+    except KeyError as e:
+        error_msg = f'Missing required field: {str(e)}'
+        if is_ajax:
             return JsonResponse({'status': "FAILED", 'error': error_msg}, status=400)
-        except Exception as e:
-            try:
-                error_msg = str(e)
-            except:
-                error_msg = 'An error occurred'
-            import logging
-            logger = logging.getLogger(__name__)
-            try:
-                logger.exception("Error in attendance_post")
-            except:
-                pass
-            return JsonResponse({'status': "FAILED", 'error': error_msg}, status=500)
-    else:
-        return JsonResponse({'status': "FAILED", 'error': 'Invalid company_id'}, status=400)
+        messages.error(request, error_msg)
+        return redirect('accounts:login')
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        try:
+            logger.exception("Error in attendance_post")
+        except:
+            pass
+        if is_ajax:
+            return JsonResponse({'status': "FAILED", 'error': str(e)}, status=500)
+        messages.error(request, f'An error occurred: {str(e)}')
+        referer = request.META.get('HTTP_REFERER')
+        if referer:
+            return redirect(referer)
+        return redirect('accounts:login')
 
 
 def attendance_grid_data(request,company_id, company_staff_id):

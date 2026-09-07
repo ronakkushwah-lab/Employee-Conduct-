@@ -300,12 +300,15 @@ def Register_Employee_View(request,company_id, company_staff_id):
             if company_id:
                 try:
                     if (employee_password == employee_confirm_password):
-                        selected_role = request.POST.get('employee_role', 'employee').strip().lower()
+                        selected_role = request.POST.get('employee_role', '').strip().lower()
+                        dept_name = employee_department.department_name.strip().upper() if employee_department else ''
+                        is_hr_dept = 'HR' in dept_name or 'HUMAN RESOURCE' in dept_name or selected_role == 'hr'
+
                         user = CompanyStaff.objects.create(email=employee_email, password=employee_password, company_id=company_id)
                         user.password = make_password(user.password)
                         user.full_name = employee_first_name + ' ' + employee_last_name
                         user.is_active = True
-                        if selected_role == 'hr':
+                        if is_hr_dept:
                             user.role = CompanyStaff.ROLE_HR
                             user.is_hr = True
                             user.is_employee = True
@@ -451,19 +454,33 @@ def Employee_Edit_View(request, company_id,company_staff_id):
             employee_obj.update(**employee_models_fields_dict)
             emp_id = request.POST.get('employee_id')
 
-            # Check if role is being updated
-            employee_role = request.POST.get('employee_role')
-            if employee_role and employee_instance and employee_instance.user:
+            # Check if role or department is being updated
+            employee_role = str(request.POST.get('employee_role', '')).strip().lower()
+            dept_id = employee_models_fields_dict.get('employee_department')
+            dept_obj = None
+            if dept_id:
+                try:
+                    dept_obj = Department.objects.get(id=dept_id)
+                except:
+                    pass
+            elif employee_instance and employee_instance.employee_department:
+                dept_obj = employee_instance.employee_department
+
+            dept_name = dept_obj.department_name.strip().upper() if dept_obj else ''
+            is_hr_role = employee_role == 'hr' or 'HR' in dept_name or 'HUMAN RESOURCE' in dept_name
+
+            if employee_instance and employee_instance.user:
                 staff_user = employee_instance.user
-                if employee_role.strip().lower() == 'hr':
+                if is_hr_role:
                     staff_user.role = CompanyStaff.ROLE_HR
                     staff_user.is_hr = True
                     staff_user.is_employee = True
-                else:
+                    staff_user.save()
+                elif employee_role == 'employee':
                     staff_user.role = CompanyStaff.ROLE_EMPLOYEE
                     staff_user.is_hr = False
                     staff_user.is_employee = True
-                staff_user.save()
+                    staff_user.save()
 
             if 'employee_image' in request.FILES:
                 employee_obj = employee_obj.first()

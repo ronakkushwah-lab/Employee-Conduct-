@@ -113,29 +113,16 @@
 </head>
 <body>
 
-    <!-- Top Right Role Dropdown -->
-    <div class="top-right-dropdown dropdown">
-        <button class="btn role-dropdown-btn dropdown-toggle" type="button" id="roleDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-            Login as: Admin
-        </button>
-        <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="roleDropdown" style="border-radius: 12px; border: none; overflow: hidden;">
-            <li><a class="dropdown-item py-2" href="#" onclick="setRole('Admin')">Admin</a></li>
-            <li><a class="dropdown-item py-2" href="#" onclick="setRole('HR')">HR</a></li>
-            <li><a class="dropdown-item py-2" href="#" onclick="setRole('Manager')">Manager</a></li>
-            <li><a class="dropdown-item py-2" href="#" onclick="setRole('Employee')">Employee</a></li>
-        </ul>
-    </div>
-
     <div class="login-wrapper">
         <div class="login-card">
             <div class="text-center">
                 <img src="{% static 'assets/images/employee_conduct_logo.png' %}" class="brand-logo" alt="Logo">
-                <h2 class="page-title" id="login-role-text">Admin Login</h2>
-                <p class="text-muted mb-4" style="font-size: 0.95rem;">Please enter your details to sign in.</p>
+                <h2 class="page-title">Sign In</h2>
+                <p class="text-muted mb-4" style="font-size: 0.95rem;">Enter your credentials to access your HRMS portal.</p>
             </div>
 
             {% for message in messages %}
-            {% if 'Incorrect' in message.message or 'Access Denied' in message.message or 'Registered' in message.message or 'password' in message.message|lower or 'credentials' in message.message|lower or 'inactive' in message.message|lower %}
+            {% if 'Incorrect' in message.message or 'Access Denied' in message.message or 'Registered' in message.message or 'password' in message.message|lower or 'credentials' in message.message|lower or 'inactive' in message.message|lower or 'error' in message.message|lower %}
             <div class="alert alert-danger alert-dismissible fade show" style="border-radius:10px; font-size:0.9rem;" role="alert">
                 {{ message }}
             </div>
@@ -144,10 +131,9 @@
 
             <form action="{% url 'signin' %}" method="post">
                 {% csrf_token %}
-                <input type="hidden" name="login_role" id="hidden_login_role" value="Admin">
                 <div class="mb-4 mt-2">
                     <label for="email_address" class="form-label">Email Address</label>
-                    <input type="email" class="form-control" name="email" id="email_address" placeholder="name@company.com" required>
+                    <input type="email" class="form-control" name="email" id="email_address" placeholder="name@company.com" required autofocus>
                 </div>
                 <div class="mb-4">
                     <div class="d-flex justify-content-between align-items-center mb-2">
@@ -168,19 +154,5 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        function setRole(role) {
-            document.getElementById('login-role-text').innerText = role + " Login";
-            document.getElementById('roleDropdown').innerText = "Login as: " + role;
-            document.getElementById('hidden_login_role').value = role;
-            sessionStorage.setItem("loginRole", role);
-        }
-        
-        // Restore from sessionStorage if user refreshed or got an error back
-        document.addEventListener("DOMContentLoaded", () => {
-            const savedRole = sessionStorage.getItem("loginRole") || "Admin";
-            setRole(savedRole);
-        });
-    </script>
 </body>
 </html>

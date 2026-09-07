@@ -408,62 +408,38 @@ class Login(View):
                         messages.info(request, "Incorrect Email or Password")
                         return HttpResponseRedirect('/')
 
-                    # Role restriction check
-                    actual_role = getattr(company_staff, 'role', None) or self._role_from_flags(company_staff)
-                    expected_role = request.POST.get('login_role', '').lower()
-                    if expected_role and expected_role != actual_role:
-                        is_allowed = False
-                        if expected_role == 'admin' and actual_role == CompanyStaff.ROLE_SUPERADMIN:
-                            is_allowed = True
-                        elif expected_role == 'hr' and (actual_role in [CompanyStaff.ROLE_ADMIN, CompanyStaff.ROLE_SUPERADMIN, CompanyStaff.ROLE_HR] or getattr(company_staff, 'is_hr', False)):
-                            is_allowed = True
-                        elif expected_role == 'employee' and (actual_role == CompanyStaff.ROLE_HR or getattr(company_staff, 'is_hr', False) or getattr(company_staff, 'is_employee', False)):
-                            is_allowed = True
-                        if not is_allowed:
-                            messages.error(request, f"Access Denied: You cannot log in from the {expected_role.upper()} page. Please select your correct role.")
-                            return HttpResponseRedirect('/')
-
                     company_staff.is_authenticated = True
                     company_staff.save()
                     request.session['company_staff_id'] = company_staff.id
 
-                    # Role-based redirect to dashboard
                     role = getattr(company_staff, 'role', None) or self._role_from_flags(company_staff)
-                    if expected_role == 'employee' and company_staff.company_id and (role == CompanyStaff.ROLE_HR or getattr(company_staff, 'is_hr', False)):
-                        return HttpResponseRedirect(reverse('employee_role_dashboard', kwargs={
-                            'company_id': company_staff.company_id,
-                            'company_staff_id': company_staff.pk,
-                        }))
-                    if expected_role == 'hr' and company_staff.company_id:
-                        return HttpResponseRedirect(reverse('hr_dashboard', kwargs={
-                            'company_id': company_staff.company_id,
-                            'company_staff_id': company_staff.pk,
-                        }))
+                    is_hr_user = role == CompanyStaff.ROLE_HR or getattr(company_staff, 'is_hr', False)
+
+                    # Smart auto-routing based on role
                     if role == CompanyStaff.ROLE_SUPERADMIN:
                         return HttpResponseRedirect(reverse('superadmin_dashboard'))
-                    if role == CompanyStaff.ROLE_ADMIN and company_staff.company_id:
+                    if (role == CompanyStaff.ROLE_ADMIN or company_staff.is_company_admin) and company_staff.company_id:
                         return HttpResponseRedirect(reverse('admin_dashboard', kwargs={
                             'company_id': company_staff.company_id,
                             'company_staff_id': company_staff.pk,
                         }))
-                    if role == CompanyStaff.ROLE_MANAGER and company_staff.company_id:
-                        return HttpResponseRedirect(reverse('manager_dashboard', kwargs={
-                            'company_id': company_staff.company_id,
-                            'company_staff_id': company_staff.pk,
-                        }))
-                    if role == CompanyStaff.ROLE_HR and company_staff.company_id:
+                    if is_hr_user and company_staff.company_id:
                         return HttpResponseRedirect(reverse('hr_dashboard', kwargs={
                             'company_id': company_staff.company_id,
                             'company_staff_id': company_staff.pk,
                         }))
-                    if role == CompanyStaff.ROLE_EMPLOYEE and company_staff.company_id:
-                        # Go first to the simple employee landing dashboard
+                    if (role == CompanyStaff.ROLE_MANAGER or company_staff.is_manager) and company_staff.company_id:
+                        return HttpResponseRedirect(reverse('manager_dashboard', kwargs={
+                            'company_id': company_staff.company_id,
+                            'company_staff_id': company_staff.pk,
+                        }))
+                    if (role == CompanyStaff.ROLE_EMPLOYEE or company_staff.is_employee) and company_staff.company_id:
                         return HttpResponseRedirect(reverse('employee_role_dashboard', kwargs={
                             'company_id': company_staff.company_id,
                             'company_staff_id': company_staff.pk,
                         }))
 
-                    # Fallback for missing role or company: use legacy flags
+                    # Fallbacks
                     if company_staff.is_company_admin and company_staff.company_id:
                         return HttpResponseRedirect(f'/administration/index/{company_staff.company_id}/{company_staff.pk}')
                     if company_staff.is_manager and company_staff.company_id:
@@ -475,12 +451,13 @@ class Login(View):
                         }))
                     return HttpResponseRedirect('/')
                 else:
+                    messages.error(request, "Your account is inactive. Please contact your administrator.")
                     return HttpResponseRedirect('/')
             else:
+                messages.info(request, "Incorrect Email or Password")
                 return HttpResponseRedirect('/')
-
-        except Exception:
-            messages.error(request, "Email does not  Registered!")
+        except Exception as e:
+            messages.error(request, f"Login error: {str(e)}")
             return HttpResponseRedirect('/')
 
     @staticmethod
