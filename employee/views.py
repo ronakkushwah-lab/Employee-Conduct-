@@ -453,14 +453,19 @@ def EmployeeDashboardView(request, company_id, company_staff_id):
             if att.check_out and att.check_in:
                 time_diff = att.check_out - att.check_in
                 ctx['hours_num'] = strfdelta(time_diff, "{hours}:{minutes}:{seconds}")
+                diff_sec = int(time_diff.total_seconds())
+                ctx['hours_worked'] = f"{diff_sec // 3600}h {(diff_sec % 3600) // 60}m"
             else:
                 ctx['hours_num'] = '0:0:0'
+                ctx['hours_worked'] = '0h 0m'
         except Exception:
             ctx['hours_num'] = '0:0:0'
+            ctx['hours_worked'] = '0h 0m'
         ctx['is_check_in'] = attendance_type.check_out.value
         ctx['is_complete_attendance'] = bool(att.check_in and att.check_out)
     else:
         ctx['hours_num'] = '0:0:0'
+        ctx['hours_worked'] = '0h 0m'
         ctx['is_check_in'] = attendance_type.check_in.value
         ctx['is_complete_attendance'] = False
 
