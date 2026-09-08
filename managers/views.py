@@ -938,7 +938,7 @@ def TaskListView(request,company_id, company_staff_id):
 
 def attendanc(request,company_id, company_staff_id):
     if company_id:
-        attendance = Attendance.objects.filter(employee__user__company__id=company_id)
+        attendance = Attendance.objects.filter(employee__user__company__id=company_id).order_by('-check_in')
         context = {
             'attendance': attendance,
             'company_id': company_id,
@@ -1021,9 +1021,9 @@ def Attendancesearch(request,company_id, company_staff_id):
     if 'q' in request.GET:
         q = request.GET['q']
         multiple_q = Q(Q(employee__user__email__icontains=q) | Q(check_in__icontains=q) | Q(check_out__icontains=q))
-        attendance = Attendance.objects.filter(multiple_q)
+        attendance = Attendance.objects.filter(multiple_q).order_by('-check_in')
     else:
-        attendance = Attendance.objects.filter(employee__user__company__id=company_id)
+        attendance = Attendance.objects.filter(employee__user__company__id=company_id).order_by('-check_in')
     context = {
         'attendance': attendance,
         'company_id': company_id,

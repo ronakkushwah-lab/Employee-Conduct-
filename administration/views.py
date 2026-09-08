@@ -1578,7 +1578,7 @@ class TaskDeleteView(DeleteView, LoginRequiredMixin, UserPassesTestMixin):
 
 def attendance(request,company_id, company_staff_id):
     if company_id:
-        attendance = Attendance.objects.filter(employee__user__company__id=company_id)
+        attendance = Attendance.objects.filter(employee__user__company__id=company_id).order_by('-check_in')
         context = {
             'attendance': attendance,
             'company_id': company_id,
@@ -2040,7 +2040,7 @@ def getattendance(request, company_id):
 
 def attendance(request,company_id, company_staff_id):
     if company_id:
-        attendance = Attendance.objects.filter(employee__user__company__id=company_id)
+        attendance = Attendance.objects.filter(employee__user__company__id=company_id).order_by('-check_in')
         context = {
             'attendance': attendance,
             'company_id': company_id,
@@ -2126,9 +2126,9 @@ def Attendancesearch(request,company_id, company_staff_id):
         multiple_q = Q(Q(employee__user__email__icontains=q) | Q(check_in__icontains=q) | Q(check_out__icontains=q))
         attendance = Attendance.objects.filter(
             multiple_q, employee__user__company_id=company_id
-        )
+        ).order_by('-check_in')
     else:
-        attendance = Attendance.objects.filter(employee__user__company__id=company_id)
+        attendance = Attendance.objects.filter(employee__user__company__id=company_id).order_by('-check_in')
     context = {
         'attendance': attendance,
         'company_id': company_id,
@@ -2794,7 +2794,7 @@ def munreject_regularization(request, id):
 
 def mattendance(request,company_id, company_staff_id):
     if company_id:
-        attendance = ManagerAttendance.objects.filter(manager__user__company__id=company_id)
+        attendance = ManagerAttendance.objects.filter(manager__user__company__id=company_id).order_by('-check_in')
         context = {
             'attendance': attendance,
             'company_id': company_id,
@@ -2861,9 +2861,9 @@ def mAttendancesearch(request,company_id, company_staff_id):
         multiple_q = Q(Q(manager__user__email__icontains=q) | Q(check_in__icontains=q) | Q(check_out__icontains=q))
         attendance = ManagerAttendance.objects.filter(
             multiple_q, manager__user__company_id=company_id
-        )
+        ).order_by('-check_in')
     else:
-        attendance = ManagerAttendance.objects.filter(manager__user__company__id=company_id)
+        attendance = ManagerAttendance.objects.filter(manager__user__company__id=company_id).order_by('-check_in')
     context = {
         'attendance': attendance,
         'company_id': company_id,

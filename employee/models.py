@@ -377,7 +377,7 @@ class Attendance(models.Model):
     created = models.DateTimeField(auto_now=False, auto_now_add=True,null=True)
 
     class Meta:
-        ordering = ['-created']  # recent objects
+        ordering = ['-check_in']  # chronological by attendance punch time
 
 
     @property

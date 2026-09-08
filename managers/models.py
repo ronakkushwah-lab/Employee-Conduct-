@@ -280,6 +280,10 @@ class ManagerAttendance(models.Model):
     check_out = models.DateTimeField(blank=True, null=True)
     manager = models.ForeignKey(Manager, null=True, on_delete=models.CASCADE)
 
+    class Meta:
+        ordering = ['-check_in']
+
+
 
     @property
     def formatted_working_hours(self):
