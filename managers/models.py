@@ -223,6 +223,14 @@ class ManagerEntry(models.Model):
         return self.end_time - self.start_time
 
     @property
+    def formatted_duration(self):
+        """
+        Human-readable formatted total duration
+        """
+        from employee.models import format_duration
+        return format_duration(self.total_duration)
+
+    @property
     def time_left(self):
         """
         Entry's property for the total duration left

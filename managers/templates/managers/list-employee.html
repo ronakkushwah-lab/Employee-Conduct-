@@ -26,11 +26,12 @@
               <div class="card shadow-none border radius-15">
                 <div class="card-body">
                   <div class="table-responsive">
-                    <table class="table table-fluid table-hover" id="myTable">
+                    <table class="table table-fluid table-hover align-middle" id="myTable">
                       <thead>
                         <tr>
-                          <th width="25%">Assigned Date</th>
+                          <th width="15%">Assigned Date</th>
                           <th width="25%">Assigned Employee</th>
+                          <th width="25%">Project</th>
                           <th>Description</th>
                         </tr>
                       </thead>
@@ -38,8 +39,22 @@
                          {% for task in assign %}
                         <tr>
                           <td>{{ task.created_date|date:"F d, Y" }}</td>
-                          <td>{{ task.employee }}</td>
-                          <td>{{ task.description }}</td>
+                          <td>
+                            {% if task.employee %}
+                              <span class="fw-bold">{{ task.employee.employee_first_name }} {{ task.employee.employee_last_name }}</span><br>
+                              <span class="text-muted small">{{ task.employee.employee_email }}</span>
+                            {% else %}
+                              <span class="text-muted">-</span>
+                            {% endif %}
+                          </td>
+                          <td>
+                            <strong>{{ task.title|default:"-" }}</strong>
+                          </td>
+                          <td>{{ task.description|default:"-"|linebreaksbr }}</td>
+                        </tr>
+                         {% empty %}
+                        <tr>
+                          <td colspan="4" class="text-center text-muted py-4">No employee assignments found.</td>
                         </tr>
                          {% endfor %}
                       </tbody>

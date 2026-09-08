@@ -8,7 +8,7 @@ from django.views.generic import View
 
 from account.models import CompanyStaff
 from administration.models import Task, notification, holiday, MTask, Asign, ManagerNotification
-from employee.models import Attendance, Entries, Employee
+from employee.models import Attendance, Entries, Employee, format_duration
 from leave.forms import LeaveCreationForm
 from leave.models import Leave
 from manager_leave.models import ManagerLeave, BalanceLeave
@@ -1142,17 +1142,67 @@ def unreject_regularization(request, id):
 
     return redirect('mnregularizationrejected')
 
-def AssignListView(request,company_id, company_staff_id):
-    context ={}
+def AssignListView(request, company_id, company_staff_id):
+    context = {}
+    try:
+        company_staff = CompanyStaff.objects.get(id=company_staff_id)
+    except CompanyStaff.DoesNotExist:
+        messages.error(request, 'Company staff not found.')
+        return redirect('accounts:login')
 
-    company_staff = CompanyStaff.objects.get(id=company_staff_id)
+    try:
+        manager = company_staff.manager
+    except (Manager.DoesNotExist, AttributeError):
+        manager = Manager.objects.filter(user=company_staff).first()
 
-    queryset = Asign.objects.filter(assigned_to=company_staff.manager)
-    print('queryset: ', queryset)
-    context['assign']= queryset
-    context['company_id']= company_id
-    context['company_staff_id']= company_staff_id
+    combined_assignments = []
+    if manager:
+        # 1. Projects/tasks created by this manager for employees
+        manager_mtasks = MTask.objects.filter(user=manager).select_related('assigned_to').order_by('-created_date')
+        for t in manager_mtasks:
+            combined_assignments.append({
+                'id': t.id,
+                'created_date': t.created_date,
+                'employee': t.assigned_to,
+                'title': t.title,
+                'description': t.description,
+                'source': 'MTask',
+            })
+
+        # 2. Projects/tasks for employees reporting to this manager (if created elsewhere)
+        report_mtasks = MTask.objects.filter(
+            assigned_to__employee_reports_to=manager
+        ).exclude(user=manager).select_related('assigned_to').order_by('-created_date')
+        for t in report_mtasks:
+            combined_assignments.append({
+                'id': t.id,
+                'created_date': t.created_date,
+                'employee': t.assigned_to,
+                'title': t.title,
+                'description': t.description,
+                'source': 'ReportTask',
+            })
+
+        # 3. Legacy Asign model records assigned to this manager
+        legacy_assigns = Asign.objects.filter(assigned_to=manager).select_related('employee').order_by('-created_date')
+        for a in legacy_assigns:
+            combined_assignments.append({
+                'id': a.id,
+                'created_date': a.created_date,
+                'employee': a.employee,
+                'title': getattr(a, 'title', 'Project Assignment'),
+                'description': a.description,
+                'source': 'Asign',
+            })
+
+    # Sort combined assignments by created_date descending
+    combined_assignments.sort(key=lambda x: x['created_date'] if x['created_date'] else datetime.min.date(), reverse=True)
+
+    context['assign'] = combined_assignments
+    context['company_id'] = company_id
+    context['company_staff_id'] = company_staff_id
     return render(request, 'managers/list-employee.html', context)
+
 
 
 def EntryListView(request,company_id, company_staff_id):
@@ -1196,7 +1246,7 @@ def EntryListView(request,company_id, company_staff_id):
                 'user': user,
                 'email': user.user.email if user.user else '',
                 'name': f"{user.employee_first_name} {user.employee_last_name}",
-                'total_time': user_total,
+                'total_time': format_duration(user_total),
                 'entries': entries
             })
 

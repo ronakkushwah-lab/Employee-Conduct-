@@ -31,7 +31,7 @@ from .email_service import fetch_emails_from_gmail
 from django.urls import reverse
 from django.contrib import messages
 from django.utils.decorators import method_decorator
-from employee.models import Employee, role_choices, Attendance, Post, Department, Entries, EmployeeDocument
+from employee.models import Employee, role_choices, Attendance, Post, Department, Entries, EmployeeDocument, format_duration
 from django.db import IntegrityError, connection, transaction
 from account.models import User, CompanyStaff, Company
 from payroll.models import Salary as EmployeeSalary
@@ -1408,7 +1408,7 @@ def All_entry(request,company_id, company_staff_id):
                 'user': user,
                 'email': email,
                 'name': name,
-                'total_time': user_total,
+                'total_time': format_duration(user_total),
                 'entries': entries
             })
 

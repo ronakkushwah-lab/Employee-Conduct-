@@ -237,6 +237,30 @@ class Designation(models.Model):
         return self.Designation_Name
 
 
+def format_duration(td):
+    """
+    Format a timedelta object into a human-readable string like '1 day 2 hrs', '8 hrs 30 mins', '45 mins'.
+    """
+    if not td or not isinstance(td, timedelta):
+        return "0 mins"
+    total_seconds = int(td.total_seconds())
+    if total_seconds <= 0:
+        return "0 mins"
+    days = total_seconds // 86400
+    remaining_secs = total_seconds % 86400
+    hours = remaining_secs // 3600
+    minutes = (remaining_secs % 3600) // 60
+
+    parts = []
+    if days > 0:
+        parts.append(f"{days} day{'s' if days > 1 else ''}")
+    if hours > 0:
+        parts.append(f"{hours} hr{'s' if hours > 1 else ''}")
+    if minutes > 0:
+        parts.append(f"{minutes} min{'s' if minutes != 1 else ''}")
+    return " ".join(parts) if parts else "0 mins"
+
+
 class Entries(models.Model):
     '''The Task dataclass to store the task in database'''
     user = models.ForeignKey(Employee, on_delete=models.CASCADE, null=True,blank=True)
@@ -275,6 +299,13 @@ class Entries(models.Model):
         return self.end_time - self.start_time
 
     @property
+    def formatted_duration(self):
+        """
+        Human-readable formatted total duration
+        """
+        return format_duration(self.total_duration)
+
+    @property
     def time_left(self):
         """
         Entry's property for the total duration left
@@ -308,17 +339,20 @@ class Entries(models.Model):
         return seconds
 
     def to_json(self):
+        local_start = timezone.localtime(self.start_time) if self.start_time else None
+        local_end = timezone.localtime(self.end_time) if self.end_time else None
+
         entry_details_dict = {
             'id': self.id,
-            'start_time': self.start_time,
-            'end_time': self.end_time,
+            'start_time': local_start.strftime("%d %b %Y, %I:%M %p") if local_start else '',
+            'end_time': local_end.strftime("%d %b %Y, %I:%M %p") if local_end else '',
             'task': self.task,
             'project': self.project,
             'blocker_name': self.blocker_name,
             'attachment_url': self.attachment.url if self.attachment else '',
             'attachment_name': self.attachment.name.split('/')[-1] if self.attachment else '',
-            'total_duration': self.total_duration,
-            'assigned_to': self.assigned_to.manager_email
+            'total_duration': self.formatted_duration,
+            'assigned_to': self.assigned_to.manager_email if self.assigned_to else ''
         }
         return entry_details_dict
 

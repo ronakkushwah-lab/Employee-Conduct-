@@ -26,7 +26,7 @@ from resign.models import Resign
 from account.models import CompanyStaff
 from .helpers.enum import attendance_type
 from .helpers.helper import getgriddatapaginated, strfdelta, ajax_response, show_message_once
-from .models import Employee, Attendance, Entries
+from .models import Employee, Attendance, Entries, format_duration
 from django.db import IntegrityError, transaction
 from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
@@ -1394,12 +1394,12 @@ def EntryDetailView(request,company_id, company_staff_id):
             project_list.append({
                 'name': proj,
                 'entries': entries,
-                'total_time': proj_total
+                'total_time': format_duration(proj_total)
             })
 
         dataset = dict()
         dataset['project_list'] = project_list
-        dataset['total_time'] = total_time
+        dataset['total_time'] = format_duration(total_time)
         dataset['title'] = 'Entry List'
         dataset['company_id'] = company_id
         dataset['company_staff_id'] = company_staff_id
