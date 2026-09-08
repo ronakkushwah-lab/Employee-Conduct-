@@ -36,7 +36,7 @@ urlpatterns = [
     path('mpost/new/', views.PostCreateView.as_view(), name='mpost-create'),
     path('mpost/<int:pk>/update/', views.PostUpdateView.as_view(), name='mpost-update'),
     path('mpost/<int:pk>/delete/', views.PostDeleteView.as_view(), name='mpost-delete'),
-    path('media/Files/<int:pk>', views.PostDeleteView.as_view(), name='mpost-delete'),
+    path('media/Files/<int:pk>', views.PostDeleteView.as_view(), name='manager-file-delete'),
 
     path('mregularizations/', views.mregularization, name='mregularizations'),
     path('mregularizations/view/table/<int:company_id>/<int:company_staff_id>', views.view_my_regularization_table, name='mstaffregularizationstable'),

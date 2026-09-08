@@ -190,4 +190,26 @@
         <div class="simplebar-track simplebar-vertical" style="visibility: visible;">
           <div class="simplebar-scrollbar" style="height: 83px; transform: translate3d(0px, 0px, 0px); display: block;"></div>
         </div>
-      </div>      
+      </div>
+
+<script>
+  // Legacy confirmation modals use links; submit employee-owned deletions as CSRF-protected POSTs.
+  document.addEventListener('click', function (event) {
+    const link = event.target.closest('a[href]');
+    if (!link) return;
+    const path = new URL(link.href, window.location.origin).pathname;
+    if (!/\/employee\/(?:entry_remove|leave_remove|resign_remove)\//i.test(path)) return;
+
+    event.preventDefault();
+    const form = document.createElement('form');
+    form.method = 'post';
+    form.action = link.href;
+    const csrf = document.createElement('input');
+    csrf.type = 'hidden';
+    csrf.name = 'csrfmiddlewaretoken';
+    csrf.value = '{{ csrf_token }}';
+    form.appendChild(csrf);
+    document.body.appendChild(form);
+    form.submit();
+  });
+</script>

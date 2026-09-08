@@ -3,16 +3,15 @@ from . import views
 
 urlpatterns = [
 
-    path('update_employees/<int:id>', views.EmployeeUpdateView.as_view(), name='update_employees'),
     path('employee_profile/<int:company_id>/<int:company_staff_id>', views.employee_profile_view, name='employee_profile'),
     path('upload_profile_image/<int:company_id>/<int:company_staff_id>', views.upload_profile_image, name='upload_profile_image'),
     path('remove_profile_image/<int:company_id>/<int:company_staff_id>', views.remove_profile_image, name='remove_profile_image'),
     path('employee_dashboard/<int:company_id>/<int:company_staff_id>/', views.EmployeeDashboardView, name='employee_dashboard'),
 
 
-    path('leave/<int:company_id>/<int:company_staff_id>', views.leave_creation, name='leave'),
+    path('leave/<int:company_id>/<int:company_staff_id>', views.create_leave, name='leave'),
     path('leaves/view/table/<int:company_id>/<int:company_staff_id>', views.view_my_leave_table, name='staffleavetable'),
-    path('leave_remove/<id>', views.LeaveRemove.as_view(), name='leave_remove'),
+    path('leave_remove/<int:company_id>/<int:company_staff_id>/<int:id>', views.LeaveRemove.as_view(), name='leave_remove'),
     # path('leavebalance', views.BalanceLeaveView.as_view(), name='leavebalance'),
     path('leavebalance/<int:company_id>/<int:company_staff_id>', views.BalanceLeaveView, name='leavebalance'),
 
@@ -35,22 +34,14 @@ urlpatterns = [
         name='notification_delete',
     ),
 
-    path('resign/<int:company_id>/<int:company_staff_id>', views.resign_creation, name='resign'),
+    path('resign/<int:company_id>/<int:company_staff_id>', views.create_resign, name='resign'),
     path('resign/view/table/<int:company_id>/<int:company_staff_id>', views.view_my_resign_table, name='staffresigntable'),
-    path('resign_remove/<id>', views.ResignRemove.as_view(), name='resign_remove'),
+    path('resign_remove/<int:company_id>/<int:company_staff_id>/<int:id>', views.ResignRemove.as_view(), name='resign_remove'),
     path('holiday_list/<int:company_id>/<int:company_staff_id>', views.holidays, name='holiday_list'),
-
-    # path('', views.PostListView.as_view(), name='blog-home'),
-    path('post_list/', views.UserPostListView.as_view(), name='post_list'),
-    path('post/<int:pk>/', views.PostDetailView.as_view(), name='post-detail'),
-    path('post/new/', views.PostCreateView.as_view(), name='post-create'),
-    path('post/<int:pk>/update/', views.PostUpdateView.as_view(), name='post-update'),
-    path('post/<int:pk>/delete/', views.PostDeleteView.as_view(), name='post-delete'),
-    path('media/Files/<int:pk>',views.PostDeleteView.as_view(),name='post-delete' ),
 
     path('all_document_Views/<int:company_id>/<int:company_staff_id>', views.All_document_View, name='all_document_Views'),
 
-    path('regularization/', views.regularization, name='regularization'),
+    path('regularization/<int:company_id>/<int:company_staff_id>', views.create_regularization, name='regularization'),
     # path('regularization/view/table/', views.view_my_regularization_table.as_view(), name='staffregularizationtable'),
     path('regularization/view/table/<int:company_id>/<int:company_staff_id>', views.regularization_table, name='staffregularizationtable'),
 

@@ -419,4 +419,26 @@
           <div class="simplebar-scrollbar" style="height: 83px; transform: translate3d(0px, 0px, 0px); display: block;"></div>
         </div>
       </div>
-    
+
+<script>
+  // Convert the final link in legacy delete modals into a CSRF-protected POST.
+  document.addEventListener('click', function (event) {
+    const link = event.target.closest('a[href]');
+    if (!link) return;
+    const path = new URL(link.href, window.location.origin).pathname;
+    const destructivePath = /\/(?:Remove_employee|Remove_Employee_List|Remove_manager|Remove_manager_List|clients_remove|clients_remove_grid|leads_remove|remove_entry|project_remove|manager-project\/remove|balance_remove|notification_remove|attendance_remove|delholiday|post-delete|department_remove|mattendance_remove|assign_remove|mpost-delete|delete-employee-documents|salary_remove|msalary_remove|invoice_remove|delete_email_notification|fetch_emails|mark_email_read|mark_all_emails_read|leave\/(?:approve|reject|cancel|unapprove|uncancel|unreject)|resign\/(?:approve|reject|cancel|unapprove|uncancel|unreject)|m?regularization\/(?:approve|reject|cancel|unapprove|uncancel|unreject))\//i;
+    if (!destructivePath.test(path)) return;
+
+    event.preventDefault();
+    const form = document.createElement('form');
+    form.method = 'post';
+    form.action = link.href;
+    const csrf = document.createElement('input');
+    csrf.type = 'hidden';
+    csrf.name = 'csrfmiddlewaretoken';
+    csrf.value = '{{ csrf_token }}';
+    form.appendChild(csrf);
+    document.body.appendChild(form);
+    form.submit();
+  });
+</script>
