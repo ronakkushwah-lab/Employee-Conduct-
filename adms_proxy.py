@@ -25,13 +25,19 @@ class ADMSProxyHandler(BaseHTTPRequestHandler):
                 if clean.startswith(prefix):
                     clean = '/iclock' + clean
                     break
+        if clean in ('/', '') or clean.startswith('/?'):
+            clean = '/iclock/cdata' + clean[1:]
         return clean
 
     def do_GET(self):
         target_url = f"{RENDER_BASE_URL}{self._normalize_path(self.path)}"
+        headers = {
+            'User-Agent': 'ADMS-Proxy',
+            'Referer': f"{RENDER_BASE_URL}/",
+        }
         try:
             print(f"[ADMS IN] GET {self.path}")
-            resp = requests.get(target_url, headers={'User-Agent': 'ADMS-Proxy'}, timeout=10)
+            resp = requests.get(target_url, headers=headers, timeout=10)
             self.send_response(resp.status_code)
             for k, v in resp.headers.items():
                 if k.lower() in ('content-type', 'content-length'):
@@ -50,9 +56,14 @@ class ADMSProxyHandler(BaseHTTPRequestHandler):
         content_length = int(self.headers.get('Content-Length', 0))
         body = self.rfile.read(content_length) if content_length > 0 else b''
         target_url = f"{RENDER_BASE_URL}{self._normalize_path(self.path)}"
+        headers = {
+            'Content-Type': 'text/plain',
+            'Referer': f"{RENDER_BASE_URL}/",
+            'User-Agent': 'ADMS-Proxy',
+        }
         try:
             print(f"[ADMS IN] POST {self.path} (Payload: {len(body)} bytes)")
-            resp = requests.post(target_url, data=body, headers={'Content-Type': 'text/plain'}, timeout=10)
+            resp = requests.post(target_url, data=body, headers=headers, timeout=10)
             self.send_response(resp.status_code)
             for k, v in resp.headers.items():
                 if k.lower() in ('content-type', 'content-length'):

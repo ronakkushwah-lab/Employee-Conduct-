@@ -34,7 +34,7 @@ DEBUG = os.environ.get('DJANGO_DEBUG', 'true').lower() in {'1', 'true', 'yes'}
 ALLOWED_HOSTS = [
     host.strip() for host in os.environ.get(
         'DJANGO_ALLOWED_HOSTS',
-        'localhost,127.0.0.1,employee-conduct-mcak.onrender.com',
+        'localhost,127.0.0.1,employee-conduct-mcak.onrender.com,65.0.32.183',
     ).split(',') if host.strip()
 ]
 
@@ -44,6 +44,8 @@ CSRF_TRUSTED_ORIGINS = [
     'http://employee-conduct-mcak.onrender.com',
     'https://*.onrender.com',
     'http://*.onrender.com',
+    'http://65.0.32.183',
+    'https://65.0.32.183',
     'http://localhost:8000',
     'http://127.0.0.1:8000',
     'https://maryetta-semiacademical-eufemia.ngrok-free.dev',

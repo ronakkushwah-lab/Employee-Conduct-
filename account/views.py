@@ -3,15 +3,14 @@ from account.forms import SignUpForm
 from account.models import User, CompanyStaff, Company
 from django.views.generic import TemplateView, CreateView
 from django.contrib.auth.models import Group, Permission
-from django.contrib.auth.decorators import user_passes_test, login_required
 from django.utils.decorators import method_decorator
-from django.views.decorators.csrf import ensure_csrf_cookie, csrf_protect
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_protect, csrf_exempt
 from employee.models import Department, Designation, Employee, Attendance
 from managers.models import Manager
 from django.utils import timezone
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.http.response import HttpResponseRedirect, JsonResponse
 from django.shortcuts import render, HttpResponse, redirect, get_object_or_404
 from django.urls import reverse_lazy, reverse
@@ -36,7 +35,7 @@ class SignUpView(CreateView):
     template_name = 'account/signup.html'
 
 
-@method_decorator(ensure_csrf_cookie, name='dispatch')
+@method_decorator(csrf_exempt, name='dispatch')
 class SignInView(View):
     def post(self, request):
         email = request.POST.get('email', '').strip()
@@ -391,7 +390,7 @@ def signup(request):
     return render(request, 'account/signup.html')
 
 
-@method_decorator(ensure_csrf_cookie, name='dispatch')
+@method_decorator(csrf_exempt, name='dispatch')
 class Login(View):
     return_url = None
 
