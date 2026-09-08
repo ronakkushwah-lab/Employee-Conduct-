@@ -88,23 +88,22 @@ urlpatterns = [
     path('leave/cancel/<int:id>/', views.cancel_leave, name='userleavecancel'),
     path('leave/uncancel/<int:id>/', views.uncancel_leave, name='userleaveuncancel'),
     path('leaves/rejected/all/<int:company_id>/<int:company_staff_id>', views.leave_rejected_list, name='leavesrejected'),
-    path('leave/reject/<int:company_id>/<int:company_staff_id>/<int:id>/', views.reject_leave, name='rejected'),
-    path('leave/unreject/<int:id>/', views.unreject_leave, name='unreject'),
+    path('leave/reject/<int:company_id>/<int:company_staff_id>/<int:id>/', views.reject_leave, name='leave_reject'),
+    path('leave/unreject/<int:id>/', views.unreject_leave, name='leave_unreject'),
     path('leaves/all/view/<int:id>/', views.leaves_view, name='userleaveview'),
 
     path('add-leaves-balance/<int:company_id>/<int:company_staff_id>/', views.add_leaves_balance, name='add_leaves_balance'),
-    path('mbalance-leave/<int:company_id>/<int:company_staff_id>/', views.add_leaves_balance, name='mbalance-leave'),
     path('balancelist/<int:company_id>/<int:company_staff_id>/', views.Balance_list, name='balancelist'),
     path('balance_remove/<int:company_id>/<int:company_staff_id>/<id>', views.BalanceRemove.as_view(), name='balance_remove'),
 
     path('notifications/<int:company_id>/<int:company_staff_id>', views.notifications,name='notifications'),
     path('createnotifications/<int:company_id>/<int:company_staff_id>', views.createnotifications, name='createnotifications'),
-    path('getnotification/', views.getnotification, name='getnotification'),
+    path('getnotification/<int:company_id>/', views.getnotification, name='getnotification'),
     path('notification_edit/<int:company_id>/<int:company_staff_id>', views.Notification_Edit_View, name='notification_edit'),
-    path('notification_remove/<int:company_id>/<int:company_staff_id>/<int:id>', views.NotificationRemove.as_view(), name='department_remove'),
+    path('notification_remove/<int:company_id>/<int:company_staff_id>/<int:id>', views.NotificationRemove.as_view(), name='notification_remove'),
 
     path('attendancee/<int:company_id>/<int:company_staff_id>', views.attendance, name='attendancee'),
-    path('getattendance/', views.getattendance, name='getattendance'),
+    path('getattendance/<int:company_id>/', views.getattendance, name='getattendance'),
     path('attendance_remove/<int:company_id>/<int:company_staff_id>/<id>', views.AttendanceRemove.as_view(), name='attendance_remove'),
     path('attendance_manage/<int:pk>', views.AttendanceManage.as_view(), name='attendance_manage'),
     path('edit_attendance/<int:company_id>/<int:company_staff_id>', views.attendance_Edit_View, name='edit_attendance'),
@@ -118,13 +117,13 @@ urlpatterns = [
     path('resign/cancel/<int:company_id>/<int:company_staff_id>/<int:id>/', views.cancel_resign, name='userresigncancel'),
     path('resign/uncancel/<int:id>/', views.uncancel_resign, name='userresignuncancel'),
     path('resign/rejected/all/<int:company_id>/<int:company_staff_id>', views.resign_rejected_list, name='resignrejected'),
-    path('resign/reject/<int:company_id>/<int:company_staff_id>/<int:id>/', views.reject_resign, name='reject'),
-    path('resign/unreject/<int:company_id>/<int:company_staff_id>/<int:id>/', views.unreject_resign, name='unreject'),
+    path('resign/reject/<int:company_id>/<int:company_staff_id>/<int:id>/', views.reject_resign, name='resign_reject'),
+    path('resign/unreject/<int:company_id>/<int:company_staff_id>/<int:id>/', views.unreject_resign, name='resign_unreject'),
     path('resign/all/view/<int:id>/', views.resign_view, name='userresignview'),
 
     path('holidays/<int:company_id>/<int:company_staff_id>', views.holidays,  name='holidays'),
-    path('fnholidays/', views.fnholidays, name='fnholiday'),
-    path('getdatas/', views.getdatas, name='getdata'),
+    path('fnholidays/<int:company_id>/', views.fnholidays, name='fnholiday'),
+    path('getdatas/<int:company_id>/', views.getdatas, name='getdata'),
     path('delholiday/<int:company_id>/<int:company_staff_id>/<int:id>/', views.delholiday.as_view(), name='delholiday'),
     path('holidaylist/<int:company_id>/<int:company_staff_id>', views.holiday_list, name='holidaylist'),
 
@@ -134,7 +133,7 @@ urlpatterns = [
     path('allpost/<int:company_id>/<int:company_staff_id>/<int:id>/', views.PostDetailView, name='allpost'),
     path('search/', views.search, name='search'),
     path('all_document_View/<int:company_id>/<int:company_staff_id>', views.All_document_View, name='all_document_View'),
-    path('post-delete/<int:company_id>/<int:company_staff_id>/<int:id>', views.PostDeleteView.as_view(), name='post-delete'),
+    path('post-delete/<int:company_id>/<int:company_staff_id>/<int:id>', views.PostDeleteView.as_view(), name='admin-post-delete'),
 
 
 
@@ -154,8 +153,8 @@ urlpatterns = [
     path('regularization/cancel/<int:company_id>/<int:company_staff_id>/<int:id>/', views.cancel_regularization, name='userregularizationcancel'),
     path('regularization/uncancel/<int:id>/', views.uncancel_regularization, name='userregularizationuncancel'),
     path('regularization/rejected/all/', views.regularization_rejected_list, name='regularizationrejected'),
-    path('regularization/reject/<int:id>/', views.reject_regularization, name='reject'),
-    path('regularization/unreject/<int:id>/', views.unreject_leave, name='unreject'),
+    path('regularization/reject/<int:id>/', views.reject_regularization, name='regularization_reject'),
+    path('regularization/unreject/<int:id>/', views.unreject_regularization, name='regularization_unreject'),
     # path('regularization/all/view/<int:id>/', views.regularization_view, name='userregularizationview'),
 
     path('attendancesearch/<int:company_id>/<int:company_staff_id>', views.Attendancesearch, name='attendancesearch'),
@@ -190,8 +189,7 @@ urlpatterns = [
     path('malldocument', views.ManagerPostListView.as_view(), name='malldocument'),
     path('muser/', views.MPostListView.as_view(), name='muser-posts'),
     path('mallpost/<int:company_id>/<int:company_staff_id>/<int:id>/', views.MPostDetailView, name='mallpost'),
-    path('search/', views.search, name='search'),
-    path('mpost-delete/<int:company_id>/<int:company_staff_id>/<int:id>', views.MPostDeleteView.as_view(), name='mpost-delete'),
+    path('mpost-delete/<int:company_id>/<int:company_staff_id>/<int:id>', views.MPostDeleteView.as_view(), name='admin-mpost-delete'),
 
     path("sendemail/<int:company_id>/<int:company_staff_id>/", views.sendemail, name="sendemail"),
 

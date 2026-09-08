@@ -17,6 +17,8 @@ import json
 from django.urls import reverse
 import sweetify
 from django.db.models import Sum
+from django.utils.decorators import method_decorator
+from django.views.decorators.http import require_POST
 
 from administration import constants
 from .utils import render_to_pdf
@@ -28,13 +30,16 @@ class InvoiceListView(View):
         company_staff = CompanyStaff.objects.filter(pk=company_staff_id)
         if company_staff.exists():
             if company_staff.first().is_authenticated:
-                return super().dispatch(request, company_id, company_staff_id, *args, **kwargs)
+                return super().dispatch(
+                    request, *args, company_id=company_id,
+                    company_staff_id=company_staff_id, **kwargs
+                )
             else:
                 return redirect('/')
         else:
             return redirect('/')
 
-    def get(self,company_id, company_staff_id):
+    def get(self, request, company_id, company_staff_id):
         invoices = Invoice.objects.filter(company__id=company_id)
         context = {
             "invoices": invoices,
@@ -52,7 +57,7 @@ class InvoiceListView(View):
             invoice_ids = list(map(int, invoice_ids))
 
             update_status_for_invoices = int(request.POST['status'])
-            invoices = Invoice.objects.filter(id__in=invoice_ids)
+            invoices = Invoice.objects.filter(id__in=invoice_ids, company_id=company_id)
             # import pdb;pdb.set_trace()
             if update_status_for_invoices == 0:
                 invoices.update(status=False)
@@ -68,28 +73,25 @@ def createInvoice(request,company_id, company_staff_id):
     changes here.
     """
     if company_id:
-        global formset, form
-        heading_message = 'Formset Demo'
+        all_invoices = Invoice.objects.filter(company__id=company_id)
         if request.method == 'GET':
-            all_invoices = Invoice.objects.filter(company__id=company_id)
             formset = LineItemFormset(request.GET or None)
             form = InvoiceForm(request.GET or None)
         elif request.method == 'POST':
             formset = LineItemFormset(request.POST)
             form = InvoiceForm(request.POST)
 
-            if form.is_valid():
-                invoice = Invoice.objects.create(client=form.data["client"],
-                                                 client_email=form.data["client_email"],
-                                                 billing_address=form.data["billing_address"],
-                                                 date=form.data["date"],
-                                                 due_date=form.data["due_date"],
-                                                 project=form.data["project"],
+            if form.is_valid() and formset.is_valid():
+                invoice = Invoice.objects.create(client=form.cleaned_data["client"],
+                                                 client_email=form.cleaned_data["client_email"],
+                                                 billing_address=form.cleaned_data["billing_address"],
+                                                 date=form.cleaned_data["date"],
+                                                 due_date=form.cleaned_data["due_date"],
+                                                 project=form.cleaned_data["project"],
                                                  company_id = company_id,
 
                                                  )
 
-            if formset.is_valid():
                 total = 0
                 for form in formset:
                     service = form.cleaned_data.get('service')
@@ -97,7 +99,7 @@ def createInvoice(request,company_id, company_staff_id):
                     quantity = form.cleaned_data.get('quantity')
                     rate = form.cleaned_data.get('rate')
                     if service and description and quantity and rate:
-                        amount = float(rate) * float(quantity)
+                        amount = rate * quantity
                         total += amount
                         LineItem(client=invoice,
                                  service=service,
@@ -107,7 +109,7 @@ def createInvoice(request,company_id, company_staff_id):
                                  amount=amount).save()
                 invoice.total_amount = total
                 invoice.save()
-            return redirect(f'/management/invoice-create/{company_id}/{company_staff_id}')
+                return redirect(f'/management/invoice-create/{company_id}/{company_staff_id}')
                 # try:
                 #     invoice_pdf_obj = GeneratePdf()
                 #     invoice_pdf_obj = invoice_pdf_obj.get(request, invoice.id,company_id, company_staff_id)
@@ -129,7 +131,7 @@ def createInvoice(request,company_id, company_staff_id):
 
 def view_PDF(request, company_id, company_staff_id,id=None):
     if company_id:
-        invoice = get_object_or_404(Invoice, id=id)
+        invoice = get_object_or_404(Invoice, id=id, company_id=company_id)
         lineitem = invoice.lineitem_set.all()
 
         context = {
@@ -167,7 +169,10 @@ class GeneratePdf(View):
         company_staff = CompanyStaff.objects.filter(pk=company_staff_id)
         if company_staff.exists():
             if company_staff.first().is_authenticated:
-                return super().dispatch(request, company_id, company_staff_id, *args, **kwargs)
+                return super().dispatch(
+                    request, *args, company_id=company_id,
+                    company_staff_id=company_staff_id, **kwargs
+                )
             else:
                 return redirect('/')
         else:
@@ -176,7 +181,7 @@ class GeneratePdf(View):
     def get(self,request,company_id, company_staff_id,id=None):
         # getting the template
         if company_id:
-            invoice = get_object_or_404(Invoice, id=id)
+            invoice = get_object_or_404(Invoice, id=id, company_id=company_id)
             lineitem = invoice.lineitem_set.all()
 
             context = {
@@ -208,10 +213,11 @@ class GeneratePdf(View):
             return HttpResponse(pdf, content_type='application/pdf')
 
 
+@method_decorator(require_POST, name='dispatch')
 class InvoiceRemove(View):
-     def get(self,request,company_id, company_staff_id,id):
+     def post(self,request,company_id, company_staff_id,id):
         if company_id:
-            invoice=Invoice.objects.get(id=id)
+            invoice=Invoice.objects.get(id=id, company_id=company_id)
             invoice.delete()
             messages.success(request,f"{invoice} deleted successfully")
             return redirect(f'/management/invoice-create/{company_id}/{company_staff_id}')

@@ -105,7 +105,12 @@ class Employee(models.Model):
     employee_pin_code = models.CharField(max_length=50, null=True)
     employee_state = models.CharField(max_length=50, null=True)
     employee_country = models.CharField(max_length=50, null=True)
-    employee_reports_to = models.ForeignKey(to='managers.Manager', on_delete=models.CASCADE, default=True)
+    employee_reports_to = models.ForeignKey(
+        to='managers.Manager',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
     employee_image = models.FileField(upload_to='media/', blank=True)
     employee_created_date = models.DateTimeField(auto_now=True)
     employee_status = models.CharField(max_length=32, choices=employee_status, default='Active')

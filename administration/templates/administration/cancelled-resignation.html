@@ -16,7 +16,7 @@
                       <i class="bx bx-home"></i>
                     </a>
                   </li>                  
-                  <li class="breadcrumb-item active" aria-current="page">Cancelled Resignation</li>
+                  <li class="breadcrumb-item active" aria-current="page">{{ page_title|default:"Cancelled Resignations" }}</li>
                 </ol>
               </nav>
             </div>
@@ -50,7 +50,7 @@
                               <div class="modal-dialog w-80">
                                 <div class="modal-content">
                                   <div class="modal-header">
-                                    <h5 class="modal-title" id="exampleModalLabel">View Cancelled Resignation</h5>
+                                    <h5 class="modal-title" id="exampleModalLabel">View {{ page_title|default:"Cancelled Resignation" }}</h5>
                                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                   </div>
                                   <div class="modal-body">
