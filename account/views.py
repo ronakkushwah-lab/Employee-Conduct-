@@ -357,37 +357,8 @@ class RolePermissionView(View):
 
 
 def signup(request):
-    if request.method == 'POST':
-        name = request.POST.get('name', '')
-        company_name = request.POST.get('company_name', '')
-        company_phone = request.POST.get('company_phone', '')
-        company_address = request.POST.get('company_address', '')
-        email = request.POST.get('email', '').strip()
-        password = request.POST.get('password', '')
-        password2 = request.POST.get('password2', '')
-        if not email:
-            messages.error(request, 'Email is required.')
-            return redirect('/signup/')
-        if CompanyStaff.objects.filter(email=email).exists():
-            messages.error(request, 'email Already exists')
-            return redirect('/signup/')
-
-        if password != password2:
-            messages.error(request, 'Password do not match!!')
-            return redirect('/signup/')
-
-        else:
-            company = Company.objects.create(name=name, company_name=company_name, company_phone=company_phone,
-                                             company_address=company_address)
-            extend = CompanyStaff(company=company, email=email, password=password)
-            extend.is_authenticated = True
-            extend.is_company_admin = True
-            extend.password = make_password(extend.password)
-            extend.save()
-            messages.success(request, 'User Registered Successfully! Please Login')
-            return HttpResponseRedirect('/')
-
-    return render(request, 'account/signup.html')
+    messages.error(request, 'Public registration is disabled. Please contact your company administrator to obtain login credentials.')
+    return redirect('signin')
 
 
 @method_decorator(csrf_exempt, name='dispatch')
