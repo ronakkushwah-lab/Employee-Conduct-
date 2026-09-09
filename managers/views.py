@@ -198,6 +198,8 @@ def manager_profile_view(request, company_id, company_staff_id):
             from django.utils.text import slugify
             import uuid
             try:
+                # Save base64 directly into database (permanent on Neon)
+                profile.avatar_base64 = cropped_image_data
                 format_part, imgstr = cropped_image_data.split(';base64,')
                 ext = format_part.split('/')[-1] if '/' in format_part else 'jpg'
                 name = f"manager_{slugify(profile.manager_first_name or '')}_{uuid.uuid4().hex[:8]}.{ext}"
@@ -205,7 +207,18 @@ def manager_profile_view(request, company_id, company_staff_id):
             except Exception as e:
                 messages.error(request, f'Error processing cropped image: {str(e)}')
         elif 'manager_image' in request.FILES:
-            profile.manager_image = request.FILES['manager_image']
+            uploaded_image = request.FILES['manager_image']
+            profile.manager_image = uploaded_image
+            try:
+                import base64
+                import mimetypes
+                uploaded_image.seek(0)
+                content = uploaded_image.read()
+                uploaded_image.seek(0)
+                content_type = mimetypes.guess_type(uploaded_image.name)[0] or 'image/jpeg'
+                profile.avatar_base64 = f"data:{content_type};base64,{base64.b64encode(content).decode('utf-8')}"
+            except Exception:
+                pass
 
         profile.save()
         messages.success(request, 'Profile updated successfully!')
@@ -228,12 +241,23 @@ def upload_manager_profile_image(request, company_id, company_staff_id):
     if 'manager_image' not in request.FILES:
         return JsonResponse({'error': 'No image file provided'}, status=400)
     try:
-        profile.manager_image = request.FILES['manager_image']
+        uploaded_image = request.FILES['manager_image']
+        profile.manager_image = uploaded_image
+        try:
+            import base64
+            import mimetypes
+            uploaded_image.seek(0)
+            content = uploaded_image.read()
+            uploaded_image.seek(0)
+            content_type = mimetypes.guess_type(uploaded_image.name)[0] or 'image/jpeg'
+            profile.avatar_base64 = f"data:{content_type};base64,{base64.b64encode(content).decode('utf-8')}"
+        except Exception:
+            pass
         profile.save()
         return JsonResponse({
             'success': True,
             'message': 'Profile photo updated.',
-            'image_url': profile.manager_image.url if profile.manager_image else None,
+            'image_url': profile.avatar_url,
         })
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
@@ -260,10 +284,17 @@ def remove_manager_profile_image(request, company_id, company_staff_id):
             except Exception:
                 pass
         profile.manager_image = ''
-        profile.save()
+        profile.avatar_base64 = ''
+        profile.save(update_fields=['manager_image', 'avatar_base64'])
         messages.success(request, 'Profile photo removed.')
     except Exception as e:
-        messages.error(request, f'Error removing photo: {str(e)}')
+        try:
+            profile.manager_image = ''
+            profile.avatar_base64 = ''
+            profile.save()
+            messages.success(request, 'Profile photo removed.')
+        except Exception as e2:
+            messages.error(request, f'Error removing photo: {str(e2)}')
     return redirect('manager_profile', company_id=company_id, company_staff_id=company_staff_id)
 
 
@@ -1247,27 +1278,77 @@ class EntryRemove(View):
 def create_ducument(request,company_id, company_staff_id):
     if company_id:
         if request.method == "POST":
-            experience_letter = request.POST.get("experience_letter")
-            offer_letter = request.POST.get("offer_letter")
-            education_certificate = request.POST.get("education_certificate")
-            skill_certificate = request.POST.get("skill_certificate")
-            company_staff = CompanyStaff.objects.get(id=company_staff_id)
-            user = company_staff
-            emp = Manager.objects.get(user=user)
-            document = ManagerPost.objects.create(user=emp, experience_letter=experience_letter, offer_letter=offer_letter,
-                                       education_certificate=education_certificate, skill_certificate=skill_certificate)
-            
-            # Send email notification
+            experience_letter = request.FILES.get("experience_letter")
+            offer_letter = request.FILES.get("offer_letter")
+            education_certificate = request.FILES.get("education_certificate")
+            skill_certificate = request.FILES.get("skill_certificate")
+
+            if not any([experience_letter, offer_letter, education_certificate, skill_certificate]):
+                messages.error(request, 'Please select at least one document to upload.')
+                return redirect(f'/managers/manager_profile/{company_id}/{company_staff_id}')
+
             try:
-                from administration.email_notifications import send_document_submission_notification
-                send_document_submission_notification(document, user_type='manager')
+                from employee.views import _validate_upload, DOCUMENT_EXTENSIONS, DOCUMENT_CONTENT_TYPES
+                from django.core.exceptions import ValidationError
+
+                for upload in request.FILES.values():
+                    if upload and getattr(upload, 'name', '') and getattr(upload, 'size', 0) > 0:
+                        _validate_upload(
+                            upload, DOCUMENT_EXTENSIONS,
+                            DOCUMENT_CONTENT_TYPES, 'Document'
+                        )
+
+                company_staff = CompanyStaff.objects.get(id=company_staff_id)
+                emp = Manager.objects.filter(user=company_staff).first()
+                if not emp:
+                    messages.error(request, 'Manager profile not found.')
+                    return redirect(f'/managers/manager_profile/{company_id}/{company_staff_id}')
+
+                # Smart Document Merge: update existing record if available, else create new
+                document = ManagerPost.objects.filter(user=emp).first()
+                if document:
+                    if experience_letter:
+                        document.experience_letter = experience_letter
+                    if offer_letter:
+                        document.offer_letter = offer_letter
+                    if education_certificate:
+                        document.education_certificate = education_certificate
+                    if skill_certificate:
+                        document.skill_certificate = skill_certificate
+                    document.save()
+                else:
+                    document = ManagerPost.objects.create(
+                        user=emp,
+                        experience_letter=experience_letter,
+                        offer_letter=offer_letter,
+                        education_certificate=education_certificate,
+                        skill_certificate=skill_certificate
+                    )
+                
+                # Send email notification asynchronously in background thread to avoid 502 gateway timeouts
+                def _send_async_manager_doc_notification(doc_id):
+                    try:
+                        from administration.email_notifications import send_document_submission_notification
+                        target_doc = ManagerPost.objects.filter(id=doc_id).first()
+                        if target_doc:
+                            send_document_submission_notification(target_doc, user_type='manager')
+                    except Exception as exc:
+                        print(f"Async manager document notification error: {exc}", flush=True)
+
+                import threading
+                threading.Thread(target=_send_async_manager_doc_notification, args=(document.id,), daemon=True).start()
+                
+                messages.success(request, 'Documents uploaded successfully!')
+            except ValidationError as ve:
+                err_msg = ' '.join(ve.messages) if hasattr(ve, 'messages') else str(ve)
+                messages.error(request, f'Upload error: {err_msg}')
             except Exception as e:
-                print(f"Error sending document submission notification: {str(e)}")
-            
+                messages.error(request, f'Error uploading documents: {str(e)}')
+
             return redirect(f'/managers/manager_profile/{company_id}/{company_staff_id}')
 
         else:
-            return render(request, "managers/my-profile.html",{'company_id':company_id, 'company_staff_id':company_staff_id})
+            return redirect(f'/managers/manager_profile/{company_id}/{company_staff_id}')
 
 
 def create_mregularizations(request,company_id, company_staff_id):
@@ -1725,11 +1806,56 @@ def All_document_Views(request,company_id, company_staff_id):
         document_obj = ManagerPost.objects.get(pk=document_obj_id)
         return JsonResponse(document_obj.to_json())
 
-    # Old Code
     if company_id:
-        company_staff = CompanyStaff.objects.get(id=company_staff_id)
-        document_list = ManagerPost.objects.filter(user=company_staff.manager)
-        return render(request, 'managers/view_documents.html', {'document_list': document_list,'company_id':company_id, 'company_staff_id':company_staff_id})
+        try:
+            company_staff = CompanyStaff.objects.get(id=company_staff_id)
+            manager = company_staff.manager
+        except Exception:
+            messages.error(request, 'Manager profile not found.')
+            return redirect('/')
+
+        posts = list(ManagerPost.objects.filter(user=manager).order_by('-id'))
+        if len(posts) > 1:
+            primary_post = posts[0]
+            changed = False
+            for p in posts[1:]:
+                if not primary_post.experience_letter and p.experience_letter:
+                    primary_post.experience_letter = p.experience_letter
+                    changed = True
+                if not primary_post.offer_letter and p.offer_letter:
+                    primary_post.offer_letter = p.offer_letter
+                    changed = True
+                if not primary_post.education_certificate and p.education_certificate:
+                    primary_post.education_certificate = p.education_certificate
+                    changed = True
+                if not primary_post.skill_certificate and p.skill_certificate:
+                    primary_post.skill_certificate = p.skill_certificate
+                    changed = True
+            if changed:
+                primary_post.save()
+            for p in posts[1:]:
+                if not any([p.experience_letter, p.offer_letter, p.education_certificate, p.skill_certificate]):
+                    p.delete()
+            posts = list(ManagerPost.objects.filter(user=manager).order_by('-id'))
+
+        primary_post = posts[0] if posts else None
+        active_documents = {
+            'experience_letter': getattr(primary_post, 'experience_letter', None) if primary_post else None,
+            'offer_letter': getattr(primary_post, 'offer_letter', None) if primary_post else None,
+            'education_certificate': getattr(primary_post, 'education_certificate', None) if primary_post else None,
+            'skill_certificate': getattr(primary_post, 'skill_certificate', None) if primary_post else None,
+        }
+        uploaded_count = sum(1 for v in active_documents.values() if v)
+
+        return render(request, 'managers/view_documents.html', {
+            'primary_post': primary_post,
+            'active_documents': active_documents,
+            'uploaded_count': uploaded_count,
+            'document_list': posts,
+            'manager': manager,
+            'company_id': company_id, 
+            'company_staff_id': company_staff_id
+        })
 
 
 def ChangePassword(request,company_id, company_staff_id):

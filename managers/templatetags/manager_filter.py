@@ -39,8 +39,9 @@ def get_manager_profile_image_url(company_staff_id):
         return "/static/asets/images/dummy-man.png"
     try:
         staff = CompanyStaff.objects.get(id=company_staff_id)
-        manager = staff.manager
-        return manager.avatar_url
-    except (CompanyStaff.DoesNotExist, Manager.DoesNotExist, AttributeError):
+        manager = getattr(staff, 'manager', None) or Manager.objects.filter(user=staff).first()
+        if manager:
+            return manager.avatar_url
+    except Exception:
         pass
     return "/static/asets/images/dummy-man.png"

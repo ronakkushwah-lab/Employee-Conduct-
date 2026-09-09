@@ -112,6 +112,7 @@ class Employee(models.Model):
         blank=True,
     )
     employee_image = models.FileField(upload_to='media/', blank=True)
+    avatar_base64 = models.TextField(blank=True, null=True)
     employee_created_date = models.DateTimeField(auto_now=True)
     employee_status = models.CharField(max_length=32, choices=employee_status, default='Active')
     employee_tel = models.CharField(max_length=50, null=True)
@@ -137,11 +138,42 @@ class Employee(models.Model):
 
     @property
     def avatar_url(self):
+        # 1. Base64 avatar saved in database (permanent on Neon)
+        if self.avatar_base64 and self.avatar_base64.strip():
+            return self.avatar_base64.strip()
+
+        # 2. Uploaded image file (only if physical file exists on disk/storage)
         if self.employee_image:
-            return self.employee_image.url
+            try:
+                if self.employee_image.storage.exists(self.employee_image.name):
+                    return self.employee_image.url
+            except Exception:
+                pass
+
+        # 3. Fallback to gender-based default avatar
         if self.employee_gender and str(self.employee_gender).strip().lower() == 'female':
             return '/static/asets/images/dummy-woman.png'
         return '/static/asets/images/dummy-man.png'
+
+    def save(self, *args, **kwargs):
+        # Auto-convert uploaded image file to avatar_base64 if not already present
+        if self.employee_image and not self.avatar_base64:
+            try:
+                import base64
+                import mimetypes
+                self.employee_image.open('rb')
+                content = self.employee_image.read()
+                if content:
+                    content_type = mimetypes.guess_type(self.employee_image.name)[0] or 'image/jpeg'
+                    b64_str = base64.b64encode(content).decode('utf-8')
+                    self.avatar_base64 = f"data:{content_type};base64,{b64_str}"
+            except Exception:
+                pass
+        if 'update_fields' in kwargs and kwargs['update_fields'] is not None:
+            kwargs['update_fields'] = set(kwargs['update_fields'])
+            if self.avatar_base64:
+                kwargs['update_fields'].add('avatar_base64')
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.employee_email
@@ -424,10 +456,10 @@ class Attendance(models.Model):
 
 
 class Post(models.Model):
-    experience_letter = models.FileField(verbose_name=_('Experience Letter'),null=True, blank=False, upload_to='Files')
-    offer_letter = models.FileField(verbose_name=_('Offer Letter'),null=True, blank=False, upload_to='Files')
-    education_certificate = models.FileField(verbose_name=_('Education Certificate'),null=True, blank=False, upload_to='Files')
-    skill_certificate = models.FileField(verbose_name=_('Skill Certificate'),null=True, blank=False, upload_to='Files')
+    experience_letter = models.FileField(verbose_name=_('Experience Letter'), null=True, blank=True, upload_to='Files')
+    offer_letter = models.FileField(verbose_name=_('Offer Letter'), null=True, blank=True, upload_to='Files')
+    education_certificate = models.FileField(verbose_name=_('Education Certificate'), null=True, blank=True, upload_to='Files')
+    skill_certificate = models.FileField(verbose_name=_('Skill Certificate'), null=True, blank=True, upload_to='Files')
     date_posted = models.DateTimeField(default=timezone.now)
     user = models.ForeignKey(Employee,
                              null=True,
@@ -440,9 +472,11 @@ class Post(models.Model):
         ordering = ['-date_posted']  # recent objects
 
     def extension(self):
-        name, extension = os.path.splitext(
-            self.experience_letter.name or self.offer_letter.name or self.education_certificate or self.skill_certificate)
-        return extension
+        for f in [self.experience_letter, self.offer_letter, self.education_certificate, self.skill_certificate]:
+            if f and hasattr(f, 'name') and f.name:
+                _, ext = os.path.splitext(f.name)
+                return ext
+        return ''
 
     def get_absolute_url(self):
         return reverse('post-detail', kwargs={'pk': self.pk})

@@ -49,14 +49,14 @@
                                       <div class="text-center">
                                         <div class="mb-3 d-inline-block">
                                           <div style="width: 200px; height: 200px; border-radius: 50%; border: 4px solid #ff6b35; padding: 4px; display: inline-block;">
-                                            <img src="{% if profile.manager_image %}{{ profile.manager_image.url }}{% endif %}" id="manager-profile-preview-img" class="img-fluid" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%; {% if not profile.manager_image %}display: none;{% endif %}">
+                                            <img src="{{ profile.avatar_url }}" id="manager-profile-preview-img" class="img-fluid" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" onerror="this.onerror=null; this.src='{% if profile.manager_gender|lower == 'female' %}{% static 'asets/images/dummy-woman.png' %}{% else %}{% static 'asets/images/dummy-man.png' %}{% endif %}';">
                                           </div>
                                         </div>
                                         <input type="file" id="manager-profile-image-input" name="manager_image" accept="image/*" style="display: none;">
                                         <input type="hidden" name="cropped-image-input" id="manager-cropped-image-input">
                                         <div class="mb-3">
                                           <button type="button" class="btn btn-outline-orangeyellow" onclick="document.getElementById('manager-profile-image-input').click()">Upload Photo</button>
-                                          {% if profile and profile.manager_image %}
+                                          {% if profile and profile.manager_image or profile and profile.avatar_base64 %}
                                           <button type="button" class="btn btn-outline-danger ms-2" id="manager-remove-photo-btn">Remove Photo</button>
                                           {% endif %}
                                         </div>
@@ -314,31 +314,31 @@
                           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                       </div>
                       <div class="modal-body">
-                        <form method="POST" action="{% url 'create_ducument' company_id=company_id company_staff_id=company_staff_id %}" enctype="multipart/form-data">
+                        <form method="POST" action="{% url 'create_ducument' company_id=company_id company_staff_id=company_staff_id %}" enctype="multipart/form-data" id="manager-doc-upload-form">
                 {% csrf_token %}
                           <div class="row mb-2">
                             <div class="col-md-6">
-                              <label for="experience-letter" class="form-label">Experience Letter <span class="text-danger">*</span></label>
-                              <input class="form-control" type="file"  id="experience-letter" name="experience_letter" required>
+                              <label for="experience-letter" class="form-label">Experience Letter</label>
+                              <input class="form-control" type="file" id="experience-letter" name="experience_letter" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp">
                             </div>
                             <div class="col-md-6">
-                              <label for="offer-letter" class="form-label">Offer Letter <span class="text-danger">*</span></label>
-                              <input class="form-control" type="file"  id="offer-letter" name="offer_letter" required>
+                              <label for="offer-letter" class="form-label">Offer Letter</label>
+                              <input class="form-control" type="file" id="offer-letter" name="offer_letter" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp">
                             </div>
                           </div>
                           <div class="row mb-2">
                             <div class="col-md-6">
-                              <label for="education-certificate" class="form-label">Education Certificate <span class="text-danger">*</span></label>
-                              <input class="form-control" type="file"  id="education-certificate" name="education_certificate" required>
+                              <label for="education-certificate" class="form-label">Education Certificate</label>
+                              <input class="form-control" type="file" id="education-certificate" name="education_certificate" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp">
                             </div>
                             <div class="col-md-6">
-                              <label for="skill-certificate" class="form-label">Skill Certificate <span class="text-danger">*</span></label>
-                              <input class="form-control" type="file"  id="skill-certificate" name="skill_certificate" required>
+                              <label for="skill-certificate" class="form-label">Skill Certificate</label>
+                              <input class="form-control" type="file" id="skill-certificate" name="skill_certificate" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp">
                             </div>
                           </div>
+                          <div id="manager-doc-upload-error" class="text-danger small mb-2" style="display: none;"><i class="bx bx-error-circle"></i> Please select at least one document to upload.</div>
                           <div class="mt-4 mb-2 button-right">
-                            <button type="submit" class="btn btn-outline-orangeyellow">Upload</button>
-<!--                            <button type="button" class="btn btn-outline-orangeyellow ms-2" data-bs-toggle="modal" data-bs-target="#uploadeddocumentsModal" id="uploadeddocumentsBtn" onclick="document_details_fetch('{{post.pk}}')">Uploaded Files</button>-->
+                            <button type="submit" id="manager-doc-upload-submit-btn" class="btn btn-outline-orangeyellow">Upload</button>
                             <a href="{% url 'document_View' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-outline-orangeyellow ms-2">Uploaded Files</a>
                           </div>
                         </form>
@@ -358,19 +358,19 @@
                           <tbody>
                             <tr>
                               <th>Experience Letter</th>
-                               <td><a href="{{ post.experience_letter.url }}"  download ><img src="" id="employee_experience_heading" class="img-fluid user-img"></a></td>
+                              <td>{% if post and post.experience_letter %}<a href="{{ post.experience_letter.url }}" download class="btn btn-sm btn-outline-primary"><i class="bx bx-download"></i> Download</a>{% else %}<span class="text-muted">Not Uploaded</span>{% endif %}</td>
                             </tr>
                             <tr>
                               <th>Offer Letter</th>
-                              <td><a href="#">Offer Letter Document</a></td>
+                              <td>{% if post and post.offer_letter %}<a href="{{ post.offer_letter.url }}" download class="btn btn-sm btn-outline-primary"><i class="bx bx-download"></i> Download</a>{% else %}<span class="text-muted">Not Uploaded</span>{% endif %}</td>
                             </tr>
                             <tr>
                               <th>Education Certificate</th>
-                              <td><a href="#">Education Certificate Document</a></td>
+                              <td>{% if post and post.education_certificate %}<a href="{{ post.education_certificate.url }}" download class="btn btn-sm btn-outline-primary"><i class="bx bx-download"></i> Download</a>{% else %}<span class="text-muted">Not Uploaded</span>{% endif %}</td>
                             </tr>
                             <tr>
                               <th>Skill Certificate</th>
-                              <td><a href="#" class="">Skill Certificate Document</a></td>
+                              <td>{% if post and post.skill_certificate %}<a href="{{ post.skill_certificate.url }}" download class="btn btn-sm btn-outline-primary"><i class="bx bx-download"></i> Download</a>{% else %}<span class="text-muted">Not Uploaded</span>{% endif %}</td>
                             </tr>
                           </tbody>
                         </table>
@@ -397,7 +397,7 @@
                         data-image-url="{{profile.avatar_url}}"
                         style="cursor: pointer;"
                         alt="Manager Profile Photo"
-                        onerror="this.src='{{profile.avatar_url}}'"
+                        onerror="this.onerror=null; this.src='{% if profile.manager_gender|lower == 'female' %}{% static 'asets/images/dummy-woman.png' %}{% else %}{% static 'asets/images/dummy-man.png' %}{% endif %}';"
                       >
                       <h5 class="mt-3 mb-0">{{profile.manager_first_name}} {{profile.manager_last_name}}</h5>
                     </div>
@@ -606,6 +606,22 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
 
     <script>
+      // Document upload validation (at least one document required)
+      const managerDocForm = document.getElementById('manager-doc-upload-form');
+      if (managerDocForm) {
+        managerDocForm.addEventListener('submit', function(e) {
+          const f1 = document.getElementById('experience-letter')?.files?.length || 0;
+          const f2 = document.getElementById('offer-letter')?.files?.length || 0;
+          const f3 = document.getElementById('education-certificate')?.files?.length || 0;
+          const f4 = document.getElementById('skill-certificate')?.files?.length || 0;
+          if (f1 + f2 + f3 + f4 === 0) {
+            e.preventDefault();
+            const err = document.getElementById('manager-doc-upload-error');
+            if (err) err.style.display = 'block';
+          }
+        });
+      }
+
       // Manager profile image cropper
       (function() {
         let managerCropper;
@@ -767,6 +783,32 @@
             formatManagerPhone(input);
           }
         });
+
+        var docForm = document.getElementById("manager-doc-upload-form");
+        if (docForm) {
+          docForm.addEventListener("submit", function(e) {
+            var inputs = docForm.querySelectorAll('input[type="file"]');
+            var hasFile = false;
+            for (var i = 0; i < inputs.length; i++) {
+              if (inputs[i].files && inputs[i].files.length > 0) {
+                hasFile = true;
+                break;
+              }
+            }
+            var errorDiv = document.getElementById("manager-doc-upload-error");
+            if (!hasFile) {
+              e.preventDefault();
+              if (errorDiv) errorDiv.style.display = "block";
+              return false;
+            }
+            if (errorDiv) errorDiv.style.display = "none";
+            var btn = document.getElementById("manager-doc-upload-submit-btn");
+            if (btn) {
+              btn.disabled = true;
+              btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Uploading...';
+            }
+          });
+        }
       });
     </script>
     

@@ -27,5 +27,20 @@
   </head>
   <body>
     <div id="preloader"></div>
+    <script>
+      (function() {
+        function hidePreloader() {
+          var p = document.getElementById("preloader");
+          if (p) p.style.display = "none";
+        }
+        if (document.readyState === "complete" || document.readyState === "interactive") {
+          hidePreloader();
+        } else {
+          document.addEventListener("DOMContentLoaded", hidePreloader);
+          window.addEventListener("load", hidePreloader);
+        }
+        setTimeout(hidePreloader, 1000);
+      })();
+    </script>
     
     <div class="wrapper">     

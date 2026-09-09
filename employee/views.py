@@ -60,14 +60,21 @@ from django.views.decorators.http import require_POST
 User = get_user_model()
 
 MAX_UPLOAD_SIZE = 10 * 1024 * 1024
-DOCUMENT_EXTENSIONS = {'.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png'}
+DOCUMENT_EXTENSIONS = {'.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.webp', '.txt'}
 DOCUMENT_CONTENT_TYPES = {
-    'application/pdf', 'application/msword',
+    'application/pdf',
+    'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'image/jpeg', 'image/png',
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'text/plain',
+    'application/octet-stream',
+    'application/x-zip-compressed',
+    'application/zip',
 }
-IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png'}
-IMAGE_CONTENT_TYPES = {'image/jpeg', 'image/png'}
+IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp'}
+IMAGE_CONTENT_TYPES = {'image/jpeg', 'image/png', 'image/webp'}
 
 
 def _employee_account(company_id, company_staff_id):
@@ -78,16 +85,19 @@ def _employee_account(company_id, company_staff_id):
 
 
 def _validate_upload(upload, extensions, content_types, label='File'):
-    if not upload:
+    if not upload or not getattr(upload, 'name', '') or getattr(upload, 'size', 0) == 0:
         return
     extension = os.path.splitext(upload.name or '')[1].lower()
     if extension not in extensions:
-        raise ValidationError(f'{label} type is not supported.')
+        allowed = ", ".join(sorted(extensions))
+        raise ValidationError(f'{label} type ({extension or "unknown"}) is not supported. Allowed formats: {allowed}')
     if upload.size > MAX_UPLOAD_SIZE:
         raise ValidationError(f'{label} must be 10 MB or smaller.')
     content_type = getattr(upload, 'content_type', '')
     if content_type and content_type not in content_types:
-        raise ValidationError(f'{label} content type is not allowed.')
+        # Don't strictly reject if extension is valid and content type is generic
+        if content_type not in {'application/octet-stream', 'binary/octet-stream', 'application/x-zip-compressed', 'application/zip'}:
+            raise ValidationError(f'{label} content type is not allowed.')
 
 
 def _validate_profile_image(upload):
@@ -272,6 +282,9 @@ def employee_profile_view(request,company_id, company_staff_id):
                     import uuid
                     
                     try:
+                        # Store base64 directly in database for permanent persistence (e.g. on Neon)
+                        profile.avatar_base64 = cropped_image_data
+                        
                         # Remove data URL prefix
                         format, imgstr = cropped_image_data.split(';base64,', 1)
                         ext = format.split('/')[-1]
@@ -291,6 +304,15 @@ def employee_profile_view(request,company_id, company_staff_id):
                     uploaded_image = request.FILES['employee_image']
                     _validate_profile_image(uploaded_image)
                     profile.employee_image = uploaded_image
+                    try:
+                        import mimetypes
+                        uploaded_image.seek(0)
+                        content = uploaded_image.read()
+                        uploaded_image.seek(0)
+                        content_type = mimetypes.guess_type(uploaded_image.name)[0] or 'image/jpeg'
+                        profile.avatar_base64 = f"data:{content_type};base64,{base64.b64encode(content).decode('utf-8')}"
+                    except Exception:
+                        pass
 
                 profile.save()
                 messages.success(request, 'Profile updated successfully!')
@@ -354,6 +376,15 @@ def upload_profile_image(request, company_id, company_staff_id):
         uploaded_image = request.FILES['employee_image']
         _validate_profile_image(uploaded_image)
         profile.employee_image = uploaded_image
+        try:
+            import mimetypes
+            uploaded_image.seek(0)
+            content = uploaded_image.read()
+            uploaded_image.seek(0)
+            content_type = mimetypes.guess_type(uploaded_image.name)[0] or 'image/jpeg'
+            profile.avatar_base64 = f"data:{content_type};base64,{base64.b64encode(content).decode('utf-8')}"
+        except Exception:
+            pass
         profile.save()
         return JsonResponse({
             'success': True,
@@ -387,11 +418,13 @@ def remove_profile_image(request, company_id, company_staff_id):
             except Exception:
                 pass
         profile.employee_image = ''
-        profile.save(update_fields=['employee_image'])
+        profile.avatar_base64 = ''
+        profile.save(update_fields=['employee_image', 'avatar_base64'])
         messages.success(request, 'Profile photo removed successfully.')
     except Exception as e:
         try:
             profile.employee_image = ''
+            profile.avatar_base64 = ''
             profile.save()
             messages.success(request, 'Profile photo removed successfully.')
         except Exception as e2:
@@ -1949,17 +1982,15 @@ def create_ducuments(request,company_id, company_staff_id):
                 skill_certificate = request.FILES.get("skill_certificate")
                 
                 if not any([experience_letter, offer_letter, education_certificate, skill_certificate]):
-                    messages.error(request, 'Please upload at least one document.')
-                    return render(request,"employee/my-profile.html",{
-                        'company_id':company_id, 
-                        'company_staff_id':company_staff_id
-                    })
+                    messages.error(request, 'Please select at least one document to upload.')
+                    return redirect(f'/employee/employee_profile/{company_id}/{company_staff_id}')
 
                 for upload in request.FILES.values():
-                    _validate_upload(
-                        upload, DOCUMENT_EXTENSIONS,
-                        DOCUMENT_CONTENT_TYPES, 'Document'
-                    )
+                    if upload and getattr(upload, 'name', '') and getattr(upload, 'size', 0) > 0:
+                        _validate_upload(
+                            upload, DOCUMENT_EXTENSIONS,
+                            DOCUMENT_CONTENT_TYPES, 'Document'
+                        )
                 
                 try:
                     company_staff = CompanyStaff.objects.get(id=company_staff_id, company_id=company_id)
@@ -1970,40 +2001,54 @@ def create_ducuments(request,company_id, company_staff_id):
                 emp = Employee.objects.filter(user=company_staff).first()
                 if not emp:
                     messages.error(request, 'Employee profile not found.')
-                    return render(request,"employee/my-profile.html",{
-                        'company_id':company_id, 
-                        'company_staff_id':company_staff_id
-                    })
+                    return redirect(f'/employee/employee_profile/{company_id}/{company_staff_id}')
                 
-                document = Post.objects.create(
-                    user=emp,
-                    experience_letter=experience_letter,
-                    offer_letter=offer_letter,
-                    education_certificate=education_certificate,
-                    skill_certificate=skill_certificate
-                )
+                # Smart Document Merge: update existing record if available, else create new
+                document = Post.objects.filter(user=emp).first()
+                if document:
+                    if experience_letter:
+                        document.experience_letter = experience_letter
+                    if offer_letter:
+                        document.offer_letter = offer_letter
+                    if education_certificate:
+                        document.education_certificate = education_certificate
+                    if skill_certificate:
+                        document.skill_certificate = skill_certificate
+                    document.save()
+                else:
+                    document = Post.objects.create(
+                        user=emp,
+                        experience_letter=experience_letter,
+                        offer_letter=offer_letter,
+                        education_certificate=education_certificate,
+                        skill_certificate=skill_certificate
+                    )
                 
-                # Send email notification
-                try:
-                    from administration.email_notifications import send_document_submission_notification
-                    send_document_submission_notification(document, user_type='employee')
-                except Exception as e:
-                    print(f"Error sending document submission notification: {str(e)}")
+                # Send email notification asynchronously in background thread to avoid 502 gateway timeouts
+                def _send_async_doc_notification(doc_id):
+                    try:
+                        from administration.email_notifications import send_document_submission_notification
+                        target_doc = Post.objects.filter(id=doc_id).first()
+                        if target_doc:
+                            send_document_submission_notification(target_doc, user_type='employee')
+                    except Exception as exc:
+                        print(f"Async document notification error: {exc}", flush=True)
+
+                import threading
+                threading.Thread(target=_send_async_doc_notification, args=(document.id,), daemon=True).start()
                 
                 messages.success(request, 'Documents uploaded successfully!')
                 return redirect(f'/employee/employee_profile/{company_id}/{company_staff_id}')
+            except ValidationError as ve:
+                err_msg = ' '.join(ve.messages) if hasattr(ve, 'messages') else str(ve)
+                messages.error(request, f'Upload error: {err_msg}')
+                return redirect(f'/employee/employee_profile/{company_id}/{company_staff_id}')
             except Exception as e:
                 messages.error(request, f'Error uploading documents: {str(e)}')
-                return render(request,"employee/my-profile.html",{
-                    'company_id':company_id, 
-                    'company_staff_id':company_staff_id
-                })
+                return redirect(f'/employee/employee_profile/{company_id}/{company_staff_id}')
 
         else:
-            return render(request,"employee/my-profile.html",{
-                'company_id':company_id, 
-                'company_staff_id':company_staff_id
-            })
+            return redirect(f'/employee/employee_profile/{company_id}/{company_staff_id}')
 
 
 def All_document_View(request,company_id, company_staff_id):
@@ -2035,13 +2080,53 @@ def All_document_View(request,company_id, company_staff_id):
             messages.error(request, 'Employee profile not found.')
             return render(request, 'employee/view_documents.html', {
                 'document_list': Post.objects.none(),
+                'active_documents': {'experience_letter': None, 'offer_letter': None, 'education_certificate': None, 'skill_certificate': None},
+                'uploaded_count': 0,
                 'company_id':company_id, 
                 'company_staff_id':company_staff_id
             })
         
-        document_list = Post.objects.filter(user=employee)
+        # Consolidate multiple records if any exist from legacy uploads
+        posts = list(Post.objects.filter(user=employee).order_by('-date_posted', '-id'))
+        if len(posts) > 1:
+            primary_post = posts[0]
+            changed = False
+            for p in posts[1:]:
+                if not primary_post.experience_letter and p.experience_letter:
+                    primary_post.experience_letter = p.experience_letter
+                    changed = True
+                if not primary_post.offer_letter and p.offer_letter:
+                    primary_post.offer_letter = p.offer_letter
+                    changed = True
+                if not primary_post.education_certificate and p.education_certificate:
+                    primary_post.education_certificate = p.education_certificate
+                    changed = True
+                if not primary_post.skill_certificate and p.skill_certificate:
+                    primary_post.skill_certificate = p.skill_certificate
+                    changed = True
+            if changed:
+                primary_post.save()
+            # Remove redundant empty duplicate rows
+            for p in posts[1:]:
+                if not any([p.experience_letter, p.offer_letter, p.education_certificate, p.skill_certificate]):
+                    p.delete()
+            posts = list(Post.objects.filter(user=employee).order_by('-date_posted', '-id'))
+
+        primary_post = posts[0] if posts else None
+        active_documents = {
+            'experience_letter': getattr(primary_post, 'experience_letter', None) if primary_post else None,
+            'offer_letter': getattr(primary_post, 'offer_letter', None) if primary_post else None,
+            'education_certificate': getattr(primary_post, 'education_certificate', None) if primary_post else None,
+            'skill_certificate': getattr(primary_post, 'skill_certificate', None) if primary_post else None,
+        }
+        uploaded_count = sum(1 for v in active_documents.values() if v)
+
         return render(request, 'employee/view_documents.html', {
-            'document_list': document_list,
+            'primary_post': primary_post,
+            'active_documents': active_documents,
+            'uploaded_count': uploaded_count,
+            'document_list': posts,
+            'employee': employee,
             'company_id':company_id, 
             'company_staff_id':company_staff_id
         })
