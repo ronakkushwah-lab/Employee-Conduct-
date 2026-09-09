@@ -31,16 +31,26 @@
                     </li>
 
                     <li class="menu-label">My Personal Space</li>
-                    <li class="{% if url_name == 'attendance' or url_name == 'create_leave' or url_name == 'staffleavetable' or url_name == 'regularization_required' or url_name == 'staffregularizationtable' or url_name == 'employee_profile' %}mm-active{% endif %}">
-                      <a class="has-arrow">
+                    <li class="{% if request.resolver_match.url_name == 'hr_profile' %}mm-active{% endif %}">
+                      <a href="{% url 'hr_profile' company_id=company_id company_staff_id=company_staff_id %}">
                         <div class="parent-icon">
                           <i class="bx bx-user-circle"></i>
+                        </div>
+                        <div class="menu-title">
+                          <span>My Profile</span>
+                        </div>
+                      </a>
+                    </li>
+                    <li class="{% if url_name == 'attendance' or url_name == 'create_leave' or url_name == 'staffleavetable' or url_name == 'regularization_required' or url_name == 'staffregularizationtable' %}mm-active{% endif %}">
+                      <a class="has-arrow">
+                        <div class="parent-icon">
+                          <i class="bx bx-calendar-check"></i>
                         </div>
                         <div class="menu-title">
                           <span>My Self-Service</span>
                         </div>
                       </a>
-                      <ul class="mm-collapse {% if url_name == 'attendance' or url_name == 'create_leave' or url_name == 'staffleavetable' or url_name == 'regularization_required' or url_name == 'staffregularizationtable' or url_name == 'employee_profile' %}mm-show{% endif %}">
+                      <ul class="mm-collapse {% if url_name == 'attendance' or url_name == 'create_leave' or url_name == 'staffleavetable' or url_name == 'regularization_required' or url_name == 'staffregularizationtable' %}mm-show{% endif %}">
                         <li>
                           <a href="{% url 'attendance' company_id=company_id company_staff_id=company_staff_id %}" class="{% if url_name == 'attendance' %}active{% endif %}">
                             <i class='bx bx-right-arrow-alt'></i>
@@ -69,12 +79,6 @@
                           <a href="{% url 'staffregularizationtable' company_id=company_id company_staff_id=company_staff_id %}" class="{% if url_name == 'staffregularizationtable' %}active{% endif %}">
                             <i class='bx bx-right-arrow-alt'></i>
                             Regularization Status
-                          </a>
-                        </li>
-                        <li>
-                          <a href="{% url 'employee_profile' company_id=company_id company_staff_id=company_staff_id %}" class="{% if url_name == 'employee_profile' %}active{% endif %}">
-                            <i class='bx bx-right-arrow-alt'></i>
-                            My Profile
                           </a>
                         </li>
                       </ul>

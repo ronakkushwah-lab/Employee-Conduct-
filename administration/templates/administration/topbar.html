@@ -90,9 +90,30 @@
         </a>
 
         <ul class="dropdown-menu dropdown-menu-end">
+          {% if company_staff_is_hr or staff.role == 'hr' or staff.is_hr %}
+          <li>
+            <a href="{% url 'hr_profile' company_id=company_id company_staff_id=company_staff_id %}" class="dropdown-item">
+              <i class='bx bx-user me-2'></i> My Profile
+            </a>
+          </li>
+          {% elif company_staff_id and company_id %}
+          <li>
+            <a href="{% url 'employee_profile' company_id=company_id company_staff_id=company_staff_id %}" class="dropdown-item">
+              <i class='bx bx-user me-2'></i> My Profile
+            </a>
+          </li>
+          {% endif %}
+          {% if company_id and company_staff_id %}
+          <li>
+            <a href="{% url 'mchange_password' company_id=company_id company_staff_id=company_staff_id %}" class="dropdown-item">
+              <i class='bx bx-key me-2'></i> Change Password
+            </a>
+          </li>
+          <li><hr class="dropdown-divider"></li>
+          {% endif %}
           <li>
             <a href="{% url 'logout' %}" class="dropdown-item">
-              <i class='bx bx-log-out-circle'></i> Logout
+              <i class='bx bx-log-out-circle me-2'></i> Logout
             </a>
           </li>
         </ul>

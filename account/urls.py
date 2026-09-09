@@ -20,6 +20,9 @@ urlpatterns = [
     path('dashboard/admin/<int:company_id>/<int:company_staff_id>/', views.admin_dashboard, name='admin_dashboard'),
     path('dashboard/manager/<int:company_id>/<int:company_staff_id>/', views.manager_dashboard, name='manager_dashboard'),
     path('dashboard/hr/<int:company_id>/<int:company_staff_id>/', views.hr_dashboard, name='hr_dashboard'),
+    path('dashboard/hr/<int:company_id>/<int:company_staff_id>/profile/', views.hr_profile_view, name='hr_profile'),
+    path('dashboard/hr/<int:company_id>/<int:company_staff_id>/upload_image/', views.upload_hr_profile_image, name='upload_hr_profile_image'),
+    path('dashboard/hr/<int:company_id>/<int:company_staff_id>/remove_image/', views.remove_hr_profile_image, name='remove_hr_profile_image'),
     path('dashboard/hr/<int:company_id>/<int:company_staff_id>/biometric/', views.hr_biometric_monitor, name='hr_biometric_monitor'),
     # Simple landing dashboard for employee role (after login)
     path(

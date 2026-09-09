@@ -615,4 +615,160 @@ def hr_biometric_monitor(request, company_id, company_staff_id):
     return render(request, 'account/hr_biometric_monitor.html', context)
 
 
+def hr_profile_view(request, company_id, company_staff_id):
+    company = get_object_or_404(Company, id=company_id)
+    staff = get_object_or_404(CompanyStaff, id=company_staff_id, company=company)
+
+    from employee.models import Post
+
+    # Auto-provision Employee profile for HR if missing
+    hr_employee = Employee.objects.filter(user=staff).first()
+    if not hr_employee:
+        hr_dept, _ = Department.objects.get_or_create(
+            company=company,
+            department_name='Human Resources'
+        )
+        reporting_manager = Manager.objects.filter(user__company=company).first() or Manager.objects.first()
+        staff_id_num = staff.id
+        emp_id_str = f"EIC/HR/{2700 + staff_id_num}"
+        bio_id_str = str(staff_id_num)
+        if Employee.objects.filter(biometric_id=bio_id_str).exists():
+            bio_id_str = f"BIO-{staff_id_num}"
+
+        email_str = staff.email or 'HR Manager'
+        name_part = email_str.split('@')[0].replace('.', ' ').replace('_', ' ')
+        parts = name_part.split()
+        first_name = parts[0].capitalize() if parts else 'HR'
+        last_name = parts[1].capitalize() if len(parts) > 1 else 'Manager'
+
+        hr_employee = Employee.objects.create(
+            user=staff,
+            employee_first_name=first_name,
+            employee_last_name=last_name,
+            employee_email=staff.email or '',
+            employee_joining_date=timezone.now().date(),
+            employee_department=hr_dept,
+            employee_designation='HR Manager',
+            employee_id=emp_id_str,
+            biometric_id=bio_id_str,
+            employee_reports_to=reporting_manager,
+            employee_status='Active'
+        )
+
+    if request.method == "POST":
+        # Check for cropped image input (base64)
+        cropped_image_data = request.POST.get('cropped-image-input', '')
+        if cropped_image_data and cropped_image_data.startswith('data:image'):
+            import base64
+            import uuid
+            from django.core.files.base import ContentFile
+            from django.utils.text import slugify
+            try:
+                hr_employee.avatar_base64 = cropped_image_data
+                format_part, imgstr = cropped_image_data.split(';base64,')
+                ext = format_part.split('/')[-1] if '/' in format_part else 'jpg'
+                name = f"hr_{slugify(hr_employee.employee_first_name or 'profile')}_{uuid.uuid4().hex[:8]}.{ext}"
+                hr_employee.employee_profile_image = ContentFile(base64.b64decode(imgstr), name=name)
+            except Exception as e:
+                messages.error(request, f'Error processing profile picture: {str(e)}')
+        elif 'employee_profile_image' in request.FILES:
+            uploaded_image = request.FILES['employee_profile_image']
+            hr_employee.employee_profile_image = uploaded_image
+            try:
+                import base64
+                import mimetypes
+                uploaded_image.seek(0)
+                content = uploaded_image.read()
+                uploaded_image.seek(0)
+                content_type = mimetypes.guess_type(uploaded_image.name)[0] or 'image/jpeg'
+                hr_employee.avatar_base64 = f"data:{content_type};base64,{base64.b64encode(content).decode('utf-8')}"
+            except Exception:
+                pass
+
+        # Update editable fields
+        fields_to_update = [
+            'employee_first_name', 'employee_last_name',
+            'employee_phone', 'employee_birth_date', 'employee_gender',
+            'employee_address', 'employee_pin_code', 'employee_state', 'employee_country',
+            'employee_marital_status', 'employee_emergency_primary_name',
+            'employee_emergency_primary_relationship', 'employee_emergency_primary_phone1',
+        ]
+        for field in fields_to_update:
+            val = request.POST.get(field)
+            if val is not None:
+                val_clean = val.strip()
+                if field in ['employee_phone', 'employee_emergency_primary_phone1']:
+                    digits = ''.join(filter(str.isdigit, val_clean.replace('+91', '')))
+                    if len(digits) == 10:
+                        val_clean = f"+91 {digits[:5]} {digits[5:]}"
+                    elif digits:
+                        val_clean = f"+91 {digits}"
+                if field == 'employee_birth_date' and not val_clean:
+                    continue
+                setattr(hr_employee, field, val_clean)
+
+        hr_employee.save()
+        messages.success(request, 'HR Profile updated successfully!')
+        return redirect('hr_profile', company_id=company_id, company_staff_id=company_staff_id)
+
+    # Documents
+    post = Post.objects.filter(user=hr_employee).first()
+
+    context = {
+        'company': company,
+        'staff': staff,
+        'company_id': company_id,
+        'company_staff_id': company_staff_id,
+        'hr_employee': hr_employee,
+        'profile': hr_employee,
+        'post': post,
+    }
+    return render(request, 'account/hr_profile.html', context)
+
+
+def upload_hr_profile_image(request, company_id, company_staff_id):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    try:
+        staff = CompanyStaff.objects.get(id=company_staff_id, company_id=company_id)
+        emp = Employee.objects.filter(user=staff).first()
+        if not emp:
+            return JsonResponse({'error': 'HR employee profile not found'}, status=404)
+        if 'employee_profile_image' not in request.FILES:
+            return JsonResponse({'error': 'No image file provided'}, status=400)
+
+        uploaded_image = request.FILES['employee_profile_image']
+        emp.employee_profile_image = uploaded_image
+        import base64
+        import mimetypes
+        uploaded_image.seek(0)
+        content = uploaded_image.read()
+        uploaded_image.seek(0)
+        content_type = mimetypes.guess_type(uploaded_image.name)[0] or 'image/jpeg'
+        emp.avatar_base64 = f"data:{content_type};base64,{base64.b64encode(content).decode('utf-8')}"
+        emp.save()
+        return JsonResponse({'success': True, 'image_url': emp.avatar_url})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+def remove_hr_profile_image(request, company_id, company_staff_id):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    try:
+        staff = CompanyStaff.objects.get(id=company_staff_id, company_id=company_id)
+        emp = Employee.objects.filter(user=staff).first()
+        if not emp:
+            return JsonResponse({'error': 'HR employee profile not found'}, status=404)
+        emp.avatar_base64 = None
+        if emp.employee_profile_image:
+            emp.employee_profile_image.delete(save=False)
+            emp.employee_profile_image = None
+        emp.save()
+        return JsonResponse({'success': True, 'fallback_url': emp.avatar_url})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+
 
