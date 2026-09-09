@@ -1972,11 +1972,8 @@ def create_ducuments(request,company_id, company_staff_id):
                 skill_certificate = request.FILES.get("skill_certificate")
                 
                 if not any([experience_letter, offer_letter, education_certificate, skill_certificate]):
-                    messages.error(request, 'Please upload at least one document.')
-                    return render(request,"employee/my-profile.html",{
-                        'company_id':company_id, 
-                        'company_staff_id':company_staff_id
-                    })
+                    messages.error(request, 'Please select at least one document to upload.')
+                    return redirect(f'/employee/employee_profile/{company_id}/{company_staff_id}')
 
                 for upload in request.FILES.values():
                     _validate_upload(

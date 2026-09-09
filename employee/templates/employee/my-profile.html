@@ -352,32 +352,32 @@
                           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                       </div>
                       <div class="modal-body">
-                        <form method="POST" action="{% url 'create_ducuments' company_id=company_id company_staff_id=company_staff_id %}" enctype="multipart/form-data">
+                        <form method="POST" action="{% url 'create_ducuments' company_id=company_id company_staff_id=company_staff_id %}" enctype="multipart/form-data" id="employee-doc-upload-form">
                 {% csrf_token %}
                           <div class="row mb-2">
                             <div class="col-md-6">
-                              <label for="experience-letter" class="form-label">Experience Letter <span class="text-danger">*</span></label>
-                              <input class="form-control" type="file"  id="experience-letter" name="experience_letter" required>
+                              <label for="experience-letter" class="form-label">Experience Letter</label>
+                              <input class="form-control" type="file" id="experience-letter" name="experience_letter">
                             </div>
                             <div class="col-md-6">
-                              <label for="offer-letter" class="form-label">Offer Letter <span class="text-danger">*</span></label>
-                              <input class="form-control" type="file"  id="offer-letter" name="offer_letter" required>
+                              <label for="offer-letter" class="form-label">Offer Letter</label>
+                              <input class="form-control" type="file" id="offer-letter" name="offer_letter">
                             </div>
                           </div>
                           <div class="row mb-2">
                             <div class="col-md-6">
-                              <label for="education-certificate" class="form-label">Education Certificate <span class="text-danger">*</span></label>
-                              <input class="form-control" type="file" id="education-certificate" name="education_certificate" required>
+                              <label for="education-certificate" class="form-label">Education Certificate</label>
+                              <input class="form-control" type="file" id="education-certificate" name="education_certificate">
                             </div>
                             <div class="col-md-6">
-                              <label for="skill-certificate" class="form-label">Skill Certificate <span class="text-danger">*</span></label>
-                              <input class="form-control" type="file"  id="skill-certificate" name="skill_certificate" required>
+                              <label for="skill-certificate" class="form-label">Skill Certificate</label>
+                              <input class="form-control" type="file" id="skill-certificate" name="skill_certificate">
                             </div>
                           </div>
+                          <div id="doc-upload-error" class="text-danger small mb-2" style="display: none;"><i class="bx bx-error-circle"></i> Please select at least one document to upload.</div>
                           <div class="mt-4 mb-2 button-right">
                             <button type="submit" class="btn btn-outline-orangeyellow">Upload</button>
                              <a href="{% url 'all_document_Views' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-outline-orangeyellow ms-2">Uploaded Files</a>
-<!--                             <button type="button" class="btn btn-outline-orangeyellow ms-2" data-bs-toggle="modal" data-bs-target="#uploadeddocumentsModal" id="uploadeddocumentsBtn" onclick="document_details_fetch('{{post.pk}}')">Uploaded Files</button>-->
                           </div>
                         </form>
                       </div>
@@ -396,19 +396,19 @@
                           <tbody>
                             <tr>
                               <th>Experience Letter</th>
-                               <td><a href="{{ post.experience_letter.url }}"  download ><img src="" id="employee_experience_heading" class="img-fluid user-img"></a></td>
+                              <td>{% if post and post.experience_letter %}<a href="{{ post.experience_letter.url }}" download class="btn btn-sm btn-outline-primary"><i class="bx bx-download"></i> Download</a>{% else %}<span class="text-muted">Not Uploaded</span>{% endif %}</td>
                             </tr>
                             <tr>
                               <th>Offer Letter</th>
-                                <td><a href="{{ post.offer_letter.url }}"  download ><img src="" id="employee_offer_letter_heading" class="img-fluid user-img"></a></td>
+                              <td>{% if post and post.offer_letter %}<a href="{{ post.offer_letter.url }}" download class="btn btn-sm btn-outline-primary"><i class="bx bx-download"></i> Download</a>{% else %}<span class="text-muted">Not Uploaded</span>{% endif %}</td>
                             </tr>
                             <tr>
                               <th>Education Certificate</th>
-                             <td><a href="{{ post.education_certificate.url }}"  download ><img src="" id="employee_education_certificate_heading" class="img-fluid user-img"></a></td>
+                              <td>{% if post and post.education_certificate %}<a href="{{ post.education_certificate.url }}" download class="btn btn-sm btn-outline-primary"><i class="bx bx-download"></i> Download</a>{% else %}<span class="text-muted">Not Uploaded</span>{% endif %}</td>
                             </tr>
                             <tr>
                               <th>Skill Certificate</th>
-                               <td><a href="{{ post.skill_certificate.url }}"  download ><img src="" id="employee_skill_certificate_heading" class="img-fluid user-img"></a></td>
+                              <td>{% if post and post.skill_certificate %}<a href="{{ post.skill_certificate.url }}" download class="btn btn-sm btn-outline-primary"><i class="bx bx-download"></i> Download</a>{% else %}<span class="text-muted">Not Uploaded</span>{% endif %}</td>
                             </tr>
                           </tbody>
                         </table>
@@ -721,6 +721,22 @@
         const previewImg = document.getElementById('profile-preview-img');
         cropModal = new bootstrap.Modal(document.getElementById('cropImageModal'));
         
+        // Document upload validation (at least one document required)
+        const docForm = document.getElementById('employee-doc-upload-form');
+        if (docForm) {
+          docForm.addEventListener('submit', function(e) {
+            const f1 = document.getElementById('experience-letter')?.files?.length || 0;
+            const f2 = document.getElementById('offer-letter')?.files?.length || 0;
+            const f3 = document.getElementById('education-certificate')?.files?.length || 0;
+            const f4 = document.getElementById('skill-certificate')?.files?.length || 0;
+            if (f1 + f2 + f3 + f4 === 0) {
+              e.preventDefault();
+              const err = document.getElementById('doc-upload-error');
+              if (err) err.style.display = 'block';
+            }
+          });
+        }
+
         // Upload Photo button - automatically opens crop modal
         if (imageInput) {
           imageInput.addEventListener('change', function(e) {

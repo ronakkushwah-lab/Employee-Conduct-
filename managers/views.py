@@ -1278,27 +1278,45 @@ class EntryRemove(View):
 def create_ducument(request,company_id, company_staff_id):
     if company_id:
         if request.method == "POST":
-            experience_letter = request.POST.get("experience_letter")
-            offer_letter = request.POST.get("offer_letter")
-            education_certificate = request.POST.get("education_certificate")
-            skill_certificate = request.POST.get("skill_certificate")
-            company_staff = CompanyStaff.objects.get(id=company_staff_id)
-            user = company_staff
-            emp = Manager.objects.get(user=user)
-            document = ManagerPost.objects.create(user=emp, experience_letter=experience_letter, offer_letter=offer_letter,
-                                       education_certificate=education_certificate, skill_certificate=skill_certificate)
-            
-            # Send email notification
+            experience_letter = request.FILES.get("experience_letter")
+            offer_letter = request.FILES.get("offer_letter")
+            education_certificate = request.FILES.get("education_certificate")
+            skill_certificate = request.FILES.get("skill_certificate")
+
+            if not any([experience_letter, offer_letter, education_certificate, skill_certificate]):
+                messages.error(request, 'Please select at least one document to upload.')
+                return redirect(f'/managers/manager_profile/{company_id}/{company_staff_id}')
+
             try:
-                from administration.email_notifications import send_document_submission_notification
-                send_document_submission_notification(document, user_type='manager')
+                company_staff = CompanyStaff.objects.get(id=company_staff_id)
+                emp = Manager.objects.filter(user=company_staff).first()
+                if not emp:
+                    messages.error(request, 'Manager profile not found.')
+                    return redirect(f'/managers/manager_profile/{company_id}/{company_staff_id}')
+
+                document = ManagerPost.objects.create(
+                    user=emp,
+                    experience_letter=experience_letter,
+                    offer_letter=offer_letter,
+                    education_certificate=education_certificate,
+                    skill_certificate=skill_certificate
+                )
+                
+                # Send email notification
+                try:
+                    from administration.email_notifications import send_document_submission_notification
+                    send_document_submission_notification(document, user_type='manager')
+                except Exception as e:
+                    print(f"Error sending document submission notification: {str(e)}")
+                
+                messages.success(request, 'Documents uploaded successfully!')
             except Exception as e:
-                print(f"Error sending document submission notification: {str(e)}")
-            
+                messages.error(request, f'Error uploading documents: {str(e)}')
+
             return redirect(f'/managers/manager_profile/{company_id}/{company_staff_id}')
 
         else:
-            return render(request, "managers/my-profile.html",{'company_id':company_id, 'company_staff_id':company_staff_id})
+            return redirect(f'/managers/manager_profile/{company_id}/{company_staff_id}')
 
 
 def create_mregularizations(request,company_id, company_staff_id):

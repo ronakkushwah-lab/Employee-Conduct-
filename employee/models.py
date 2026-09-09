@@ -456,10 +456,10 @@ class Attendance(models.Model):
 
 
 class Post(models.Model):
-    experience_letter = models.FileField(verbose_name=_('Experience Letter'),null=True, blank=False, upload_to='Files')
-    offer_letter = models.FileField(verbose_name=_('Offer Letter'),null=True, blank=False, upload_to='Files')
-    education_certificate = models.FileField(verbose_name=_('Education Certificate'),null=True, blank=False, upload_to='Files')
-    skill_certificate = models.FileField(verbose_name=_('Skill Certificate'),null=True, blank=False, upload_to='Files')
+    experience_letter = models.FileField(verbose_name=_('Experience Letter'), null=True, blank=True, upload_to='Files')
+    offer_letter = models.FileField(verbose_name=_('Offer Letter'), null=True, blank=True, upload_to='Files')
+    education_certificate = models.FileField(verbose_name=_('Education Certificate'), null=True, blank=True, upload_to='Files')
+    skill_certificate = models.FileField(verbose_name=_('Skill Certificate'), null=True, blank=True, upload_to='Files')
     date_posted = models.DateTimeField(default=timezone.now)
     user = models.ForeignKey(Employee,
                              null=True,
@@ -472,9 +472,11 @@ class Post(models.Model):
         ordering = ['-date_posted']  # recent objects
 
     def extension(self):
-        name, extension = os.path.splitext(
-            self.experience_letter.name or self.offer_letter.name or self.education_certificate or self.skill_certificate)
-        return extension
+        for f in [self.experience_letter, self.offer_letter, self.education_certificate, self.skill_certificate]:
+            if f and hasattr(f, 'name') and f.name:
+                _, ext = os.path.splitext(f.name)
+                return ext
+        return ''
 
     def get_absolute_url(self):
         return reverse('post-detail', kwargs={'pk': self.pk})

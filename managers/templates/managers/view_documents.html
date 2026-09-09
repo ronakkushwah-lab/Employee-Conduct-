@@ -17,21 +17,24 @@
                              {% for post in document_list %}
                             <tr>
                               <th>Experience Letter</th>
-                                <td><a href="{{ post.experience_letter.url }}"  download > </a>{{ post.experience_letter }}</td>
+                              <td>{% if post.experience_letter %}<a href="{{ post.experience_letter.url }}" class="btn btn-sm btn-outline-primary" download target="_blank"><i class="bx bx-download"></i> Download</a>{% else %}<span class="text-muted">Not Uploaded</span>{% endif %}</td>
                             </tr>
                             <tr>
                               <th>Offer Letter</th>
-                               <td><a href="{{ post.offer_letter.url }}"  download > </a>{{ post.offer_letter.url }}</td>
+                              <td>{% if post.offer_letter %}<a href="{{ post.offer_letter.url }}" class="btn btn-sm btn-outline-primary" download target="_blank"><i class="bx bx-download"></i> Download</a>{% else %}<span class="text-muted">Not Uploaded</span>{% endif %}</td>
                             </tr>
                             <tr>
                               <th>Education Certificate</th>
-                             <td><a href="{{ post.education_certificate.url }}"  download > </a>{{ post.education_certificate.url }}</td>
+                              <td>{% if post.education_certificate %}<a href="{{ post.education_certificate.url }}" class="btn btn-sm btn-outline-primary" download target="_blank"><i class="bx bx-download"></i> Download</a>{% else %}<span class="text-muted">Not Uploaded</span>{% endif %}</td>
                             </tr>
                             <tr>
                               <th>Skill Certificate</th>
-                              <td><a href="{{ post.skill_certificate.url }}"  download > </a>{{ post.skill_certificate.url }}</td>
+                              <td>{% if post.skill_certificate %}<a href="{{ post.skill_certificate.url }}" class="btn btn-sm btn-outline-primary" download target="_blank"><i class="bx bx-download"></i> Download</a>{% else %}<span class="text-muted">Not Uploaded</span>{% endif %}</td>
                             </tr>
-
+                           {% empty %}
+                            <tr>
+                              <td colspan="2" class="text-center text-muted">No documents uploaded yet.</td>
+                            </tr>
                            {% endfor %}
                           </tbody>
                         </table>

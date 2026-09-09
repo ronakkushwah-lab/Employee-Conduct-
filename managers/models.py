@@ -365,10 +365,10 @@ class ManagerAttendance(models.Model):
 
 
 class ManagerPost(models.Model):
-    experience_letter = models.FileField(null=True, blank=False, upload_to='Files')
-    offer_letter = models.FileField(null=True, blank=False, upload_to='Files')
-    education_certificate = models.FileField(null=True, blank=False, upload_to='Files')
-    skill_certificate = models.FileField(null=True, blank=False, upload_to='Files')
+    experience_letter = models.FileField(null=True, blank=True, upload_to='Files')
+    offer_letter = models.FileField(null=True, blank=True, upload_to='Files')
+    education_certificate = models.FileField(null=True, blank=True, upload_to='Files')
+    skill_certificate = models.FileField(null=True, blank=True, upload_to='Files')
     date_posted = models.DateTimeField(default=timezone.now)
     user = models.ForeignKey(Manager,
                              null=True,
@@ -376,9 +376,11 @@ class ManagerPost(models.Model):
                              on_delete=models.CASCADE,)
 
     def extension(self):
-        name, extension = os.path.splitext(
-            self.experience_letter.name and self.offer_letter.name and self.education_certificate and self.skill_certificate)
-        return extension
+        for f in [self.experience_letter, self.offer_letter, self.education_certificate, self.skill_certificate]:
+            if f and hasattr(f, 'name') and f.name:
+                _, ext = os.path.splitext(f.name)
+                return ext
+        return ''
 
     def get_absolute_url(self):
         return reverse('mpost-detail', kwargs={'pk': self.pk})
@@ -387,9 +389,9 @@ class ManagerPost(models.Model):
         post_details_dict = {
             'id': self.id,
             'experience_letter': self.experience_letter.url if self.experience_letter else None,
-            'offer_letter': self.experience_letter.url if self.offer_letter else None,
-            'education_certificate': self.experience_letter.url if self.education_certificate else None,
-            'skill_certificate': self.experience_letter.url if self.skill_certificate else None,
+            'offer_letter': self.offer_letter.url if self.offer_letter else None,
+            'education_certificate': self.education_certificate.url if self.education_certificate else None,
+            'skill_certificate': self.skill_certificate.url if self.skill_certificate else None,
 
         }
         return post_details_dict
