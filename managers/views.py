@@ -153,7 +153,7 @@ def _attendance_month_context(attendance_queryset, request):
 def manager_profile_view(request, company_id, company_staff_id):
     company_staff = CompanyStaff.objects.get(id=company_staff_id)
     profile = Manager.objects.filter(user=company_staff).first()
-    post = ManagerPost.objects.filter(user=company_staff).first()
+    post = ManagerPost.objects.filter(user=profile).first() if profile else None
     manager_tasks = MTask.objects.filter(user=profile).order_by('-created_date') if profile else []
     ctx = {
         'profile': profile,
