@@ -2,1118 +2,871 @@
 {% include "employee/header.html" %}
 {% include "employee/sidebar.html" %}
 {% include "employee/topbar.html" %}
-{% load employee_filter %}
 
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
 <style>
   .img-container {
     max-width: 100%;
-    max-height: 500px;
+    max-height: 480px;
     overflow: hidden;
   }
-  .img-container img {
-    max-width: 100%;
-    height: auto;
+  .avatar-upload-wrapper {
+    position: relative;
+    width: 140px;
+    height: 140px;
+    margin: 0 auto;
+    border-radius: 50%;
+    border: 4px solid #ff6b35;
+    padding: 3px;
+    background: #fff;
+    box-shadow: 0 4px 14px rgba(255, 107, 53, 0.25);
   }
-  #crop-image {
-    display: block;
-    max-width: 100%;
+  .avatar-upload-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    cursor: pointer;
   }
-  .cropper-container {
-    direction: ltr;
+  .avatar-edit-icon {
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    background: #ff6b35;
+    color: #fff;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    transition: all 0.2s ease;
+  }
+  .avatar-edit-icon:hover {
+    background: #e05520;
+    transform: scale(1.08);
+  }
+  .info-label {
+    font-size: 12px;
+    color: #6c757d;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+  }
+  .info-value {
+    font-size: 14px;
+    color: #212529;
+    font-weight: 500;
+    margin-bottom: 14px;
+  }
+  .timeline-list {
+    position: relative;
+    padding-left: 20px;
+    border-left: 2px solid #eaedf1;
+  }
+  .timeline-item {
+    position: relative;
+    margin-bottom: 20px;
+  }
+  .timeline-item:last-child {
+    margin-bottom: 0;
+  }
+  .timeline-dot {
+    position: absolute;
+    left: -27px;
+    top: 3px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #ff6b35;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 2px rgba(255, 107, 53, 0.2);
   }
 </style>
 
-      <div class="page_wrapper">
-        <div class="page-content">
-          <!-- Messages Display Section - At the top of page content -->
-          {% if messages %}
-            <div class="container-fluid mb-3">
-              <div class="row">
-                <div class="col-12">
-                  {% for message in messages %}
-                    {% if message.tags != 'info' %}
-                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm" role="alert" style="margin-bottom: 10px;">
-                      <div class="d-flex align-items-center">
-                        <div class="flex-grow-1">
-                          <strong>{% if message.tags == 'error' or message.tags == 'danger' %}⚠️ Error: {% elif message.tags == 'success' %}✅ Success: {% elif message.tags == 'warning' %}⚠️ Warning: {% endif %}</strong> {{ message }}
-                        </div>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                      </div>
-                    </div>
-                    {% endif %}
-                  {% endfor %}
-                </div>
-              </div>
-            </div>
-          {% endif %}
-          <div class="page-breadcrumb d-sm-flex align-items-center mb-3">
-            <div class="breadcrumb-title pe-3">My Profile</div>
-            <div class="ps-3">
-              <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-0 p-0">
-                  <li class="breadcrumb-item">
-                    <a href="{% url 'employee_dashboard' company_id=company_id company_staff_id=company_staff_id %}">
-                      <i class="bx bx-home"></i>
-                    </a>
-                  </li>
-                  <li class="breadcrumb-item active" aria-current="page">My Profile</li>
-                </ol>
-              </nav>
-            </div>
-            <div class="ms-auto">
-              <div class="btn-group">
-                <button type="button" class="btn btn-outline-orangeyellow" data-bs-toggle="modal" data-bs-target="#updateprofileModal" id="updateprofileBtn">
-                  <i class="bx bx-plus"></i> Update Profile
-                </button>
-                <button type="button" class="btn btn-outline-orangeyellow ms-2" data-bs-toggle="modal" data-bs-target="#uploaddocumentsModal" id="uploaddocumentsBtn">
-                  <i class="bx bx-plus"></i> Upload Documents
-                </button>
-                <div class="modal" id="updateprofileModal">
-                  <div class="modal-dialog w-80">
-                    <div class="modal-content">
-                      <div class="modal-header">
-                        <h5 class="modal-title" id="exampleModalLabel">Update Profile</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                      </div>
-                      <div class="modal-body">
-                        <form method="post" action="{% url 'employee_profile' company_id=company_id company_staff_id=company_staff_id  %}" enctype="multipart/form-data">
-                                    {% csrf_token %}
-                          <div class="accordion" id="accordionExample">
-                            <div class="accordion-item">
-                              <h2 class="accordion-header" id="profile">
-                                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#profile-img" aria-expanded="true" aria-controls="profile-img">Profile Picture</button>
-                              </h2>
-                              <div id="profile-img" class="accordion-collapse collapse show" aria-labelledby="profile" data-bs-parent="#accordionExample">
-                                <div class="accordion-body">
-                                  <div class="row mb-2">
-                                    <div class="col-12">
-                                      <div class="text-center">
-                                        <div class="mb-3 d-inline-block">
-                                          <div style="width: 200px; height: 200px; border-radius: 50%; border: 4px solid #ff6b35; padding: 4px; display: inline-block;">
-                                            <img src="{{ profile.avatar_url }}" id="profile-preview-img" class="img-fluid" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" onerror="this.onerror=null; this.src='{% if profile.employee_gender|lower == 'female' %}{% static 'asets/images/dummy-woman.png' %}{% else %}{% static 'asets/images/dummy-man.png' %}{% endif %}';">
-                                          </div>
-                                        </div>
-                                        
-                                        <input class="upload" type="file" id="profile-image-input" name="employee_image" accept="image/*" style="display: none;">
-                                        <input type="hidden" name="cropped-image-input" id="cropped-image-input">
-                                        
-                                        <div class="mb-3">
-                                          <button type="button" class="btn btn-outline-orangeyellow" onclick="document.getElementById('profile-image-input').click()">Upload Photo</button>
-                                          {% if profile and profile.employee_image or profile and profile.avatar_base64 %}
-                                          <button type="button" class="btn btn-outline-danger ms-2" id="remove-photo-btn">Remove Photo</button>
-                                          {% endif %}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                              
-                              <!-- Crop Modal -->
-                              <div class="modal fade" id="cropImageModal" tabindex="-1" aria-labelledby="cropImageModalLabel" aria-hidden="true">
-                                <div class="modal-dialog modal-lg">
-                                  <div class="modal-content">
-                                    <div class="modal-header">
-                                      <h5 class="modal-title" id="cropImageModalLabel">Crop Photo</h5>
-                                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                    </div>
-                                    <div class="modal-body">
-                                      <div class="img-container">
-                                        <img id="crop-image" src="" alt="Crop Image" style="max-width: 100%;">
-                                      </div>
-                                    </div>
-                                    <div class="modal-footer">
-                                      <button type="button" class="btn btn-outline-danger" data-bs-dismiss="modal">Cancel</button>
-                                      <button type="button" class="btn btn-outline-orangeyellow" id="crop-btn">Save</button>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                            <div class="accordion-item">
-                              <h2 class="accordion-header" id="professional">
-                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#professional-information" aria-expanded="true" aria-controls="professional-information">Professional Information</button>
-                              </h2>
-                              <div id="professional-information" class="accordion-collapse collapse" aria-labelledby="professional" data-bs-parent="#accordionExample">
-                                <div class="accordion-body">
-                                  <div class="row mb-2">
-                                    <div class="col-md-6">
-                                      <label for="birth-date" class="form-label">Birth Date</label>
-                                      <input type="date" class="form-control" id="birth-date" name="employee_birth_date" value="{{profile.employee_birth_date}}">
-                                    </div>
-                                    <div class="col-md-6">
-                                      <label for="gender" class="form-label">Gender</label>
-                                      <select class="form-select" aria-label="Default select example"  value="{{profile.employee_gender}}" name="employee_gender">
-                                       		<option value="">select gender </option>
-															{% if profile.employee_gender == "Male" %}
-															<option value="Male" selected>Male</option>
-															{% else %}
-															<option value="Male">Male</option>
-															{% endif %}
-															{% if profile.employee_gender == "Female" %}
-															<option value="Female" selected>Female</option>
-															{% else %}
-															<option value="Female">Female</option>
-															{% endif %}
-                                      </select>
-                                    </div>
-                                  </div>
-                                  <div class="row mb-2">
-                                    <div class="col-md-6">
-                                      <label for="address" class="form-label">Address</label>
-                                      <input type="text"  class="form-control" id="address" rows="3" name="employee_address" value="{{profile.employee_address}}">
-                                    </div>
-                                  </div>
-                                  <div class="row mb-2">
-                                    <div class="col-md-6">
-                                      <label for="state" class="form-label">State</label>
-                                      <input type="text" class="form-control" id="state" name="employee_state" value="{{profile.employee_state}}">
-                                    </div>
-                                    <div class="col-md-6">
-                                      <label for="country" class="form-label">Country</label>
-                                      <input type="text" class="form-control" id="country" name="employee_country" value="{{profile.employee_country}}">
-                                    </div>
-                                  </div>
-                                  <div class="row mb-2">
-                                    <div class="col-md-6">
-                                      <label for="pin code" class="form-label">Pin Code</label>
-                                      <input type="text" class="form-control" id="pin code" name="employee_pin_code" value="{{profile.employee_pin_code}}">
-                                    </div>
-                                    <div class="col-md-6">
-                                      <label for="phone-number" class="form-label">Phone Number</label>
-                                      <input type="text" class="form-control phone-input" id="phone-number" name="employee_phone" value="{{profile.employee_phone}}" maxlength="17" placeholder="+91 98765 43210">
-                                    </div>
-                                  </div>                                  
-                                </div>
-                              </div>
-                            </div>
-                            <div class="accordion-item">
-                              <h2 class="accordion-header" id="personal">
-                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#personal-information" aria-expanded="false" aria-controls="personal-information">Personal Information</button>
-                              </h2>
-                              <div id="personal-information" class="accordion-collapse collapse" aria-labelledby="personal" data-bs-parent="#accordionExample">
-                                <div class="accordion-body">
-                                  <div class="row mb-2">
-                                    <div class="col-md-6">
-                                      <label for="name" class="form-label">Name</label>
-                                      <input type="text" class="form-control" id="name" value="{{profile.employee_first_name}} {{profile.employee_last_name}}">
-                                    </div>
-                                    <div class="col-md-6">
-                                      <label for="father-name" class="form-label">Father Name</label>
-                                      <input type="text" class="form-control" id="father-name" name="employee_father" value="{{profile.employee_father}}">
-                                    </div>
-                                  </div>
-                                  <div class="row mb-2">
-                                    <div class="col-md-6">
-                                      <label for="mother-name" class="form-label">Mother Name</label>
-                                      <input type="text" class="form-control" id="mother-name" name="employee_mother" value="{{profile.employee_mother}}">
-                                    </div>
-                                    <div class="col-md-6">
-                                      <label for="nationality" class="form-label">Nationality</label>
-                                      <input type="text" class="form-control" id="nationality" name="employee_nationality" value="{{profile.employee_nationality}}">
-                                    </div>
-                                  </div>
-                                  <div class="row mb-2">
-                                    <div class="col-md-6">
-                                      <label for="status" class="form-label">Marital Status</label>
-                                      <select class="form-select" class="select form-control" name="employee_marital_status">
-													{% if profile.employee_marital_status == "Single" %}
-														<option value="Single" selected>Single</option>
-													{% else %}
-														<option value="Single">Single</option>
-													{% endif %}
-													{% if profile.employee_marital_status == "Married" %}
-														<option value="Married" selected>Married</option>
-													{% else %}
-														<option value="Married">Married</option>
-													{% endif %}
-                                      </select>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                            <div class="accordion-item">
-                              <h2 class="accordion-header" id="emergency">
-                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#emergency-contact" aria-expanded="false" aria-controls="emergency-contact">Emergency Contact</button>
-                              </h2>
-                              <div id="emergency-contact" class="accordion-collapse collapse" aria-labelledby="emergency" data-bs-parent="#accordionExample">
-                                <div class="accordion-body">
-                                  <div class="row mb-2">
-                                    <div class="col-md-6">
-                                      <label for="name" class="form-label">Name</label>
-                                      <input type="text" class="form-control" id="name"  name="employee_emergency_primary_name" value="{{profile.employee_emergency_primary_name}}">
-                                    </div>
-                                    <div class="col-md-6">
-                                      <label for="relationship" class="form-label">Relationship</label>
-                                      <input type="text" class="form-control" id="relationship" name="employee_emergency_primary_relationship" value="{{profile.employee_emergency_primary_relationship}}">
-                                    </div>
-                                  </div>
-                                  <div class="row mb-2">
-                                    <div class="col-md-6">
-                                      <label for="emergency-phone-number" class="form-label">Phone Number</label>
-                                      <input type="text" class="form-control phone-input" id="emergency-phone-number" name="employee_emergency_primary_phone1" value="{{profile.employee_emergency_primary_phone1}}" maxlength="17" placeholder="+91 98765 43210">
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                            <div class="accordion-item">
-                              <h2 class="accordion-header" id="education">
-                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#education-information" aria-expanded="false" aria-controls="education-information">Education Informations</button>
-                              </h2>
-                              <div id="education-information" class="accordion-collapse collapse" aria-labelledby="education" data-bs-parent="#accordionExample">
-                                <div class="accordion-body">
-                                  <div class="row mb-2">
-                                    <div class="col-md-6">
-                                      <label for="institution-name" class="form-label">Instiution</label>
-                                      <input type="text" class="form-control" id="institution-name" name="employee_education_institution" value="{{profile.employee_education_institution}}" >
-                                    </div>
-                                    <div class="col-md-6">
-                                      <label for="subject-name" class="form-label">Subject</label>
-                                      <input type="text" class="form-control" id="subject-name" name="employee_education_subject" value="{{profile.employee_education_subject}}">
-                                    </div>
-                                  </div>
-                                  <div class="row mb-2">
-                                    <div class="col-md-6">
-                                      <label for="start-date" class="form-label">Starting Date</label>
-                                      <input type="text" class="form-control" id="start-date" name="employee_education_starting_date" value="{{profile.employee_education_starting_date}}">
-                                    </div>
-                                    <div class="col-md-6">
-                                      <label for="complete-date" class="form-label">Complete Date</label>
-                                      <input type="text" class="form-control" id="complete-date"  name="employee_education_complete_date" value="{{profile.employee_education_complete_date}}">
-                                    </div>
-                                  </div>
-                                  <div class="row mb-2">
-                                    <div class="col-md-6">
-                                      <label for="degree-name" class="form-label">Degree</label>
-                                      <input type="text" class="form-control" id="degree-name" name="employee_education_degree" value="{{profile.employee_education_degree}}">
-                                    </div>
-                                    <div class="col-md-6">
-                                      <label for="grade" class="form-label">Grade</label>
-                                      <input type="text" class="form-control" id="grade" name="employee_education_grade" value="{{profile.employee_education_grade}}">
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                            <div class="accordion-item">
-                              <h2 class="accordion-header" id="experience">
-                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#experience-information" aria-expanded="false" aria-controls="experience-information">Experience</button>
-                              </h2>
-                              <div id="experience-information" class="accordion-collapse collapse" aria-labelledby="experience" data-bs-parent="#accordionExample">
-                                <div class="accordion-body">
-                                  <div class="row mb-2">
-                                    <div class="col-md-6">
-                                      <label for="company-name" class="form-label">Company Name</label>
-                                      <input type="text" class="form-control" id="company-name"  name="employee_experience_company_name" value="{{profile.employee_experience_company_name}}">
-                                    </div>
-                                    <div class="col-md-6">
-                                      <label for="location" class="form-label">Location</label>
-                                      <input type="text" class="form-control" id="location" name="employee_experience_company_location" value="{{profile.employee_experience_company_location}}">
-                                    </div>
-                                  </div>
-                                  <div class="row mb-2">
-                                    <div class="col-md-6">
-                                      <label for="job-position" class="form-label">Job Position</label>
-                                      <input type="text" class="form-control" id="job-position"  name="employee_experience_company_job_position" value="{{profile.employee_experience_company_job_position}}">
-                                    </div>
-                                    <div class="col-md-6">
-                                      <label for="period-from" class="form-label">Period From</label>
-                                      <input type="text" class="form-control" id="period-from" name="employee_experience_company_period_from" value="{{profile.employee_experience_company_period_from}}">
-                                    </div>                                        
-                                  </div>
-                                  <div class="row mb-2">
-                                    <div class="col-md-6">
-                                      <label for="period-to" class="form-label">Period To</label>
-                                      <input type="text" class="form-control" id="period-to" name="employee_experience_company_period_to" value="{{profile.employee_experience_company_period_to}}">
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                          <div class="submit-section">
-										<button type="submit" class="btn btn-outline-orangeyellow submit-btn">Submit</button>
-									</div>
-<!--                          <div class="mt-4 mb-2 button-right">-->
-<!--                            <button type="button" class="btn btn-outline-orangeyellow">Submit</button>-->
-<!--                          </div>-->
-                        </form>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div class="modal" id="uploaddocumentsModal">
-                  <div class="modal-dialog w-80">
-                    <div class="modal-content">
-                      <div class="modal-header">
-                        <h5 class="modal-title" id="exampleModalLabel">Upload Documents</h5>
-                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                      </div>
-                      <div class="modal-body">
-                        <form method="POST" action="{% url 'create_ducuments' company_id=company_id company_staff_id=company_staff_id %}" enctype="multipart/form-data" id="employee-doc-upload-form">
-                {% csrf_token %}
-                          <div class="row mb-2">
-                            <div class="col-md-6">
-                              <label for="experience-letter" class="form-label">Experience Letter</label>
-                              <input class="form-control" type="file" id="experience-letter" name="experience_letter" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp">
-                            </div>
-                            <div class="col-md-6">
-                              <label for="offer-letter" class="form-label">Offer Letter</label>
-                              <input class="form-control" type="file" id="offer-letter" name="offer_letter" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp">
-                            </div>
-                          </div>
-                          <div class="row mb-2">
-                            <div class="col-md-6">
-                              <label for="education-certificate" class="form-label">Education Certificate</label>
-                              <input class="form-control" type="file" id="education-certificate" name="education_certificate" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp">
-                            </div>
-                            <div class="col-md-6">
-                              <label for="skill-certificate" class="form-label">Skill Certificate</label>
-                              <input class="form-control" type="file" id="skill-certificate" name="skill_certificate" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp">
-                            </div>
-                          </div>
-                          <div id="doc-upload-error" class="text-danger small mb-2" style="display: none;"><i class="bx bx-error-circle"></i> Please select at least one document to upload.</div>
-                          <div class="mt-4 mb-2 button-right">
-                            <button type="submit" id="doc-upload-submit-btn" class="btn btn-outline-orangeyellow">Upload</button>
-                             <a href="{% url 'all_document_Views' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-outline-orangeyellow ms-2">Uploaded Files</a>
-                          </div>
-                        </form>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div class="modal" id="uploadeddocumentsModal">
-                  <div class="modal-dialog w-80">
-                    <div class="modal-content">
-                      <div class="modal-header">
-                        <h5 class="modal-title" id="exampleModalLabel">Uploaded Documents</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                      </div>
-                      <div class="modal-body">
-                        <table class="table table-fluid table-bordered table-hover">
-                          <tbody>
-                            <tr>
-                              <th>Experience Letter</th>
-                              <td>{% if post and post.experience_letter %}<a href="{{ post.experience_letter.url }}" download class="btn btn-sm btn-outline-primary"><i class="bx bx-download"></i> Download</a>{% else %}<span class="text-muted">Not Uploaded</span>{% endif %}</td>
-                            </tr>
-                            <tr>
-                              <th>Offer Letter</th>
-                              <td>{% if post and post.offer_letter %}<a href="{{ post.offer_letter.url }}" download class="btn btn-sm btn-outline-primary"><i class="bx bx-download"></i> Download</a>{% else %}<span class="text-muted">Not Uploaded</span>{% endif %}</td>
-                            </tr>
-                            <tr>
-                              <th>Education Certificate</th>
-                              <td>{% if post and post.education_certificate %}<a href="{{ post.education_certificate.url }}" download class="btn btn-sm btn-outline-primary"><i class="bx bx-download"></i> Download</a>{% else %}<span class="text-muted">Not Uploaded</span>{% endif %}</td>
-                            </tr>
-                            <tr>
-                              <th>Skill Certificate</th>
-                              <td>{% if post and post.skill_certificate %}<a href="{{ post.skill_certificate.url }}" download class="btn btn-sm btn-outline-primary"><i class="bx bx-download"></i> Download</a>{% else %}<span class="text-muted">Not Uploaded</span>{% endif %}</td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <hr>
-          <div class="row mt-3">
-            <div class="col">
-              <div class="card shadow-none border radius-15">
-                <div class="card-body profile-info">
-                  <div class="d-block align-items-center m-auto w-50 text-center">
-                    <div class="fm-icon-box radius-15">
-                      <img
-                        src="{{ profile.avatar_url }}"
-                        id="employee_image"
-                        class="img-fluid user-img employee-profile-photo-trigger"
-                        data-bs-toggle="modal"
-                        data-bs-target="#employeeProfilePhotoModal"
-                        data-image-url="{{ profile.avatar_url }}"
-                        style="cursor: pointer;"
-                        alt="Employee Profile Photo"
-                        onerror="this.onerror=null; this.src='{% if profile.employee_gender|lower == 'female' %}{% static 'asets/images/dummy-woman.png' %}{% else %}{% static 'asets/images/dummy-man.png' %}{% endif %}';"
-                      >
-                      <h5 class="mt-3 mb-0">{{profile.employee_first_name}} {{profile.employee_last_name}}</h5>
-                    </div>
-                  </div>
-                  <div class="row">
-                    <div class="col-md-6">
-                      <div class="profile-section-card">
-                        <div class="profile-section-header">Professional Information</div>
-                        <table class="table table-fluid table-bordered table-striped mb-0">
-                          <tr>
-                            <th>Employee ID</th>
-                            <td>{{profile.employee_id}}</td>
-                          </tr>
-                          <tr>
-                            <th>Department</th>
-                            <td>{{profile.employee_department}}</td>
-                          </tr>
-                          <tr>
-                            <th>Designation</th>
-                            <td>
-                              {% if profile.employee_designation and profile.employee_designation != 'None' %}
-                                {{ profile.employee_designation }}
-                              {% else %}
-                                {{ profile.employee_experience_company_job_position }}
-                              {% endif %}
-                            </td>
-                          </tr>
-                          <tr>
-                            <th>Phone</th>
-                            <td>{{profile.employee_phone}}</td>
-                          </tr>
-                          <tr>
-                            <th>Email</th>
-                            <td>{{profile.employee_email}}</td>
-                          </tr>
-                          <tr>
-                            <th>Date of Join</th>
-                            <td>{{profile.employee_joining_date}}</td>
-                          </tr>
-                          <tr>
-                            <th>Birthday</th>
-                            <td>{{profile.employee_birth_date}}</td>
-                          </tr>
-                          <tr>
-                            <th>Address</th>
-                            <td>{{profile.employee_address}}</td>
-                          </tr>                              
-                          <tr>                                
-                            <th>Gender</th>
-                            <td>{{profile.employee_gender}}</td>
-                          </tr>
-                          <tr>
-                            <th>Report To</th>
-                            <td>{{profile.employee_reports_to}}</td>
-                          </tr>
-                        </table>
-                      </div>
-                      <div class="profile-section-card">
-                        <div class="profile-section-header">Education Information</div>
-                        <table class="table table-fluid table-bordered table-striped mb-0">
-                          <tr>
-                            <td>
-                              <ul>
-                                <li>
-                                  <div class="education-user">
-                                    <div class="before-circle"></div>
-                                  </div>
-                                  <div class="education-content">
-                                    {% if profile.employee_education_institution and profile.employee_education_institution != 'None' %}
-                                      <b class="institution-name">{{profile.employee_education_institution}}</b><br>
-                                    {% endif %}
-                                    {% if profile.employee_education_subject and profile.employee_education_subject != 'None' %}
-                                      <span class="subject-name">{{profile.employee_education_subject}}</span><br>
-                                    {% endif %}
-                                    {% if profile.employee_education_degree and profile.employee_education_degree != 'None' %}
-                                      <span class="degree-name">{{profile.employee_education_degree}}</span><br>
-                                    {% endif %}
-                                    {% if profile.employee_education_starting_date and profile.employee_education_starting_date != 'None' or profile.employee_education_complete_date and profile.employee_education_complete_date != 'None' %}
-                                      <sub>
-                                        {% if profile.employee_education_starting_date and profile.employee_education_starting_date != 'None' %}
-                                          <span class="start-date">{{profile.employee_education_starting_date}}</span>
-                                        {% endif %}
-                                        {% if profile.employee_education_complete_date and profile.employee_education_complete_date != 'None' %}
-                                          - <span class="end-date">{{profile.employee_education_complete_date}}</span>
-                                        {% endif %}
-                                      </sub>
-                                    {% endif %}
-                                  </div>
-                                </li>
-                              </ul>
-                            </td>
-                          </tr>
-                        </table>
-                      </div>
-                    </div>
-                    <div class="col-md-6">
-                      <div class="profile-section-card">
-                        <div class="profile-section-header">Personal Information</div>
-                        <table class="table table-fluid table-bordered table-striped mb-0">
-                          <tr>
-                            <th>Name</th>
-                            <td>{{profile.employee_first_name}} {{profile.employee_last_name}}</td>
-                          </tr>
-                          <tr>
-                            <th>Father Name</th>
-                            <td>{{profile.employee_father}}</td>
-                          </tr>
-                          <tr>
-                            <th>Mother Name</th>
-                            <td>{{profile.employee_mother}}</td>
-                          </tr>
-                          <tr>
-                            <th>Nationality</th>
-                            <td>{{profile.employee_nationality}}</td>
-                          </tr>
-                          <tr>
-                            <th>Marital Status</th>
-                            <td>{{profile.employee_marital_status}}</td>
-                          </tr>
-                        </table>
-                      </div>
-                      <div class="profile-section-card">
-                        <div class="profile-section-header">Emergency Contact</div>
-                        <table class="table table-fluid table-bordered table-striped mb-0">
-                          <tr>
-                            <th class="w-25">Name</th>
-                            <td class="w-25">{{profile.employee_emergency_primary_name}}</td>
-                          </tr>
-                          <tr>
-                            <th class="w-25">Relationship</th>
-                            <td class="w-25">{{profile.employee_emergency_primary_relationship}}</td>
-                          </tr>
-                          <tr>
-                            <th class="w-25">Phone</th>
-                            <td class="w-25">{{profile.employee_emergency_primary_phone1}}</td>
-                          </tr>
-                        </table>
-                      </div>
-                      <div class="profile-section-card">
-                        <div class="profile-section-header">Experience</div>
-                        <table class="table table-fluid table-bordered table-striped mb-0">
-                          <tr>
-                            <td>
-                              <ul>
-                                <li>
-                                  <div class="experience-user">
-                                    <div class="before-circle"></div>
-                                  </div>
-                                  <div class="experience-content">
-                                    {% if profile.employee_experience_company_name and profile.employee_experience_company_name != 'None' %}
-                                      <b class="institution-name">{{profile.employee_experience_company_name}}</b><br>
-                                    {% endif %}
-                                    {% if profile.employee_designation and profile.employee_designation != 'None' %}
-                                      <span class="subject-name">
-                                        Designation: {{profile.employee_designation}}
-                                      </span><br>
-                                    {% elif profile.employee_experience_company_job_position and profile.employee_experience_company_job_position != 'None' %}
-                                      <span class="subject-name">
-                                        Designation: {{profile.employee_experience_company_job_position}}
-                                      </span><br>
-                                    {% endif %}
-                                    {% if profile.employee_experience_company_period_from and profile.employee_experience_company_period_from != 'None' or profile.employee_experience_company_period_to and profile.employee_experience_company_period_to != 'None' %}
-                                      <sub>
-                                        {% if profile.employee_experience_company_period_from and profile.employee_experience_company_period_from != 'None' %}
-                                          <span class="start-date">{{profile.employee_experience_company_period_from}}</span>
-                                        {% endif %}
-                                        {% if profile.employee_experience_company_period_to and profile.employee_experience_company_period_to != 'None' %}
-                                          - <span class="end-date">{{profile.employee_experience_company_period_to}}</span>
-                                        {% endif %}
-                                      </sub>
-                                    {% endif %}
-                                  </div>
-                                </li>
-                              </ul>
-                            </td>
-                          </tr>
-                        </table>
-                      </div>
-                    </div>
-                  </div>
-                  <!-- Assigned Projects Section -->
-                  <div class="row mt-3">
-                    <div class="col-12">
-                      <div class="profile-section-card">
-                        <div class="profile-section-header d-flex justify-content-between align-items-center">
-                          <span><i class="bx bx-briefcase me-1"></i> Assigned Projects ({{ tasks|length }})</span>
-                          <a href="{% url 'task-list' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-sm btn-outline-primary" style="font-size: 12px;">View in My Projects</a>
-                        </div>
-                        <div class="table-responsive">
-                          <table class="table table-fluid table-hover table-striped mb-0">
-                            <thead>
-                              <tr>
-                                <th width="15%">Assigned Date</th>
-                                <th width="25%">Project</th>
-                                <th width="25%">Assigned By / Manager</th>
-                                <th>Description</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {% for task in tasks %}
-                              <tr>
-                                <td>{{ task.created_date|date:"F d, Y" }}</td>
-                                <td><strong>{{ task.title }}</strong></td>
-                                <td>
-                                  {% if task.user %}
-                                    <span class="fw-bold">{{ task.user.manager_first_name }} {{ task.user.manager_last_name }}</span><br>
-                                    <span class="text-muted small">{{ task.user.manager_email }}</span>
-                                  {% elif task.assigned_to.employee_reports_to %}
-                                    <span class="fw-bold">{{ task.assigned_to.employee_reports_to.manager_first_name }} {{ task.assigned_to.employee_reports_to.manager_last_name }}</span><br>
-                                    <span class="text-muted small">{{ task.assigned_to.employee_reports_to.manager_email }}</span>
-                                  {% else %}
-                                    <span class="badge bg-secondary">Admin</span>
-                                  {% endif %}
-                                </td>
-                                <td>{{ task.description|default:"-"|linebreaksbr }}</td>
-                              </tr>
-                              {% empty %}
-                              <tr>
-                                <td colspan="4" class="text-center text-muted py-3">No projects assigned yet.</td>
-                              </tr>
-                              {% endfor %}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <!-- Profile photo fullscreen modal (WhatsApp-style) -->
-        <div class="modal fade" id="employeeProfilePhotoModal" tabindex="-1" aria-hidden="true">
-          <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content" style="background: rgba(0,0,0,0.85); border: none;">
-              <div class="modal-body p-2 position-relative">
-                <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3" data-bs-dismiss="modal" aria-label="Close" style="opacity: 1;"></button>
-                <img
-                  id="employeeProfilePhotoModalImg"
-                  src=""
-                  alt="Employee Photo"
-                  style="max-height: 85vh; width: auto; max-width: 100%; object-fit: contain; display: block; margin: 0 auto;"
-                  onerror="this.onerror=null; this.src='{% static 'asets/images/dummy-man.png' %}';"
-                >
-              </div>
-            </div>
-          </div>
-        </div>
+<div class="page_wrapper">
+  <div class="page-content">
 
-        <footer class="page-footer">
-          <p class="mb-0">Copyright © 2022. All right reserved.</p>
-        </footer>
+    <!-- Breadcrumb Header & Actions -->
+    <div class="page-breadcrumb d-sm-flex align-items-center mb-3">
+      <div class="breadcrumb-title pe-3">My Profile</div>
+      <div class="ps-3">
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb mb-0 p-0">
+            <li class="breadcrumb-item">
+              <a href="{% url 'employee_dashboard' company_id=company_id company_staff_id=company_staff_id %}">
+                <i class="bx bx-home"></i>
+              </a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">Employee Profile</li>
+          </ol>
+        </nav>
+      </div>
+      <div class="ms-auto d-flex gap-2 flex-wrap">
+        <button type="button" class="btn btn-outline-orangeyellow btn-sm" data-bs-toggle="modal" data-bs-target="#updateEmployeeProfileModal">
+          <i class="bx bx-edit-alt me-1"></i> Edit Profile
+        </button>
+        <button type="button" class="btn btn-outline-orangeyellow btn-sm" data-bs-toggle="modal" data-bs-target="#uploadDocumentsModal">
+          <i class="bx bx-cloud-upload me-1"></i> Upload Documents
+        </button>
+        <a href="{% url 'all_document_Views' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-outline-secondary btn-sm">
+          <i class="bx bx-folder-open me-1"></i> My Documents
+        </a>
       </div>
     </div>
+    <hr>
 
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://unpkg.com/simplebar@latest/dist/simplebar.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/metisMenu/3.0.7/metisMenu.min.js"></script>
-    <script src="https://unpkg.com/boxicons@2.1.2/dist/boxicons.js"></script>
-    <script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/js/all.min.js"></script>
-    <script src="{% static 'asets/js/jquery.sparkline.min.js' %}"></script>
-    <script src="{% static 'asets/js/Chart.min.js' %}"></script>
-    <script src="{% static 'asets/js/Chart.extension.js' %}"></script>
-    <script src="{% static 'asets/js/script.js' %}"></script>
-    <!-- Cropper.js CSS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
-    <!-- Cropper.js JS -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+    <!-- Alerts / Messages -->
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm" role="alert">
+          <div class="d-flex align-items-center">
+            <i class="bx bx-info-circle fs-4 me-2"></i>
+            <div class="flex-grow-1">{{ message }}</div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        </div>
+      {% endfor %}
+    {% endif %}
 
-    <script>
-      // Image Cropper functionality
-      let cropper;
-      let cropModal;
-      
-      document.addEventListener('DOMContentLoaded', function() {
-        const imageInput = document.getElementById('profile-image-input');
-        const cropImage = document.getElementById('crop-image');
-        const cropBtn = document.getElementById('crop-btn');
-        const croppedImageInput = document.getElementById('cropped-image-input');
-        const previewImg = document.getElementById('profile-preview-img');
-        cropModal = new bootstrap.Modal(document.getElementById('cropImageModal'));
-        
-        // Document upload validation (at least one document required)
-        const docForm = document.getElementById('employee-doc-upload-form');
-        if (docForm) {
-          docForm.addEventListener('submit', function(e) {
-            const f1 = document.getElementById('experience-letter')?.files?.length || 0;
-            const f2 = document.getElementById('offer-letter')?.files?.length || 0;
-            const f3 = document.getElementById('education-certificate')?.files?.length || 0;
-            const f4 = document.getElementById('skill-certificate')?.files?.length || 0;
-            if (f1 + f2 + f3 + f4 === 0) {
-              e.preventDefault();
-              const err = document.getElementById('doc-upload-error');
-              if (err) err.style.display = 'block';
-            }
-          });
-        }
+    <div class="row g-4">
 
-        // Upload Photo button - automatically opens crop modal
-        if (imageInput) {
-          imageInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-              const reader = new FileReader();
-              reader.onload = function(event) {
-                cropImage.src = event.target.result;
-                cropModal.show();
-                
-                // Initialize cropper when modal is shown
-                setTimeout(function() {
-                  if (cropper) {
-                    cropper.destroy();
-                  }
-                  cropper = new Cropper(cropImage, {
-                    aspectRatio: 1,
-                    viewMode: 1,
-                    autoCropArea: 0.8,
-                    responsive: true,
-                    restore: false,
-                    guides: true,
-                    center: true,
-                    highlight: false,
-                    cropBoxMovable: true,
-                    cropBoxResizable: true,
-                    toggleDragModeOnDblclick: false,
-                  });
-                }, 300);
-              };
-              reader.readAsDataURL(file);
-            }
-          });
-        }
-        
-        if (cropBtn) {
-          cropBtn.addEventListener('click', function() {
-            if (cropper) {
-              const canvas = cropper.getCroppedCanvas({
-                width: 400,
-                height: 400,
-                imageSmoothingEnabled: true,
-                imageSmoothingQuality: 'high',
-              });
-              
-              canvas.toBlob(function(blob) {
-                // Convert blob to base64 for hidden input
-                const reader = new FileReader();
-                reader.onload = function() {
-                  croppedImageInput.value = reader.result;
-                  previewImg.src = reader.result;
-                  previewImg.style.display = 'block';
-                  
-                  // Also create a file for the main input
-                  const file = new File([blob], 'profile.jpg', {type: 'image/jpeg'});
-                  const dataTransfer = new DataTransfer();
-                  dataTransfer.items.add(file);
-                  document.querySelector('input[name="employee_image"]').files = dataTransfer.files;
-                  
-                  cropModal.hide();
-                  if (cropper) {
-                    cropper.destroy();
-                  }
-                };
-                reader.readAsDataURL(blob);
-              }, 'image/jpeg', 0.9);
-            }
-          });
-        }
-        
-        // Clean up cropper when modal is hidden
-        const cropModalElement = document.getElementById('cropImageModal');
-        if (cropModalElement) {
-          cropModalElement.addEventListener('hidden.bs.modal', function() {
-            if (cropper) {
-              cropper.destroy();
-              cropper = null;
-            }
-          });
-        }
-      });
-    </script>
+      <!-- Left Column: Profile Card, Quick Contact, Emergency, Documents -->
+      <div class="col-12 col-lg-4">
 
-    <script>
-      // Click photo => open in fullscreen modal
-      document.addEventListener('DOMContentLoaded', function() {
-        var modalEl = document.getElementById('employeeProfilePhotoModal');
-        var modalImg = document.getElementById('employeeProfilePhotoModalImg');
-        if (!modalEl || !modalImg) return;
-
-        modalEl.addEventListener('show.bs.modal', function(event) {
-          var trigger = event.relatedTarget;
-          if (!trigger) return;
-          var imgUrl = trigger.getAttribute('data-image-url');
-          if (imgUrl) modalImg.src = imgUrl;
-        });
-      });
-    </script>
-
-    <script>
-      // Remove Photo – form ke bahar se POST (nested form fix)
-      document.addEventListener('DOMContentLoaded', function() {
-        var removeBtn = document.getElementById('remove-photo-btn');
-        if (removeBtn) {
-          removeBtn.addEventListener('click', function() {
-            if (!confirm('Are you sure you want to remove your profile photo?')) return;
-            var form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '{% url "remove_profile_image" company_id=company_id company_staff_id=company_staff_id %}';
-            var csrf = document.querySelector('input[name="csrfmiddlewaretoken"]');
-            if (csrf) {
-              var input = document.createElement('input');
-              input.type = 'hidden';
-              input.name = 'csrfmiddlewaretoken';
-              input.value = csrf.value;
-              form.appendChild(input);
-            }
-            document.body.appendChild(form);
-            form.submit();
-          });
-        }
-      });
-    </script>
-    
-    <script>
-      // Phone number formatting function
-      function formatPhoneNumber(input) {
-        // Remove all non-digit characters except +
-        let value = input.value.replace(/[^\d+]/g, '');
-        
-        // Ensure it starts with +91
-        if (!value.startsWith('+91')) {
-          value = '+91' + value.replace(/^\+91/, '');
-        }
-        
-        // Extract only the 10 digits after +91
-        let digits = value.replace('+91', '').replace(/\D/g, '');
-        
-        // Limit to 10 digits
-        if (digits.length > 10) {
-          digits = digits.substring(0, 10);
-        }
-        
-        // Format as +91 XXXXX XXXXX
-        if (digits.length > 0) {
-          if (digits.length <= 5) {
-            value = '+91 ' + digits;
-          } else {
-            value = '+91 ' + digits.substring(0, 5) + ' ' + digits.substring(5, 10);
-          }
-        } else {
-          value = '+91 ';
-        }
-        
-        input.value = value;
-      }
-      
-      // Apply formatting to all phone input fields
-      document.addEventListener('DOMContentLoaded', function() {
-        const phoneInputs = document.querySelectorAll('.phone-input');
-        
-        phoneInputs.forEach(function(input) {
-          // Format on input
-          input.addEventListener('input', function() {
-            formatPhoneNumber(this);
-          });
-          
-          // Format on blur to ensure correct format
-          input.addEventListener('blur', function() {
-            formatPhoneNumber(this);
-            // Ensure exactly 10 digits after +91
-            let digits = this.value.replace('+91', '').replace(/\D/g, '');
-            if (digits.length < 10) {
-              // Pad with spaces or show error
-              this.setCustomValidity('Phone number must have exactly 10 digits after +91');
-            } else {
-              this.setCustomValidity('');
-            }
-          });
-          
-          // Format existing value on page load
-          if (input.value) {
-            formatPhoneNumber(input);
-          }
-        });
-        
-        // Validate on form submit
-        const form = document.querySelector('form[method="post"]');
-        if (form) {
-          form.addEventListener('submit', function(e) {
-            let isValid = true;
-            phoneInputs.forEach(function(input) {
-              let digits = input.value.replace('+91', '').replace(/\D/g, '');
-              if (input.hasAttribute('required') && digits.length !== 10) {
-                input.setCustomValidity('Phone number must have exactly 10 digits after +91');
-                isValid = false;
-              } else {
-                input.setCustomValidity('');
-              }
-            });
+        <!-- Profile Hero Card -->
+        <div class="card shadow-sm border-0 mb-4">
+          <div class="card-body p-4 text-center">
             
-            if (!isValid) {
-              e.preventDefault();
-              alert('Please ensure all phone numbers have exactly 10 digits after +91');
-            }
-          });
+            <!-- Circular Avatar with Camera Trigger & Click-to-Enlarge -->
+            <div class="avatar-upload-wrapper mb-3">
+              <img
+                src="{{ profile.avatar_url }}"
+                id="employee-avatar"
+                alt="Employee Photo"
+                title="Click to view full photo"
+                data-bs-toggle="modal"
+                data-bs-target="#employeeProfilePhotoModal"
+                onerror="this.onerror=null; this.src='{% if profile.employee_gender|lower == 'female' %}{% static 'asets/images/dummy-woman.png' %}{% else %}{% static 'asets/images/dummy-man.png' %}{% endif %}';"
+              >
+              <div class="avatar-edit-icon" onclick="document.getElementById('employee-profile-file-input').click()" title="Change Profile Picture">
+                <i class="bx bx-camera font-18"></i>
+              </div>
+            </div>
+
+            <!-- Hidden file input for avatar cropper -->
+            <input type="file" id="employee-profile-file-input" accept="image/*" style="display: none;">
+
+            <h5 class="fw-bold mb-1">{{ profile.employee_first_name }} {{ profile.employee_last_name }}</h5>
+            <div class="mb-2">
+              <span class="badge bg-light text-primary border border-primary px-3 py-1 font-12 fw-semibold">Employee</span>
+            </div>
+            
+            <p class="text-muted small mb-3">
+              {% if profile.employee_designation and profile.employee_designation != 'None' %}
+                {{ profile.employee_designation }}
+              {% elif profile.employee_experience_company_job_position and profile.employee_experience_company_job_position != 'None' %}
+                {{ profile.employee_experience_company_job_position }}
+              {% else %}
+                Team Member
+              {% endif %}
+              &bull; {{ profile.employee_department|default:"General" }}
+            </p>
+
+            <div class="border-top pt-3 text-start">
+              <div class="d-flex align-items-center mb-2">
+                <i class="bx bx-id-card font-20 text-muted me-3"></i>
+                <div>
+                  <div class="info-label">Employee ID</div>
+                  <div class="info-value mb-0 fw-bold text-dark">{{ profile.employee_id }}</div>
+                </div>
+              </div>
+
+              <div class="d-flex align-items-center mb-2">
+                <i class="bx bx-envelope font-20 text-muted me-3"></i>
+                <div class="text-truncate">
+                  <div class="info-label">Email Address</div>
+                  <div class="info-value mb-0 text-truncate">{{ profile.employee_email|default:"Not specified" }}</div>
+                </div>
+              </div>
+
+              <div class="d-flex align-items-center mb-2">
+                <i class="bx bx-phone font-20 text-muted me-3"></i>
+                <div>
+                  <div class="info-label">Contact Phone</div>
+                  <div class="info-value mb-0">{{ profile.employee_phone|default:"Not specified" }}</div>
+                </div>
+              </div>
+
+              <div class="d-flex align-items-center">
+                <i class="bx bx-map-pin font-20 text-muted me-3"></i>
+                <div>
+                  <div class="info-label">Current Address</div>
+                  <div class="info-value mb-0">{{ profile.employee_address|default:"Not specified" }}</div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Emergency Contact Card -->
+        <div class="card shadow-sm border-0 mb-4">
+          <div class="card-header bg-white py-3 border-0">
+            <h6 class="mb-0 fw-bold text-danger d-flex align-items-center">
+              <i class="bx bx-plus-medical me-2"></i>Emergency Contact
+            </h6>
+          </div>
+          <div class="card-body pt-0 pb-3">
+            <div class="bg-light p-3 rounded-3">
+              <div class="info-label">Contact Person</div>
+              <div class="info-value mb-2 fw-semibold">{{ profile.employee_emergency_primary_name|default:"Not specified" }}</div>
+
+              <div class="info-label">Relationship</div>
+              <div class="info-value mb-2">{{ profile.employee_emergency_primary_relationship|default:"Not specified" }}</div>
+
+              <div class="info-label">Emergency Phone</div>
+              <div class="info-value mb-0 text-danger fw-bold">
+                <i class="bx bx-phone-call me-1"></i>{{ profile.employee_emergency_primary_phone1|default:"Not specified" }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Documents Status Card -->
+        <div class="card shadow-sm border-0 mb-4">
+          <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-bold"><i class="bx bx-folder-check text-primary me-2"></i>My Documents</h6>
+            <a href="{% url 'all_document_Views' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-sm btn-link p-0 text-primary">View All</a>
+          </div>
+          <div class="card-body pt-0">
+            <ul class="list-group list-group-flush font-13">
+              <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                <span><i class="bx bx-briefcase me-2 text-muted"></i>Experience Letter</span>
+                {% if post and post.experience_letter %}
+                  <a href="{{ post.experience_letter.url }}" download class="badge bg-success-subtle text-success border border-success text-decoration-none"><i class="bx bx-download"></i> Available</a>
+                {% else %}
+                  <span class="badge bg-light text-muted border">Pending</span>
+                {% endif %}
+              </li>
+              <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                <span><i class="bx bx-envelope-open me-2 text-muted"></i>Offer Letter</span>
+                {% if post and post.offer_letter %}
+                  <a href="{{ post.offer_letter.url }}" download class="badge bg-success-subtle text-success border border-success text-decoration-none"><i class="bx bx-download"></i> Available</a>
+                {% else %}
+                  <span class="badge bg-light text-muted border">Pending</span>
+                {% endif %}
+              </li>
+              <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                <span><i class="bx bx-certification me-2 text-muted"></i>Education Certificate</span>
+                {% if post and post.education_certificate %}
+                  <a href="{{ post.education_certificate.url }}" download class="badge bg-success-subtle text-success border border-success text-decoration-none"><i class="bx bx-download"></i> Available</a>
+                {% else %}
+                  <span class="badge bg-light text-muted border">Pending</span>
+                {% endif %}
+              </li>
+              <li class="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                <span><i class="bx bx-award me-2 text-muted"></i>Skill Certificate</span>
+                {% if post and post.skill_certificate %}
+                  <a href="{{ post.skill_certificate.url }}" download class="badge bg-success-subtle text-success border border-success text-decoration-none"><i class="bx bx-download"></i> Available</a>
+                {% else %}
+                  <span class="badge bg-light text-muted border">Pending</span>
+                {% endif %}
+              </li>
+            </ul>
+            <div class="mt-3 text-center">
+              <button type="button" class="btn btn-outline-orangeyellow btn-sm w-100" data-bs-toggle="modal" data-bs-target="#uploadDocumentsModal">
+                <i class="bx bx-cloud-upload me-1"></i> Upload / Update Files
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Column: Professional, Personal, Education & Experience, Assigned Projects -->
+      <div class="col-12 col-lg-8">
+
+        <!-- Professional Information Card -->
+        <div class="card shadow-sm border-0 mb-4">
+          <div class="card-header bg-white py-3 border-0">
+            <h6 class="mb-0 fw-bold"><i class="bx bx-briefcase-alt-2 text-primary me-2"></i>Professional Information</h6>
+          </div>
+          <div class="card-body pt-0">
+            <div class="row g-3">
+              <div class="col-sm-6 col-md-4">
+                <div class="info-label">Employee ID</div>
+                <div class="info-value font-15 fw-bold text-primary">{{ profile.employee_id }}</div>
+              </div>
+              <div class="col-sm-6 col-md-4">
+                <div class="info-label">Department</div>
+                <div class="info-value">{{ profile.employee_department|default:"-" }}</div>
+              </div>
+              <div class="col-sm-6 col-md-4">
+                <div class="info-label">Designation</div>
+                <div class="info-value">
+                  {% if profile.employee_designation and profile.employee_designation != 'None' %}
+                    {{ profile.employee_designation }}
+                  {% elif profile.employee_experience_company_job_position and profile.employee_experience_company_job_position != 'None' %}
+                    {{ profile.employee_experience_company_job_position }}
+                  {% else %}
+                    -
+                  {% endif %}
+                </div>
+              </div>
+              <div class="col-sm-6 col-md-4">
+                <div class="info-label">Date of Joining</div>
+                <div class="info-value">{{ profile.employee_joining_date|default:"-" }}</div>
+              </div>
+              <div class="col-sm-6 col-md-4">
+                <div class="info-label">Reports To</div>
+                <div class="info-value fw-semibold">{{ profile.employee_reports_to|default:"Admin / Direct" }}</div>
+              </div>
+              <div class="col-sm-6 col-md-4">
+                <div class="info-label">Account Status</div>
+                <div class="info-value"><span class="badge bg-success">Active</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Personal Information Card -->
+        <div class="card shadow-sm border-0 mb-4">
+          <div class="card-header bg-white py-3 border-0">
+            <h6 class="mb-0 fw-bold"><i class="bx bx-user-check text-primary me-2"></i>Personal Details</h6>
+          </div>
+          <div class="card-body pt-0">
+            <div class="row g-3">
+              <div class="col-sm-6 col-md-4">
+                <div class="info-label">Date of Birth</div>
+                <div class="info-value">{{ profile.employee_birth_date|default:"-" }}</div>
+              </div>
+              <div class="col-sm-6 col-md-4">
+                <div class="info-label">Gender</div>
+                <div class="info-value text-capitalize">{{ profile.employee_gender|default:"-" }}</div>
+              </div>
+              <div class="col-sm-6 col-md-4">
+                <div class="info-label">Marital Status</div>
+                <div class="info-value text-capitalize">{{ profile.employee_marital_status|default:"-" }}</div>
+              </div>
+              <div class="col-sm-6 col-md-4">
+                <div class="info-label">Nationality</div>
+                <div class="info-value">{{ profile.employee_nationality|default:"Indian" }}</div>
+              </div>
+              <div class="col-sm-6 col-md-4">
+                <div class="info-label">Father's Name</div>
+                <div class="info-value">{{ profile.employee_father|default:"-" }}</div>
+              </div>
+              <div class="col-sm-6 col-md-4">
+                <div class="info-label">Mother's Name</div>
+                <div class="info-value">{{ profile.employee_mother|default:"-" }}</div>
+              </div>
+              <div class="col-12">
+                <div class="info-label">Permanent Address</div>
+                <div class="info-value mb-0">{{ profile.employee_address|default:"Not specified" }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Education & Experience Timeline Card -->
+        <div class="card shadow-sm border-0 mb-4">
+          <div class="card-header bg-white py-3 border-0">
+            <h6 class="mb-0 fw-bold"><i class="bx bx-graduation text-primary me-2"></i>Education & Prior Experience</h6>
+          </div>
+          <div class="card-body pt-0">
+            <div class="row g-4">
+              
+              <!-- Education Section -->
+              <div class="col-12 col-md-6">
+                <div class="info-label mb-3 text-primary"><i class="bx bx-book-bookmark me-1"></i>Education Background</div>
+                {% if profile.employee_education_institution and profile.employee_education_institution != 'None' %}
+                  <div class="timeline-list">
+                    <div class="timeline-item">
+                      <div class="timeline-dot"></div>
+                      <div class="fw-bold text-dark">{{ profile.employee_education_institution }}</div>
+                      <div class="text-muted small">
+                        {{ profile.employee_education_degree|default:"" }}
+                        {% if profile.employee_education_subject and profile.employee_education_subject != 'None' %}
+                          - {{ profile.employee_education_subject }}
+                        {% endif %}
+                      </div>
+                      {% if profile.employee_education_starting_date and profile.employee_education_starting_date != 'None' or profile.employee_education_complete_date and profile.employee_education_complete_date != 'None' %}
+                        <div class="text-muted font-12 mt-1">
+                          <i class="bx bx-calendar me-1"></i>{{ profile.employee_education_starting_date|default:"" }} - {{ profile.employee_education_complete_date|default:"Present" }}
+                        </div>
+                      {% endif %}
+                    </div>
+                  </div>
+                {% else %}
+                  <p class="text-muted small mb-0">No education records added yet.</p>
+                {% endif %}
+              </div>
+
+              <!-- Experience Section -->
+              <div class="col-12 col-md-6">
+                <div class="info-label mb-3 text-primary"><i class="bx bx-history me-1"></i>Prior Experience</div>
+                {% if profile.employee_experience_company_name and profile.employee_experience_company_name != 'None' %}
+                  <div class="timeline-list">
+                    <div class="timeline-item">
+                      <div class="timeline-dot"></div>
+                      <div class="fw-bold text-dark">{{ profile.employee_experience_company_name }}</div>
+                      <div class="text-muted small">
+                        {% if profile.employee_experience_company_job_position and profile.employee_experience_company_job_position != 'None' %}
+                          {{ profile.employee_experience_company_job_position }}
+                        {% else %}
+                          Role Not Specified
+                        {% endif %}
+                      </div>
+                      {% if profile.employee_experience_company_period_from and profile.employee_experience_company_period_from != 'None' or profile.employee_experience_company_period_to and profile.employee_experience_company_period_to != 'None' %}
+                        <div class="text-muted font-12 mt-1">
+                          <i class="bx bx-calendar me-1"></i>{{ profile.employee_experience_company_period_from|default:"" }} - {{ profile.employee_experience_company_period_to|default:"Present" }}
+                        </div>
+                      {% endif %}
+                    </div>
+                  </div>
+                {% else %}
+                  <p class="text-muted small mb-0">No prior experience listed.</p>
+                {% endif %}
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- Assigned Projects Card -->
+        <div class="card shadow-sm border-0 mb-4">
+          <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
+            <h6 class="mb-0 fw-bold"><i class="bx bx-task text-primary me-2"></i>Assigned Projects ({{ tasks|length }})</h6>
+            <a href="{% url 'task-list' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-sm btn-link p-0 text-primary">View All</a>
+          </div>
+          <div class="card-body pt-0">
+            <div class="table-responsive">
+              <table class="table table-hover align-middle mb-0 font-13">
+                <thead class="table-light">
+                  <tr>
+                    <th>Date</th>
+                    <th>Project</th>
+                    <th>Assigned By</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for task in tasks %}
+                    <tr>
+                      <td class="text-nowrap">{{ task.created_date|date:"M d, Y" }}</td>
+                      <td><strong>{{ task.title }}</strong></td>
+                      <td>
+                        {% if task.user %}
+                          <span class="fw-bold">{{ task.user.manager_first_name }} {{ task.user.manager_last_name }}</span>
+                        {% elif task.assigned_to.employee_reports_to %}
+                          <span class="fw-bold">{{ task.assigned_to.employee_reports_to.manager_first_name }} {{ task.assigned_to.employee_reports_to.manager_last_name }}</span>
+                        {% else %}
+                          <span class="badge bg-secondary">Admin</span>
+                        {% endif %}
+                      </td>
+                      <td>{{ task.description|default:"-"|truncatechars:60 }}</td>
+                    </tr>
+                  {% empty %}
+                    <tr>
+                      <td colspan="4" class="text-center text-muted py-4">No projects currently assigned.</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <footer class="page-footer">
+      <p class="mb-0">Copyright © 2022. All right reserved.</p>
+    </footer>
+  </div>
+</div>
+
+<!-- Modal: Update Employee Profile -->
+<div class="modal fade" id="updateEmployeeProfileModal" tabindex="-1" aria-labelledby="updateEmployeeProfileModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold" id="updateEmployeeProfileModalLabel"><i class="bx bx-user-pin text-primary me-2"></i>Update Personal Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="POST" action="{% url 'employee_profile' company_id=company_id company_staff_id=company_staff_id %}" enctype="multipart/form-data" id="employee-profile-form">
+        {% csrf_token %}
+        <input type="hidden" name="cropped-image-input" id="employee-cropped-image-input">
+        
+        <div class="modal-body p-4">
+          <h6 class="fw-bold text-muted mb-3">Basic Information</h6>
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label class="form-label font-13">Phone Number</label>
+              <input type="text" class="form-control phone-input" name="employee_phone" value="{{ profile.employee_phone }}" placeholder="+91 XXXXX XXXXX">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label font-13">Date of Birth</label>
+              <input type="text" class="form-control" name="employee_birth_date" value="{{ profile.employee_birth_date }}" placeholder="YYYY-MM-DD">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label font-13">Gender</label>
+              <select class="form-select" name="employee_gender">
+                <option value="male" {% if profile.employee_gender|lower == 'male' %}selected{% endif %}>Male</option>
+                <option value="female" {% if profile.employee_gender|lower == 'female' %}selected{% endif %}>Female</option>
+                <option value="other" {% if profile.employee_gender|lower == 'other' %}selected{% endif %}>Other</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label font-13">Marital Status</label>
+              <select class="form-select" name="employee_marital_status">
+                <option value="single" {% if profile.employee_marital_status|lower == 'single' %}selected{% endif %}>Single</option>
+                <option value="married" {% if profile.employee_marital_status|lower == 'married' %}selected{% endif %}>Married</option>
+                <option value="divorced" {% if profile.employee_marital_status|lower == 'divorced' %}selected{% endif %}>Divorced</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label font-13">Father's Name</label>
+              <input type="text" class="form-control" name="employee_father" value="{{ profile.employee_father }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label font-13">Mother's Name</label>
+              <input type="text" class="form-control" name="employee_mother" value="{{ profile.employee_mother }}">
+            </div>
+            <div class="col-12">
+              <label class="form-label font-13">Current Address</label>
+              <textarea class="form-control" name="employee_address" rows="2">{{ profile.employee_address }}</textarea>
+            </div>
+          </div>
+
+          <h6 class="fw-bold text-danger mb-3"><i class="bx bx-plus-medical me-1"></i>Emergency Contact</h6>
+          <div class="row g-3 mb-4">
+            <div class="col-md-4">
+              <label class="form-label font-13">Contact Name</label>
+              <input type="text" class="form-control" name="employee_emergency_primary_name" value="{{ profile.employee_emergency_primary_name }}">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label font-13">Relationship</label>
+              <input type="text" class="form-control" name="employee_emergency_primary_relationship" value="{{ profile.employee_emergency_primary_relationship }}" placeholder="e.g. Spouse, Parent, Sibling">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label font-13">Emergency Phone</label>
+              <input type="text" class="form-control phone-input" name="employee_emergency_primary_phone1" value="{{ profile.employee_emergency_primary_phone1 }}" placeholder="+91 XXXXX XXXXX">
+            </div>
+          </div>
+
+          <h6 class="fw-bold text-muted mb-3">Education Information</h6>
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label class="form-label font-13">Institution</label>
+              <input type="text" class="form-control" name="employee_education_institution" value="{{ profile.employee_education_institution }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label font-13">Degree / Course</label>
+              <input type="text" class="form-control" name="employee_education_degree" value="{{ profile.employee_education_degree }}">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label font-13">Subject / Stream</label>
+              <input type="text" class="form-control" name="employee_education_subject" value="{{ profile.employee_education_subject }}">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label font-13">Starting Date</label>
+              <input type="text" class="form-control" name="employee_education_starting_date" value="{{ profile.employee_education_starting_date }}" placeholder="YYYY-MM-DD">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label font-13">Completion Date</label>
+              <input type="text" class="form-control" name="employee_education_complete_date" value="{{ profile.employee_education_complete_date }}" placeholder="YYYY-MM-DD">
+            </div>
+          </div>
+
+          <h6 class="fw-bold text-muted mb-3">Prior Experience</h6>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label font-13">Company Name</label>
+              <input type="text" class="form-control" name="employee_experience_company_name" value="{{ profile.employee_experience_company_name }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label font-13">Job Position / Designation</label>
+              <input type="text" class="form-control" name="employee_experience_company_job_position" value="{{ profile.employee_experience_company_job_position }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label font-13">Period From</label>
+              <input type="text" class="form-control" name="employee_experience_company_period_from" value="{{ profile.employee_experience_company_period_from }}" placeholder="YYYY-MM-DD">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label font-13">Period To</label>
+              <input type="text" class="form-control" name="employee_experience_company_period_to" value="{{ profile.employee_experience_company_period_to }}" placeholder="YYYY-MM-DD">
+            </div>
+          </div>
+
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-outline-orangeyellow">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Upload Documents (Optional Fields with at least 1 required) -->
+<div class="modal fade" id="uploadDocumentsModal" tabindex="-1" aria-labelledby="uploadDocumentsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold" id="uploadDocumentsModalLabel"><i class="bx bx-cloud-upload text-primary me-2"></i>Upload Documents</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="POST" action="{% url 'create_ducuments' company_id=company_id company_staff_id=company_staff_id %}" enctype="multipart/form-data" id="employee-doc-upload-form">
+        {% csrf_token %}
+        <div class="modal-body p-4">
+          <p class="text-muted small mb-4">
+            Upload your employment certificates and files. All fields are optional, but you must select <strong>at least one document</strong> to upload. Supported formats: PDF, DOCX, DOC, JPG, PNG.
+          </p>
+
+          <div class="alert alert-danger" id="doc-upload-error" style="display: none;">
+            <i class="bx bx-error me-1"></i> Please select at least one document to upload.
+          </div>
+
+          <div class="row g-4">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold font-13"><i class="bx bx-briefcase text-muted me-1"></i>Experience Letter</label>
+              <input class="form-control" type="file" name="experience_letter" id="experience-letter" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp">
+              {% if post and post.experience_letter %}
+                <div class="form-text text-success font-12"><i class="bx bx-check-circle"></i> Currently uploaded</div>
+              {% endif %}
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold font-13"><i class="bx bx-envelope-open text-muted me-1"></i>Offer Letter</label>
+              <input class="form-control" type="file" name="offer_letter" id="offer-letter" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp">
+              {% if post and post.offer_letter %}
+                <div class="form-text text-success font-12"><i class="bx bx-check-circle"></i> Currently uploaded</div>
+              {% endif %}
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold font-13"><i class="bx bx-certification text-muted me-1"></i>Education Certificate</label>
+              <input class="form-control" type="file" name="education_certificate" id="education-certificate" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp">
+              {% if post and post.education_certificate %}
+                <div class="form-text text-success font-12"><i class="bx bx-check-circle"></i> Currently uploaded</div>
+              {% endif %}
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label fw-semibold font-13"><i class="bx bx-award text-muted me-1"></i>Skill Certificate</label>
+              <input class="form-control" type="file" name="skill_certificate" id="skill-certificate" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp">
+              {% if post and post.skill_certificate %}
+                <div class="form-text text-success font-12"><i class="bx bx-check-circle"></i> Currently uploaded</div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-outline-orangeyellow" id="employee-doc-submit-btn">
+            <span class="spinner-border spinner-border-sm me-1" id="employee-doc-spinner" style="display: none;"></span>
+            Upload Document(s)
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Crop Image -->
+<div class="modal fade" id="employeeCropImageModal" tabindex="-1" aria-labelledby="employeeCropImageModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold" id="employeeCropImageModalLabel"><i class="bx bx-crop text-primary me-2"></i>Crop Profile Picture</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="img-container">
+          <img id="employee-crop-image" src="" alt="Crop Image" style="max-width: 100%;">
+        </div>
+      </div>
+      <div class="modal-footer bg-light">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-outline-orangeyellow" id="employee-crop-save-btn">Save & Apply</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Fullscreen Photo View (WhatsApp style) -->
+<div class="modal fade" id="employeeProfilePhotoModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content" style="background: rgba(0,0,0,0.85); border: none;">
+      <div class="modal-body p-2 position-relative text-center">
+        <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3" data-bs-dismiss="modal" aria-label="Close"></button>
+        <img
+          src="{{ profile.avatar_url }}"
+          alt="Employee Photo"
+          style="max-height: 85vh; width: auto; max-width: 100%; object-fit: contain; border-radius: 8px;"
+          onerror="this.onerror=null; this.src='{% if profile.employee_gender|lower == 'female' %}{% static 'asets/images/dummy-woman.png' %}{% else %}{% static 'asets/images/dummy-man.png' %}{% endif %}';"
+        >
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/simplebar@latest/dist/simplebar.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/metisMenu/3.0.7/metisMenu.min.js"></script>
+<script src="https://unpkg.com/boxicons@2.1.2/dist/boxicons.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+<script src="{% static 'asets/js/script.js' %}"></script>
+
+<script>
+  // Phone Formatting helper (+91 XXXXX XXXXX)
+  function formatPhone(input) {
+    let value = input.value.replace(/[^\d+]/g, '');
+    if (!value.startsWith('+91')) {
+      value = '+91' + value.replace(/^\+91/, '');
+    }
+    let digits = value.replace('+91', '').replace(/\D/g, '');
+    if (digits.length > 10) {
+      digits = digits.substring(0, 10);
+    }
+    if (digits.length > 0) {
+      if (digits.length <= 5) {
+        value = '+91 ' + digits;
+      } else {
+        value = '+91 ' + digits.substring(0, 5) + ' ' + digits.substring(5, 10);
+      }
+    } else {
+      value = '+91 ';
+    }
+    input.value = value;
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    // Phone inputs formatting
+    const phoneInputs = document.querySelectorAll('.phone-input');
+    phoneInputs.forEach(function(input) {
+      input.addEventListener('input', function() { formatPhone(this); });
+      input.addEventListener('blur', function() { formatPhone(this); });
+      if (input.value) { formatPhone(input); }
+    });
+
+    // Document upload validation
+    const docForm = document.getElementById('employee-doc-upload-form');
+    if (docForm) {
+      docForm.addEventListener('submit', function(e) {
+        const f1 = document.getElementById('experience-letter')?.files?.length || 0;
+        const f2 = document.getElementById('offer-letter')?.files?.length || 0;
+        const f3 = document.getElementById('education-certificate')?.files?.length || 0;
+        const f4 = document.getElementById('skill-certificate')?.files?.length || 0;
+        if (f1 + f2 + f3 + f4 === 0) {
+          e.preventDefault();
+          const err = document.getElementById('doc-upload-error');
+          if (err) err.style.display = 'block';
+          return false;
+        }
+        const spinner = document.getElementById('employee-doc-spinner');
+        const btn = document.getElementById('employee-doc-submit-btn');
+        if (spinner) spinner.style.display = 'inline-block';
+        if (btn) {
+          btn.setAttribute('disabled', 'disabled');
+          btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Uploading...';
         }
       });
-    </script>
+    }
 
-     <script>
-      const employees = {{Employees|queryset_to_json}};
-      function employee_details_fetch(employee_id){
-      console.log(employees,"employee_id")
+    // Avatar Cropper.js Integration
+    let cropper = null;
+    const fileInput = document.getElementById('employee-profile-file-input');
+    const cropModal = new bootstrap.Modal(document.getElementById('employeeCropImageModal'));
+    const cropImage = document.getElementById('employee-crop-image');
+    const saveBtn = document.getElementById('employee-crop-save-btn');
+    const avatarImg = document.getElementById('employee-avatar');
+    const hiddenBase64Input = document.getElementById('employee-cropped-image-input');
 
-        for (var i=0; i<employees.length; i++){
-
-
-          if (employees[i].fields.employee_id === employee_id){
-
-            var employee_detailed_info_heading = document.getElementById("employee_detailed_info_heading1");
-            employee_full_name = employees[i].fields.employee_first_name + ' ' + employees[i].fields.employee_last_name;
-            employee_detailed_info_heading.textContent = employee_full_name;
-
-            var employee_id = document.getElementById("employee_id_heading1");
-            employee_id.textContent = employees[i].fields.employee_id;
-
-
-            var employee_department = document.getElementById("employee_department_heading");
-            employee_department.textContent = employees[i].fields.employee_department;
-
-            var employee_phone = document.getElementById("employee_phone_heading");
-            employee_phone.textContent = employees[i].fields.employee_phone;
-
-            var employee_joining_date = document.getElementById("employee_join_heading");
-            employee_joining_date.textContent = employees[i].fields.employee_joining_date;
-
-            var employee_email = document.getElementById("employee_email_heading");
-            employee_email.textContent = employees[i].fields.employee_email;
-
-            var employee_address = document.getElementById("employee_address_heading");
-            employee_address.textContent = employees[i].fields.employee_address;
-
-            var employee_gender = document.getElementById("employee_gender_heading");
-            employee_gender.textContent = employees[i].fields.employee_gender;
-
-            var employee_birth_date = document.getElementById("employee_birth_heading");
-            employee_birth_date.textContent = employees[i].fields.employee_birth_date;
-
-            var employee_detailed_info_heading = document.getElementById("employee_info_heading");
-            employee_full_name = employees[i].fields.employee_first_name + ' ' + employees[i].fields.employee_last_name;
-            employee_detailed_info_heading.textContent = employee_full_name;
-
-            var employee_father = document.getElementById("employee_father_heading");
-            employee_father.textContent = employees[i].fields.employee_father;
-
-            var employee_mother = document.getElementById("employee_mother_heading");
-            employee_mother.textContent = employees[i].fields.employee_mother;
-
-            var employee_nationality = document.getElementById("employee_nationality_heading");
-            employee_nationality.textContent = employees[i].fields.employee_nationality;
-
-            var employee_marital_status = document.getElementById("employee_marital_heading");
-            employee_marital_status.textContent = employees[i].fields.employee_marital_status;
-
-            var employee_education_institution = document.getElementById("employee_institution_heading");
-            employee_education_institution.textContent = employees[i].fields.employee_education_institution;
-
-            var employee_education_subject = document.getElementById("employee_subject_heading");
-            employee_education_subject.textContent = employees[i].fields.employee_education_subject;
-
-            var employee_education_degree = document.getElementById("employee_degree_heading");
-            employee_education_degree.textContent = employees[i].fields.employee_education_degree;
-
-            var employee_education_grade  = document.getElementById("employee_grade_heading");
-            employee_education_grade.textContent = employees[i].fields.employee_education_grade;
-
-            var employee_education_starting_date  = document.getElementById("employee_startDate_heading");
-            employee_education_starting_date.textContent = employees[i].fields.employee_education_starting_date;
-
-            var employee_education_complete_date  = document.getElementById("employee_CompleteDate_heading");
-            employee_education_complete_date.textContent = employees[i].fields.employee_education_complete_date;
-
-            var employee_emergency_primary_name  = document.getElementById("employee_emergencyName_heading");
-            employee_emergency_primary_name.textContent = employees[i].fields.employee_emergency_primary_name;
-
-            var employee_emergency_primary_relationship  = document.getElementById("employee_emergencyRelationship_heading");
-            employee_emergency_primary_relationship.textContent = employees[i].fields.employee_emergency_primary_relationship;
-
-            var employee_emergency_primary_phone1  = document.getElementById("employee_emergencyPhone_heading");
-            employee_emergency_primary_phone1.textContent = employees[i].fields.employee_emergency_primary_phone1;
-
-            var employee_experience_company_name  = document.getElementById("employee_companyName_heading");
-            employee_experience_company_name.textContent = employees[i].fields.employee_experience_company_name;
-
-            var employee_experience_company_job_position  = document.getElementById("employee_companyJobPosition_heading");
-            employee_experience_company_job_position.textContent = employees[i].fields.employee_experience_company_job_position;
-
-            var employee_experience_company_period_from  = document.getElementById("employee_companyPeriodfrom_heading");
-            employee_experience_company_period_from.textContent = employees[i].fields.employee_experience_company_period_from;
-
-            var employee_experience_company_period_to  = document.getElementById("employee_companyPeriodTo_heading");
-            employee_experience_company_period_to.textContent = employees[i].fields.employee_experience_company_period_to;
-
-          }
+    if (fileInput) {
+      fileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (!file.type.startsWith('image/')) {
+          alert('Please choose an image file.');
+          return;
         }
-      }
 
-         </script>
-
-          <script>
-            function document_details_fetch(id){
-
-
-        // Ajax POST Request
-           var employee_experience_heading = document.getElementById("employee_experience_heading");
-           var employee_offer_letter_heading = document.getElementById("employee_offer_letter_heading");
-           var employee_education_certificate_heading = document.getElementById("employee_education_certificate_heading");
-           var employee_skill_certificate_heading = document.getElementById("employee_skill_certificate_heading");
-
-
-        $.ajax({
-                  url: '{% url "all_document_Views" company_id=company_id company_staff_id=company_staff_id %}',
-                  method: "POST",
-                  processData: false,
-                  contentType: 'application/json',
-                  mimeType: "multipart/form-data",
-                  headers: {'X-CSRFToken': "{{csrf_token}}", "Content-Type":"application/json"},
-                  data: JSON.stringify({'id': id}),
-                  dataType: "json",
-                  success: function(res){
-
-
-                  employee_experience_heading.src = res['experience_letter'];
-                  employee_offer_letter_heading.src = res['offer_letter'];
-                  employee_education_certificate_heading.src = res['education_certificate'];
-                  employee_skill_certificate_heading.src = res['skill_certificate'];
-
-                },
-                error: function(xhr, status, error){
-                  console.log(error);
-                  console.log(status);
-                  console.log(xhr);
-                }
-        })
-      }
-
-      document.addEventListener("DOMContentLoaded", function() {
-        var docForm = document.getElementById("employee-doc-upload-form");
-        if (docForm) {
-          docForm.addEventListener("submit", function(e) {
-            var inputs = docForm.querySelectorAll('input[type="file"]');
-            var hasFile = false;
-            for (var i = 0; i < inputs.length; i++) {
-              if (inputs[i].files && inputs[i].files.length > 0) {
-                hasFile = true;
-                break;
-              }
-            }
-            var errorDiv = document.getElementById("doc-upload-error");
-            if (!hasFile) {
-              e.preventDefault();
-              if (errorDiv) errorDiv.style.display = "block";
-              return false;
-            }
-            if (errorDiv) errorDiv.style.display = "none";
-            var btn = document.getElementById("doc-upload-submit-btn");
-            if (btn) {
-              btn.disabled = true;
-              btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Uploading...';
-            }
-          });
-        }
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          cropImage.src = evt.target.result;
+          cropModal.show();
+        };
+        reader.readAsDataURL(file);
       });
-    </script>
+    }
 
+    const cropModalEl = document.getElementById('employeeCropImageModal');
+    if (cropModalEl) {
+      cropModalEl.addEventListener('shown.bs.modal', function() {
+        if (cropper) cropper.destroy();
+        cropper = new Cropper(cropImage, {
+          aspectRatio: 1,
+          viewMode: 1,
+          autoCropArea: 1,
+          responsive: true,
+        });
+      });
 
-    
-  </body>
+      cropModalEl.addEventListener('hidden.bs.modal', function() {
+        if (cropper) {
+          cropper.destroy();
+          cropper = null;
+        }
+        if (fileInput) fileInput.value = '';
+      });
+    }
+
+    if (saveBtn) {
+      saveBtn.addEventListener('click', function() {
+        if (!cropper) return;
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving...';
+
+        const canvas = cropper.getCroppedCanvas({
+          width: 400,
+          height: 400,
+          imageSmoothingQuality: 'high',
+        });
+        const base64Data = canvas.toDataURL('image/jpeg', 0.9);
+        
+        // Update avatar image instantly in DOM
+        if (avatarImg) avatarImg.src = base64Data;
+        if (hiddenBase64Input) hiddenBase64Input.value = base64Data;
+
+        // Auto-save via AJAX POST to employee_profile
+        const formData = new FormData();
+        formData.append('cropped-image-input', base64Data);
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+        fetch('{% url "employee_profile" company_id=company_id company_staff_id=company_staff_id %}', {
+          method: 'POST',
+          body: formData
+        }).then(function(res) {
+          cropModal.hide();
+          window.location.reload();
+        }).catch(function(err) {
+          console.error(err);
+          cropModal.hide();
+          window.location.reload();
+        });
+      });
+    }
+  });
+</script>
+
+</body>
 </html>

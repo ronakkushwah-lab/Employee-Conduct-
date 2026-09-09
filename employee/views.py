@@ -340,16 +340,20 @@ def employee_profile_view(request,company_id, company_staff_id):
         tasks = list(admin_tasks) + list(manager_tasks)
         tasks.sort(key=lambda x: x.created_date, reverse=True)
 
+        post = Post.objects.filter(user=profile).first() if profile else None
         return render(request, 'employee/my-profile.html', {
             'profile': profile,
             'tasks': tasks,
+            'post': post,
             'company_id': company_id, 
             'company_staff_id': company_staff_id
         })
     
+    post = Post.objects.filter(user=profile).first() if profile else None
     return render(request, 'employee/my-profile.html', {
         'profile': profile,
         'tasks': [],
+        'post': post,
         'company_id': company_id, 
         'company_staff_id': company_staff_id
     })
