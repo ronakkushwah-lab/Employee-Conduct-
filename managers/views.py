@@ -1288,28 +1288,60 @@ def create_ducument(request,company_id, company_staff_id):
                 return redirect(f'/managers/manager_profile/{company_id}/{company_staff_id}')
 
             try:
+                from employee.views import _validate_upload, DOCUMENT_EXTENSIONS, DOCUMENT_CONTENT_TYPES
+                from django.core.exceptions import ValidationError
+
+                for upload in request.FILES.values():
+                    if upload and getattr(upload, 'name', '') and getattr(upload, 'size', 0) > 0:
+                        _validate_upload(
+                            upload, DOCUMENT_EXTENSIONS,
+                            DOCUMENT_CONTENT_TYPES, 'Document'
+                        )
+
                 company_staff = CompanyStaff.objects.get(id=company_staff_id)
                 emp = Manager.objects.filter(user=company_staff).first()
                 if not emp:
                     messages.error(request, 'Manager profile not found.')
                     return redirect(f'/managers/manager_profile/{company_id}/{company_staff_id}')
 
-                document = ManagerPost.objects.create(
-                    user=emp,
-                    experience_letter=experience_letter,
-                    offer_letter=offer_letter,
-                    education_certificate=education_certificate,
-                    skill_certificate=skill_certificate
-                )
+                # Smart Document Merge: update existing record if available, else create new
+                document = ManagerPost.objects.filter(user=emp).first()
+                if document:
+                    if experience_letter:
+                        document.experience_letter = experience_letter
+                    if offer_letter:
+                        document.offer_letter = offer_letter
+                    if education_certificate:
+                        document.education_certificate = education_certificate
+                    if skill_certificate:
+                        document.skill_certificate = skill_certificate
+                    document.save()
+                else:
+                    document = ManagerPost.objects.create(
+                        user=emp,
+                        experience_letter=experience_letter,
+                        offer_letter=offer_letter,
+                        education_certificate=education_certificate,
+                        skill_certificate=skill_certificate
+                    )
                 
-                # Send email notification
-                try:
-                    from administration.email_notifications import send_document_submission_notification
-                    send_document_submission_notification(document, user_type='manager')
-                except Exception as e:
-                    print(f"Error sending document submission notification: {str(e)}")
+                # Send email notification asynchronously in background thread to avoid 502 gateway timeouts
+                def _send_async_manager_doc_notification(doc_id):
+                    try:
+                        from administration.email_notifications import send_document_submission_notification
+                        target_doc = ManagerPost.objects.filter(id=doc_id).first()
+                        if target_doc:
+                            send_document_submission_notification(target_doc, user_type='manager')
+                    except Exception as exc:
+                        print(f"Async manager document notification error: {exc}", flush=True)
+
+                import threading
+                threading.Thread(target=_send_async_manager_doc_notification, args=(document.id,), daemon=True).start()
                 
                 messages.success(request, 'Documents uploaded successfully!')
+            except ValidationError as ve:
+                err_msg = ' '.join(ve.messages) if hasattr(ve, 'messages') else str(ve)
+                messages.error(request, f'Upload error: {err_msg}')
             except Exception as e:
                 messages.error(request, f'Error uploading documents: {str(e)}')
 

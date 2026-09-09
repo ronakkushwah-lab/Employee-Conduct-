@@ -60,14 +60,21 @@ from django.views.decorators.http import require_POST
 User = get_user_model()
 
 MAX_UPLOAD_SIZE = 10 * 1024 * 1024
-DOCUMENT_EXTENSIONS = {'.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png'}
+DOCUMENT_EXTENSIONS = {'.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.webp', '.txt'}
 DOCUMENT_CONTENT_TYPES = {
-    'application/pdf', 'application/msword',
+    'application/pdf',
+    'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'image/jpeg', 'image/png',
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'text/plain',
+    'application/octet-stream',
+    'application/x-zip-compressed',
+    'application/zip',
 }
-IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png'}
-IMAGE_CONTENT_TYPES = {'image/jpeg', 'image/png'}
+IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp'}
+IMAGE_CONTENT_TYPES = {'image/jpeg', 'image/png', 'image/webp'}
 
 
 def _employee_account(company_id, company_staff_id):
@@ -78,16 +85,19 @@ def _employee_account(company_id, company_staff_id):
 
 
 def _validate_upload(upload, extensions, content_types, label='File'):
-    if not upload:
+    if not upload or not getattr(upload, 'name', '') or getattr(upload, 'size', 0) == 0:
         return
     extension = os.path.splitext(upload.name or '')[1].lower()
     if extension not in extensions:
-        raise ValidationError(f'{label} type is not supported.')
+        allowed = ", ".join(sorted(extensions))
+        raise ValidationError(f'{label} type ({extension or "unknown"}) is not supported. Allowed formats: {allowed}')
     if upload.size > MAX_UPLOAD_SIZE:
         raise ValidationError(f'{label} must be 10 MB or smaller.')
     content_type = getattr(upload, 'content_type', '')
     if content_type and content_type not in content_types:
-        raise ValidationError(f'{label} content type is not allowed.')
+        # Don't strictly reject if extension is valid and content type is generic
+        if content_type not in {'application/octet-stream', 'binary/octet-stream', 'application/x-zip-compressed', 'application/zip'}:
+            raise ValidationError(f'{label} content type is not allowed.')
 
 
 def _validate_profile_image(upload):
@@ -1976,10 +1986,11 @@ def create_ducuments(request,company_id, company_staff_id):
                     return redirect(f'/employee/employee_profile/{company_id}/{company_staff_id}')
 
                 for upload in request.FILES.values():
-                    _validate_upload(
-                        upload, DOCUMENT_EXTENSIONS,
-                        DOCUMENT_CONTENT_TYPES, 'Document'
-                    )
+                    if upload and getattr(upload, 'name', '') and getattr(upload, 'size', 0) > 0:
+                        _validate_upload(
+                            upload, DOCUMENT_EXTENSIONS,
+                            DOCUMENT_CONTENT_TYPES, 'Document'
+                        )
                 
                 try:
                     company_staff = CompanyStaff.objects.get(id=company_staff_id, company_id=company_id)
@@ -1990,40 +2001,54 @@ def create_ducuments(request,company_id, company_staff_id):
                 emp = Employee.objects.filter(user=company_staff).first()
                 if not emp:
                     messages.error(request, 'Employee profile not found.')
-                    return render(request,"employee/my-profile.html",{
-                        'company_id':company_id, 
-                        'company_staff_id':company_staff_id
-                    })
+                    return redirect(f'/employee/employee_profile/{company_id}/{company_staff_id}')
                 
-                document = Post.objects.create(
-                    user=emp,
-                    experience_letter=experience_letter,
-                    offer_letter=offer_letter,
-                    education_certificate=education_certificate,
-                    skill_certificate=skill_certificate
-                )
+                # Smart Document Merge: update existing record if available, else create new
+                document = Post.objects.filter(user=emp).first()
+                if document:
+                    if experience_letter:
+                        document.experience_letter = experience_letter
+                    if offer_letter:
+                        document.offer_letter = offer_letter
+                    if education_certificate:
+                        document.education_certificate = education_certificate
+                    if skill_certificate:
+                        document.skill_certificate = skill_certificate
+                    document.save()
+                else:
+                    document = Post.objects.create(
+                        user=emp,
+                        experience_letter=experience_letter,
+                        offer_letter=offer_letter,
+                        education_certificate=education_certificate,
+                        skill_certificate=skill_certificate
+                    )
                 
-                # Send email notification
-                try:
-                    from administration.email_notifications import send_document_submission_notification
-                    send_document_submission_notification(document, user_type='employee')
-                except Exception as e:
-                    print(f"Error sending document submission notification: {str(e)}")
+                # Send email notification asynchronously in background thread to avoid 502 gateway timeouts
+                def _send_async_doc_notification(doc_id):
+                    try:
+                        from administration.email_notifications import send_document_submission_notification
+                        target_doc = Post.objects.filter(id=doc_id).first()
+                        if target_doc:
+                            send_document_submission_notification(target_doc, user_type='employee')
+                    except Exception as exc:
+                        print(f"Async document notification error: {exc}", flush=True)
+
+                import threading
+                threading.Thread(target=_send_async_doc_notification, args=(document.id,), daemon=True).start()
                 
                 messages.success(request, 'Documents uploaded successfully!')
                 return redirect(f'/employee/employee_profile/{company_id}/{company_staff_id}')
+            except ValidationError as ve:
+                err_msg = ' '.join(ve.messages) if hasattr(ve, 'messages') else str(ve)
+                messages.error(request, f'Upload error: {err_msg}')
+                return redirect(f'/employee/employee_profile/{company_id}/{company_staff_id}')
             except Exception as e:
                 messages.error(request, f'Error uploading documents: {str(e)}')
-                return render(request,"employee/my-profile.html",{
-                    'company_id':company_id, 
-                    'company_staff_id':company_staff_id
-                })
+                return redirect(f'/employee/employee_profile/{company_id}/{company_staff_id}')
 
         else:
-            return render(request,"employee/my-profile.html",{
-                'company_id':company_id, 
-                'company_staff_id':company_staff_id
-            })
+            return redirect(f'/employee/employee_profile/{company_id}/{company_staff_id}')
 
 
 def All_document_View(request,company_id, company_staff_id):

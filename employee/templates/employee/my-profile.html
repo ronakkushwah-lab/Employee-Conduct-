@@ -357,26 +357,26 @@
                           <div class="row mb-2">
                             <div class="col-md-6">
                               <label for="experience-letter" class="form-label">Experience Letter</label>
-                              <input class="form-control" type="file" id="experience-letter" name="experience_letter">
+                              <input class="form-control" type="file" id="experience-letter" name="experience_letter" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp">
                             </div>
                             <div class="col-md-6">
                               <label for="offer-letter" class="form-label">Offer Letter</label>
-                              <input class="form-control" type="file" id="offer-letter" name="offer_letter">
+                              <input class="form-control" type="file" id="offer-letter" name="offer_letter" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp">
                             </div>
                           </div>
                           <div class="row mb-2">
                             <div class="col-md-6">
                               <label for="education-certificate" class="form-label">Education Certificate</label>
-                              <input class="form-control" type="file" id="education-certificate" name="education_certificate">
+                              <input class="form-control" type="file" id="education-certificate" name="education_certificate" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp">
                             </div>
                             <div class="col-md-6">
                               <label for="skill-certificate" class="form-label">Skill Certificate</label>
-                              <input class="form-control" type="file" id="skill-certificate" name="skill_certificate">
+                              <input class="form-control" type="file" id="skill-certificate" name="skill_certificate" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp">
                             </div>
                           </div>
                           <div id="doc-upload-error" class="text-danger small mb-2" style="display: none;"><i class="bx bx-error-circle"></i> Please select at least one document to upload.</div>
                           <div class="mt-4 mb-2 button-right">
-                            <button type="submit" class="btn btn-outline-orangeyellow">Upload</button>
+                            <button type="submit" id="doc-upload-submit-btn" class="btn btn-outline-orangeyellow">Upload</button>
                              <a href="{% url 'all_document_Views' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-outline-orangeyellow ms-2">Uploaded Files</a>
                           </div>
                         </form>
@@ -1083,6 +1083,34 @@
                 }
         })
       }
+
+      document.addEventListener("DOMContentLoaded", function() {
+        var docForm = document.getElementById("employee-doc-upload-form");
+        if (docForm) {
+          docForm.addEventListener("submit", function(e) {
+            var inputs = docForm.querySelectorAll('input[type="file"]');
+            var hasFile = false;
+            for (var i = 0; i < inputs.length; i++) {
+              if (inputs[i].files && inputs[i].files.length > 0) {
+                hasFile = true;
+                break;
+              }
+            }
+            var errorDiv = document.getElementById("doc-upload-error");
+            if (!hasFile) {
+              e.preventDefault();
+              if (errorDiv) errorDiv.style.display = "block";
+              return false;
+            }
+            if (errorDiv) errorDiv.style.display = "none";
+            var btn = document.getElementById("doc-upload-submit-btn");
+            if (btn) {
+              btn.disabled = true;
+              btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Uploading...';
+            }
+          });
+        }
+      });
     </script>
 
 
