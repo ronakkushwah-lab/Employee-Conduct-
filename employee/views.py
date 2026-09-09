@@ -2080,13 +2080,53 @@ def All_document_View(request,company_id, company_staff_id):
             messages.error(request, 'Employee profile not found.')
             return render(request, 'employee/view_documents.html', {
                 'document_list': Post.objects.none(),
+                'active_documents': {'experience_letter': None, 'offer_letter': None, 'education_certificate': None, 'skill_certificate': None},
+                'uploaded_count': 0,
                 'company_id':company_id, 
                 'company_staff_id':company_staff_id
             })
         
-        document_list = Post.objects.filter(user=employee)
+        # Consolidate multiple records if any exist from legacy uploads
+        posts = list(Post.objects.filter(user=employee).order_by('-date_posted', '-id'))
+        if len(posts) > 1:
+            primary_post = posts[0]
+            changed = False
+            for p in posts[1:]:
+                if not primary_post.experience_letter and p.experience_letter:
+                    primary_post.experience_letter = p.experience_letter
+                    changed = True
+                if not primary_post.offer_letter and p.offer_letter:
+                    primary_post.offer_letter = p.offer_letter
+                    changed = True
+                if not primary_post.education_certificate and p.education_certificate:
+                    primary_post.education_certificate = p.education_certificate
+                    changed = True
+                if not primary_post.skill_certificate and p.skill_certificate:
+                    primary_post.skill_certificate = p.skill_certificate
+                    changed = True
+            if changed:
+                primary_post.save()
+            # Remove redundant empty duplicate rows
+            for p in posts[1:]:
+                if not any([p.experience_letter, p.offer_letter, p.education_certificate, p.skill_certificate]):
+                    p.delete()
+            posts = list(Post.objects.filter(user=employee).order_by('-date_posted', '-id'))
+
+        primary_post = posts[0] if posts else None
+        active_documents = {
+            'experience_letter': getattr(primary_post, 'experience_letter', None) if primary_post else None,
+            'offer_letter': getattr(primary_post, 'offer_letter', None) if primary_post else None,
+            'education_certificate': getattr(primary_post, 'education_certificate', None) if primary_post else None,
+            'skill_certificate': getattr(primary_post, 'skill_certificate', None) if primary_post else None,
+        }
+        uploaded_count = sum(1 for v in active_documents.values() if v)
+
         return render(request, 'employee/view_documents.html', {
-            'document_list': document_list,
+            'primary_post': primary_post,
+            'active_documents': active_documents,
+            'uploaded_count': uploaded_count,
+            'document_list': posts,
+            'employee': employee,
             'company_id':company_id, 
             'company_staff_id':company_staff_id
         })

@@ -1806,11 +1806,56 @@ def All_document_Views(request,company_id, company_staff_id):
         document_obj = ManagerPost.objects.get(pk=document_obj_id)
         return JsonResponse(document_obj.to_json())
 
-    # Old Code
     if company_id:
-        company_staff = CompanyStaff.objects.get(id=company_staff_id)
-        document_list = ManagerPost.objects.filter(user=company_staff.manager)
-        return render(request, 'managers/view_documents.html', {'document_list': document_list,'company_id':company_id, 'company_staff_id':company_staff_id})
+        try:
+            company_staff = CompanyStaff.objects.get(id=company_staff_id)
+            manager = company_staff.manager
+        except Exception:
+            messages.error(request, 'Manager profile not found.')
+            return redirect('/')
+
+        posts = list(ManagerPost.objects.filter(user=manager).order_by('-id'))
+        if len(posts) > 1:
+            primary_post = posts[0]
+            changed = False
+            for p in posts[1:]:
+                if not primary_post.experience_letter and p.experience_letter:
+                    primary_post.experience_letter = p.experience_letter
+                    changed = True
+                if not primary_post.offer_letter and p.offer_letter:
+                    primary_post.offer_letter = p.offer_letter
+                    changed = True
+                if not primary_post.education_certificate and p.education_certificate:
+                    primary_post.education_certificate = p.education_certificate
+                    changed = True
+                if not primary_post.skill_certificate and p.skill_certificate:
+                    primary_post.skill_certificate = p.skill_certificate
+                    changed = True
+            if changed:
+                primary_post.save()
+            for p in posts[1:]:
+                if not any([p.experience_letter, p.offer_letter, p.education_certificate, p.skill_certificate]):
+                    p.delete()
+            posts = list(ManagerPost.objects.filter(user=manager).order_by('-id'))
+
+        primary_post = posts[0] if posts else None
+        active_documents = {
+            'experience_letter': getattr(primary_post, 'experience_letter', None) if primary_post else None,
+            'offer_letter': getattr(primary_post, 'offer_letter', None) if primary_post else None,
+            'education_certificate': getattr(primary_post, 'education_certificate', None) if primary_post else None,
+            'skill_certificate': getattr(primary_post, 'skill_certificate', None) if primary_post else None,
+        }
+        uploaded_count = sum(1 for v in active_documents.values() if v)
+
+        return render(request, 'managers/view_documents.html', {
+            'primary_post': primary_post,
+            'active_documents': active_documents,
+            'uploaded_count': uploaded_count,
+            'document_list': posts,
+            'manager': manager,
+            'company_id': company_id, 
+            'company_staff_id': company_staff_id
+        })
 
 
 def ChangePassword(request,company_id, company_staff_id):
