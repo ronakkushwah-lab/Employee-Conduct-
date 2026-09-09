@@ -124,7 +124,7 @@
                           <span>Leaves</span>
                         </div>
                       </a>
-                      <ul class="mm-collapse {% if request.resolver_match.url_name == 'mleave' or request.resolver_match.url_name == 'mstaffleavetable' or request.resolver_match.url_name == 'leave_list' or request.resolver_match.url_name == 'mleavebalance' or request.resolver_match.url_name == 'balance-leave' or request.resolver_match.url_name == 'balancelists' %}mm-show{% endif %}">
+                      <ul class="mm-collapse {% if request.resolver_match.url_name == 'mleave' or request.resolver_match.url_name == 'mstaffleavetable' or request.resolver_match.url_name == 'leave_list' or request.resolver_match.url_name == 'mleavebalance' %}mm-show{% endif %}">
                         <li>
                           <a href="{% url 'mleave' company_id=company_id company_staff_id=company_staff_id %}" class="{% if request.resolver_match.url_name == 'mleave' %}active{% endif %}">
                             <i class='bx bx-right-arrow-alt'></i>
@@ -147,18 +147,6 @@
                           <a href="{% url 'mleavebalance' company_id=company_id company_staff_id=company_staff_id %}" class="{% if request.resolver_match.url_name == 'mleavebalance' %}active{% endif %}">
                             <i class='bx bx-right-arrow-alt'></i>
                             Leave Balance
-                          </a>
-                        </li>
-                         <li>
-                          <a href="{% url 'balance-leave' company_id=company_id company_staff_id=company_staff_id  %}" class="{% if request.resolver_match.url_name == 'balance-leave' %}active{% endif %}">
-                            <i class='bx bx-right-arrow-alt'></i>
-                            Add Leaves Balance
-                          </a>
-                        </li>
-                        <li>
-                          <a href="{% url 'balancelists' company_id=company_id company_staff_id=company_staff_id %}" class="{% if request.resolver_match.url_name == 'balancelists' %}active{% endif %}">
-                            <i class='bx bx-right-arrow-alt'></i>
-                            Leaves Balance List
                           </a>
                         </li>
                       </ul>

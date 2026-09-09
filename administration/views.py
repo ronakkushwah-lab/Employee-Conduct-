@@ -10,6 +10,8 @@ from django.http.response import HttpResponseRedirect
 from django.shortcuts import render, HttpResponse, redirect, get_object_or_404
 from django.views import generic
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+from django.core.exceptions import ValidationError
 from django.views.generic import TemplateView, CreateView, UpdateView, DeleteView
 from django.views.generic.base import View
 import employee
@@ -20,18 +22,20 @@ from employee.models import Employee
 from manageregularization.models import MRegularization
 from account.utils import custom_login_required
 from .forms import AttendanceForm, EmployeeForm
-from leave.models import Leave
-from managers.models import Manager, ManagerAttendance, ManagerPost
+from leave.models import Leave, BalanceLeaves
+from managers.models import Manager, ManagerAttendance, ManagerPost, EmployeeNotification
 from regularization.models import Regularization
 from resign.models import Resign
-from .models import Client, Lead, Task, ManagerProject, notification, holiday, Asign, ManagerNotification, EmailNotification
+from .models import Client, Lead, Task, MTask, ManagerProject, notification, holiday, Asign, ManagerNotification, EmailNotification
 from .email_service import fetch_emails_from_gmail
 from django.urls import reverse
 from django.contrib import messages
 from django.utils.decorators import method_decorator
-from employee.models import Employee, role_choices, Attendance, Post, Department, Entries
+from employee.models import Employee, role_choices, Attendance, Post, Department, Entries, EmployeeDocument, format_duration
 from django.db import IntegrityError, connection, transaction
 from account.models import User, CompanyStaff, Company
+from payroll.models import Salary as EmployeeSalary
+from managerpayroll.models import Salary as ManagerSalary
 import sweetify
 from datetime import datetime
 import os
@@ -49,6 +53,46 @@ from biometric.forms import BiometricDeviceForm
 from biometric.models import BiometricDevice, BiometricEventLog
 from django.conf import settings
 import socket
+
+
+ALLOWED_DOCUMENT_EXTENSIONS = {'.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png'}
+ALLOWED_DOCUMENT_CONTENT_TYPES = {
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'image/jpeg',
+    'image/png',
+}
+MAX_DOCUMENT_SIZE = 10 * 1024 * 1024
+
+
+def _validate_document_upload(upload):
+    """Validate an uploaded HR document on the server, not only in HTML."""
+    if not upload:
+        return
+    extension = os.path.splitext(upload.name or '')[1].lower()
+    if extension not in ALLOWED_DOCUMENT_EXTENSIONS:
+        raise ValidationError(f'Unsupported document type: {extension or "unknown"}.')
+    if upload.size > MAX_DOCUMENT_SIZE:
+        raise ValidationError('Documents must be 10 MB or smaller.')
+    content_type = getattr(upload, 'content_type', '')
+    if content_type and content_type not in ALLOWED_DOCUMENT_CONTENT_TYPES:
+        raise ValidationError('The uploaded file content type is not allowed.')
+
+
+def _validated_model_updates(model, request, allowed_fields):
+    """Return an explicit, allow-listed update payload from POST data."""
+    model_fields = {field.name for field in model._meta.get_fields()}
+    return {
+        key: value
+        for key, value in request.POST.items()
+        if key in allowed_fields and key in model_fields and value not in (None, '')
+    }
+
+
+def _session_company_id(request):
+    staff_id = request.session.get('company_staff_id')
+    return CompanyStaff.objects.filter(pk=staff_id).values_list('company_id', flat=True).first()
 #---------------------------------------------Add All Document--------------------------------
 
 
@@ -231,6 +275,7 @@ def P_name(request):
 
 
 # -------------------------------------all employee for admin--------------------------------
+@transaction.atomic
 @custom_login_required
 def Register_Employee_View(request,company_id, company_staff_id):
     if request.method == "POST":
@@ -300,11 +345,26 @@ def Register_Employee_View(request,company_id, company_staff_id):
             if company_id:
                 try:
                     if (employee_password == employee_confirm_password):
-                        user = CompanyStaff.objects.create(email=employee_email, password=employee_password,company_id=company_id)
-                        user.password = make_password(user.password)
+                        creator = CompanyStaff.objects.filter(id=company_staff_id).first()
+                        is_creator_admin = bool(creator and (creator.is_company_admin or creator.role in [CompanyStaff.ROLE_ADMIN, CompanyStaff.ROLE_SUPERADMIN]))
+
+                        selected_role = request.POST.get('employee_role', '').strip().lower()
+                        dept_name = employee_department.department_name.strip().upper() if employee_department else ''
+                        is_hr_dept = 'HR' in dept_name or 'HUMAN RESOURCE' in dept_name or selected_role == 'hr'
+
+                        user = CompanyStaff.objects.create(email=employee_email, password=employee_password, company_id=company_id)
                         user.full_name = employee_first_name + ' ' + employee_last_name
                         user.is_active = True
-                        user.is_employee = True
+                        
+                        # Only Admin can create or appoint an HR user
+                        if is_creator_admin and is_hr_dept:
+                            user.role = CompanyStaff.ROLE_HR
+                            user.is_hr = True
+                            user.is_employee = True
+                        else:
+                            user.role = CompanyStaff.ROLE_EMPLOYEE
+                            user.is_hr = False
+                            user.is_employee = True
                         user.save()
                         register_employee = Employee(user=user, employee_salary=employee_salary,
                                                      employee_first_name=employee_first_name,
@@ -331,11 +391,14 @@ def Register_Employee_View(request,company_id, company_staff_id):
                     else:
                         messages.error(request, "Confirm password and password do not match!")
                 except IntegrityError as e:
+                    transaction.set_rollback(True)
                     messages.error(request, "Email Already Registered!")
                 except Exception as e:
+                    transaction.set_rollback(True)
                     messages.error(request, f"Error registering employee: {str(e)}")
 
         except Exception as e:
+            transaction.set_rollback(True)
             messages.error(request, f"Error processing form: {str(e)}")
 
         return redirect(f'/administration/all_employee/{company_id}/{company_staff_id}')
@@ -384,10 +447,147 @@ def All_Employee_View(request, company_id, company_staff_id):
         # Next employee_id will be max_num + 1, formatted as EIC-001, EIC-002, etc.
         next_employee_id = max_num + 1
         
+        logged_in_staff = CompanyStaff.objects.filter(id=company_staff_id).first()
+        is_admin = bool(logged_in_staff and (logged_in_staff.is_company_admin or logged_in_staff.role in [CompanyStaff.ROLE_ADMIN, CompanyStaff.ROLE_SUPERADMIN]))
+        is_hr = bool(logged_in_staff and (logged_in_staff.is_hr or logged_in_staff.role == CompanyStaff.ROLE_HR))
+        is_admin_or_hr = is_admin or is_hr
+
         return render(request, 'administration/all-employees.html',
                     {'Employees': AllEmployee, 'max_employee_id': next_employee_id, 'departments': departments,
-                    'reports_to': reports_to, 'company_id' : company_id, 'company_staff_id':company_staff_id
+                    'reports_to': reports_to, 'company_id' : company_id, 'company_staff_id':company_staff_id,
+                    'is_admin': is_admin, 'is_hr': is_hr, 'is_admin_or_hr': is_admin_or_hr
                     })
+
+
+@custom_login_required
+def Promote_Employee_To_Manager_View(request, company_id, company_staff_id):
+    """
+    Allows Admin or HR to promote an Employee to a Manager.
+    Creates/updates Manager profile, updates CompanyStaff role/flags,
+    preserves historical employee data, and dispatches promotion notification.
+    """
+    actor = CompanyStaff.objects.filter(id=company_staff_id, company_id=company_id).first()
+    is_allowed = bool(actor and (actor.is_company_admin or actor.role in [CompanyStaff.ROLE_ADMIN, CompanyStaff.ROLE_SUPERADMIN, CompanyStaff.ROLE_HR] or actor.is_hr))
+    
+    if not is_allowed:
+        messages.error(request, "Permission Denied: Only Admin or HR can promote employees to Manager.")
+        return redirect(f'/administration/all_employee/{company_id}/{company_staff_id}')
+
+    if request.method == "POST":
+        try:
+            employee_pk = request.POST.get('employee_pk') or request.POST.get('employee_id')
+            if not employee_pk:
+                messages.error(request, "Invalid employee selected for promotion.")
+                return redirect(f'/administration/all_employee/{company_id}/{company_staff_id}')
+
+            employee = Employee.objects.filter(id=employee_pk, user__company_id=company_id).first()
+            if not employee:
+                messages.error(request, "Employee not found.")
+                return redirect(f'/administration/all_employee/{company_id}/{company_staff_id}')
+
+            manager_designation = request.POST.get('manager_designation', '').strip() or employee.employee_designation or 'Manager'
+            manager_salary = request.POST.get('manager_salary', '').strip() or employee.employee_salary or '350000'
+            department_id = request.POST.get('department_id') or request.POST.get('manager_department')
+            manager_id_code = request.POST.get('manager_id_code', '').strip() or employee.employee_id
+
+            if manager_id_code and not manager_id_code.upper().startswith('EIC-'):
+                manager_id_code = f"EIC-{manager_id_code}"
+
+            dept = None
+            if department_id:
+                dept = Department.objects.filter(id=department_id, company_id=company_id).first()
+            if not dept:
+                dept = employee.employee_department
+
+            user = employee.user
+            if not user:
+                messages.error(request, "User account not linked to employee.")
+                return redirect(f'/administration/all_employee/{company_id}/{company_staff_id}')
+
+            # Create or update Manager profile
+            manager = Manager.objects.filter(user=user).first()
+            if not manager:
+                manager = Manager(
+                    user=user,
+                    manager_first_name=employee.employee_first_name,
+                    manager_last_name=employee.employee_last_name,
+                    manager_email=employee.employee_email,
+                    manager_joining_date=employee.employee_joining_date,
+                    manager_department=dept,
+                    manager_designation=manager_designation,
+                    manager_id=manager_id_code,
+                    biometric_id=employee.biometric_id,
+                    manager_phone=employee.employee_phone,
+                    manager_salary=manager_salary,
+                    manager_birth_date=getattr(employee, 'employee_birth_date', None),
+                    manager_gender=getattr(employee, 'employee_gender', None),
+                    manager_father=getattr(employee, 'employee_father', None),
+                    manager_mother=getattr(employee, 'employee_mother', None),
+                    manager_address=getattr(employee, 'employee_address', None),
+                    manager_pin_code=getattr(employee, 'employee_pin_code', None),
+                    manager_state=getattr(employee, 'employee_state', None),
+                    manager_country=getattr(employee, 'employee_country', None),
+                    manager_status='Active',
+                    manager_tel=getattr(employee, 'employee_tel', None),
+                    manager_nationality=getattr(employee, 'employee_nationality', None),
+                    manager_religion=getattr(employee, 'employee_religion', None),
+                    manager_marital_status=getattr(employee, 'employee_marital_status', None),
+                    manager_emergency_primary_name=getattr(employee, 'employee_emergency_primary_name', None),
+                    manager_emergency_primary_relationship=getattr(employee, 'employee_emergency_primary_relationship', None),
+                    manager_emergency_primary_phone1=getattr(employee, 'employee_emergency_primary_phone1', None),
+                    manager_emergency_primary_phone2=getattr(employee, 'employee_emergency_primary_phone2', None),
+                    manager_education_institution=getattr(employee, 'employee_education_institution', None),
+                    manager_education_subject=getattr(employee, 'employee_education_subject', None),
+                    manager_education_starting_date=getattr(employee, 'employee_education_starting_date', None),
+                    manager_education_complete_date=getattr(employee, 'employee_education_complete_date', None),
+                    manager_education_degree=getattr(employee, 'employee_education_degree', None),
+                    manager_education_grade=getattr(employee, 'employee_education_grade', None),
+                    manager_experience_company_name=getattr(employee, 'employee_experience_company_name', None),
+                    manager_experience_company_location=getattr(employee, 'employee_experience_company_location', None),
+                    manager_experience_company_job_position=getattr(employee, 'employee_experience_company_job_position', None),
+                    manager_experience_company_period_from=getattr(employee, 'employee_experience_company_period_from', None),
+                    manager_experience_company_period_to=getattr(employee, 'employee_experience_company_period_to', None),
+                )
+                if employee.employee_image:
+                    manager.manager_image = employee.employee_image
+                manager.save()
+            else:
+                manager.manager_designation = manager_designation
+                manager.manager_department = dept
+                manager.manager_salary = manager_salary
+                manager.manager_id = manager_id_code
+                manager.manager_status = 'Active'
+                if employee.biometric_id and not manager.biometric_id:
+                    manager.biometric_id = employee.biometric_id
+                manager.save()
+
+            # Upgrade CompanyStaff role
+            user.role = CompanyStaff.ROLE_MANAGER
+            user.is_manager = True
+            user.save()
+
+            # Update employee record details
+            employee.employee_designation = manager_designation
+            if dept:
+                employee.employee_department = dept
+            employee.employee_salary = manager_salary
+            employee.save()
+
+            # Send promotion notification
+            try:
+                from administration.email_notifications import send_promotion_notification
+                send_promotion_notification(manager, new_designation=manager_designation, new_department=dept)
+            except Exception as e:
+                print(f"Error sending promotion notification: {str(e)}")
+
+            messages.success(request, f"{employee.employee_first_name} {employee.employee_last_name} has been promoted to Manager successfully!")
+            return redirect(f'/administration/all_manager/{company_id}/{company_staff_id}')
+
+        except Exception as e:
+            messages.error(request, f"Error promoting employee: {str(e)}")
+            return redirect(f'/administration/all_employee/{company_id}/{company_staff_id}')
+
+    return redirect(f'/administration/all_employee/{company_id}/{company_staff_id}')
 
 
 def All_Employee_List_View(request):
@@ -414,7 +614,7 @@ def Employee_Edit_View(request, company_id,company_staff_id):
             employee_models_fields_list = [f.name for f in Employee._meta.get_fields()]
             employee_models_fields_dict = {}
             employee_obj_id = request.POST.get('employee_id')
-            employee_obj = Employee.objects.filter(pk=employee_obj_id)
+            employee_obj = Employee.objects.filter(pk=employee_obj_id, user__company_id=company_id)
             
             # Get old manager before update for email notification
             old_manager = None
@@ -436,12 +636,46 @@ def Employee_Edit_View(request, company_id,company_staff_id):
                 try:
                     from managers.models import Manager
                     new_manager_id = employee_models_fields_dict['employee_reports_to']
-                    new_manager = Manager.objects.get(id=new_manager_id) if new_manager_id else None
+                    new_manager = Manager.objects.get(
+                        id=new_manager_id, user__company_id=company_id
+                    ) if new_manager_id else None
                 except:
                     new_manager = None
             
             employee_obj.update(**employee_models_fields_dict)
             emp_id = request.POST.get('employee_id')
+
+            # Check if role or department is being updated
+            editor = CompanyStaff.objects.filter(id=company_staff_id).first()
+            is_editor_admin = bool(editor and (editor.is_company_admin or editor.role in [CompanyStaff.ROLE_ADMIN, CompanyStaff.ROLE_SUPERADMIN]))
+
+            employee_role = str(request.POST.get('employee_role', '')).strip().lower()
+            dept_id = employee_models_fields_dict.get('employee_department')
+            dept_obj = None
+            if dept_id:
+                try:
+                    dept_obj = Department.objects.get(id=dept_id, company_id=company_id)
+                except:
+                    pass
+            elif employee_instance and employee_instance.employee_department:
+                dept_obj = employee_instance.employee_department
+
+            dept_name = dept_obj.department_name.strip().upper() if dept_obj else ''
+            is_hr_role = employee_role == 'hr' or 'HR' in dept_name or 'HUMAN RESOURCE' in dept_name
+
+            if employee_instance and employee_instance.user:
+                staff_user = employee_instance.user
+                if is_editor_admin:
+                    if is_hr_role:
+                        staff_user.role = CompanyStaff.ROLE_HR
+                        staff_user.is_hr = True
+                        staff_user.is_employee = True
+                        staff_user.save()
+                    elif employee_role == 'employee':
+                        staff_user.role = CompanyStaff.ROLE_EMPLOYEE
+                        staff_user.is_hr = False
+                        staff_user.is_employee = True
+                        staff_user.save()
 
             if 'employee_image' in request.FILES:
                 employee_obj = employee_obj.first()
@@ -463,15 +697,70 @@ def Employee_Edit_View(request, company_id,company_staff_id):
             return redirect(f'/administration/all_employee/{company_id}/{company_staff_id}')
 
 
+def _delete_employee_and_staff(employee):
+    """Unlink all references to this employee, delete employee related rows, 
+    clean up associated manager profile if promoted/dual-role, and delete CompanyStaff.
+    """
+    eid = employee.id
+    cid = employee.user_id
+
+    # 1. Clean up rows belonging to this employee
+    Attendance.objects.filter(employee_id=eid).delete()
+    Leave.objects.filter(user_id=eid).delete()
+    BalanceLeaves.objects.filter(user_id=eid).delete()
+    Resign.objects.filter(user_id=eid).delete()
+    Regularization.objects.filter(user_id=eid).delete()
+    Entries.objects.filter(user_id=eid).delete()
+    EmployeeSalary.objects.filter(employee_id=eid).delete()
+    EmployeeNotification.objects.filter(user_id=eid).delete()
+    Post.objects.filter(user_id=eid).delete()
+    EmployeeDocument.objects.filter(employee_id=eid).delete()
+    Task.objects.filter(assigned_to_id=eid).delete()
+    MTask.objects.filter(assigned_to_id=eid).delete()
+    Asign.objects.filter(employee_id=eid).delete()
+    BiometricEventLog.objects.filter(employee_id=eid).update(employee=None, attendance=None)
+
+    # 2. If this staff also has a manager profile (e.g. promoted staff), clean up manager records
+    if cid:
+        for mgr in Manager.objects.filter(user_id=cid):
+            mid = mgr.id
+            Employee.objects.filter(employee_reports_to_id=mid).update(employee_reports_to=None)
+            Leave.objects.filter(manager_id=mid).update(manager=None)
+            Resign.objects.filter(assigned_too_id=mid).update(assigned_too=None)
+            Regularization.objects.filter(r_assigned_to_id=mid).update(r_assigned_to=None)
+            Entries.objects.filter(assigned_to_id=mid).update(assigned_to=None)
+            ManagerLeave.objects.filter(assigned_to_id=mid).update(assigned_to=None)
+            ManagerResign.objects.filter(assigned_too_id=mid).update(assigned_too=None)
+
+            ManagerLeave.objects.filter(user_id=mid).delete()
+            BalanceLeave.objects.filter(user_id=mid).delete()
+            ManagerResign.objects.filter(user_id=mid).delete()
+            MRegularization.objects.filter(user_id=mid).delete()
+            ManagerAttendance.objects.filter(manager_id=mid).delete()
+            ManagerSalary.objects.filter(manager_id=mid).delete()
+            ManagerPost.objects.filter(user_id=mid).delete()
+            ManagerProject.objects.filter(assigned_to_id=mid).delete()
+            MTask.objects.filter(user_id=mid).delete()
+            Asign.objects.filter(assigned_to_id=mid).delete()
+            BiometricEventLog.objects.filter(manager_id=mid).update(manager=None, manager_attendance=None)
+            mgr.delete()
+
+    # 3. Delete employee record
+    employee.delete()
+
+    # 4. Delete CompanyStaff account
+    if cid:
+        ManagerProject.objects.filter(created_by_id=cid).update(created_by=None)
+        CompanyStaff.objects.filter(id=cid).delete()
+
+
+@require_POST
 def Remove_Employee_List(request, id):
     try:
-        employees = Employee.objects.get(id=id)
-        try:
-            User.objects.get(id=employees.user.id).delete()
-        except User.DoesNotExist:
-            pass  # User already deleted or doesn't exist
-        employees.delete()
-        messages.success(request, "deleted successfully")
+        employee = Employee.objects.get(id=id, user__company_id=_session_company_id(request))
+        with transaction.atomic():
+            _delete_employee_and_staff(employee)
+        messages.success(request, "Employee deleted successfully")
     except Employee.DoesNotExist:
         messages.error(request, "Employee not found.")
     except Exception as e:
@@ -479,33 +768,27 @@ def Remove_Employee_List(request, id):
     return HttpResponseRedirect('/administration/all_employee_list')
 
 
-def Remove_Employee(request, id,company_id,company_staff_id):
+@require_POST
+def Remove_Employee(request, id, company_id, company_staff_id):
     try:
-        employees = Employee.objects.get(id=id, user__company_id=company_id)
-        employee_user_id = employees.user.id if employees.user else None
-        
-        # Only delete CompanyStaff if it exists and is not the current admin's CompanyStaff
-        if employee_user_id and employee_user_id != company_staff_id:
-            try:
-                employee_company_staff = CompanyStaff.objects.get(id=employee_user_id)
-                employee_company_staff.delete()
-            except CompanyStaff.DoesNotExist:
-                pass  # CompanyStaff already deleted or doesn't exist
-        
-        # Delete the employee record
-        employees.delete()
+        employee = Employee.objects.get(id=id, user__company_id=company_id)
+        if employee.user_id == company_staff_id:
+            messages.error(request, "You cannot delete your own logged-in staff account.")
+            return redirect(f'/administration/all_employee/{company_id}/{company_staff_id}')
+
+        with transaction.atomic():
+            _delete_employee_and_staff(employee)
         messages.success(request, "Employee deleted successfully")
     except Employee.DoesNotExist:
         messages.error(request, "Employee not found.")
     except Exception as e:
         messages.error(request, f"Error deleting employee: {str(e)}")
-    
+
     # Verify company_staff_id exists before redirecting
     try:
         CompanyStaff.objects.get(id=company_staff_id, company_id=company_id)
         return redirect(f'/administration/all_employee/{company_id}/{company_staff_id}')
     except CompanyStaff.DoesNotExist:
-        # If admin CompanyStaff doesn't exist, redirect to a safe page
         messages.error(request, "Session expired. Please login again.")
         return redirect('/')
 
@@ -523,6 +806,7 @@ def Update_Employees_View(request, company_id, id):
         return redirect(f'/administration/all_employee/{company_id}/{request.session.get("company_staff_id", 0)}')
 
 
+@transaction.atomic
 @custom_login_required
 def Register_manager_View(request,company_id, company_staff_id):
     if request.method == "POST":
@@ -568,8 +852,6 @@ def Register_manager_View(request,company_id, company_staff_id):
                 try:
                     if (manager_password == manager_confirm_password):
                         user = CompanyStaff.objects.create(email=manager_email, password=manager_password,company_id=company_id)
-                        user.password = make_password(user.password)
-
                         user.full_name = manager_first_name + ' ' + manager_last_name
                         user.is_active = True
                         user.is_manager = True
@@ -596,17 +878,25 @@ def Register_manager_View(request,company_id, company_staff_id):
                     else:
                         messages.error(request, "Confirm password and password do not match!")
                 except IntegrityError as e:
+                    transaction.set_rollback(True)
                     messages.error(request, "Email Already Registered!")
                 except Exception as e:
+                    transaction.set_rollback(True)
                     messages.error(request, f"Error registering manager: {str(e)}")
 
         except Exception as e:
+            transaction.set_rollback(True)
             messages.error(request, f"Error processing form: {str(e)}")
 
         return redirect(f'/administration/all_manager/{company_id}/{company_staff_id}')
     else:
         groups = Group.objects.all()
-        return render(request, 'administration/all-manager.html',{'departments':Department.objects.filter(company__id=company_id)},{'groups': groups,'company_id':company_id, 'company_staff_id':company_staff_id})
+        return render(request, 'administration/all-manager.html', {
+            'departments': Department.objects.filter(company__id=company_id),
+            'groups': groups,
+            'company_id': company_id,
+            'company_staff_id': company_staff_id,
+        })
 
 
 @custom_login_required
@@ -659,7 +949,7 @@ def manager_Edit_View(request,company_id, company_staff_id):
             manager_models_fields_list = [f.name for f in Manager._meta.get_fields()]
             manager_models_fields_dict = {}
             manager_obj_id = request.POST.get('manager_id')
-            manager_obj = Manager.objects.filter(pk=manager_obj_id)
+            manager_obj = Manager.objects.filter(pk=manager_obj_id, user__company_id=company_id)
 
             for key, value in request.POST.items():
                 if key in manager_models_fields_list and key != 'manager_id' and key != 'id':
@@ -685,51 +975,74 @@ def All_manager_List_View(request):
     return render(request, 'administration/all-manager-list.html', {'manager': manager})
 
 
-def _delete_manager_and_staff(cursor, manager):
-    """Unlink all references to this manager, then delete Manager, then CompanyStaff.
-    Order matters: Manager has FK to CompanyStaff, so delete Manager before CompanyStaff.
+def _delete_manager_and_staff(manager):
+    """Unlink all references to this manager, then delete Manager, attached Employee (if promoted/dual-role), then CompanyStaff.
     """
-    mid, cid = manager.id, manager.user_id
-    # 1) Unlink / nullify all FKs pointing to this manager
-    cursor.execute(
-        "UPDATE employee_employee SET employee_reports_to_id = NULL WHERE employee_reports_to_id = %s",
-        [mid],
-    )
-    cursor.execute("UPDATE leave_leave SET manager_id = NULL WHERE manager_id = %s", [mid])
-    cursor.execute("UPDATE resign_resign SET assigned_too_id = NULL WHERE assigned_too_id = %s", [mid])
-    cursor.execute("UPDATE regularization_regularization SET r_assigned_to_id = NULL WHERE r_assigned_to_id = %s", [mid])
-    cursor.execute(
-        "UPDATE manager_leave_managerleave SET user_id = NULL, assigned_to_id = NULL WHERE user_id = %s OR assigned_to_id = %s",
-        [mid, mid],
-    )
-    cursor.execute("UPDATE manager_leave_balanceleave SET user_id = NULL WHERE user_id = %s", [mid])
-    cursor.execute(
-        "UPDATE manager_resign_managerresign SET user_id = NULL, assigned_too_id = NULL WHERE user_id = %s OR assigned_too_id = %s",
-        [mid, mid],
-    )
-    cursor.execute("UPDATE manageregularization_mregularization SET user_id = NULL WHERE user_id = %s", [mid])
-    # 2) Delete rows that reference manager
-    cursor.execute("DELETE FROM administration_asign WHERE assigned_to_id = %s", [mid])
-    cursor.execute("DELETE FROM managers_managerattendance WHERE manager_id = %s", [mid])
-    cursor.execute("DELETE FROM managerpayroll_salary WHERE manager_id = %s", [mid])
-    cursor.execute("DELETE FROM managers_managerpost WHERE user_id = %s", [mid])
-    # 3) Delete Manager first (it references CompanyStaff)
-    cursor.execute("DELETE FROM managers_manager WHERE id = %s", [mid])
-    # 4) Then delete CompanyStaff
-    cursor.execute("DELETE FROM account_companystaff WHERE id = %s", [cid])
+    mid = manager.id
+    cid = manager.user_id
+
+    # 1. Unlink reporting & assignment references pointing to this manager
+    Employee.objects.filter(employee_reports_to_id=mid).update(employee_reports_to=None)
+    Leave.objects.filter(manager_id=mid).update(manager=None)
+    Resign.objects.filter(assigned_too_id=mid).update(assigned_too=None)
+    Regularization.objects.filter(r_assigned_to_id=mid).update(r_assigned_to=None)
+    Entries.objects.filter(assigned_to_id=mid).update(assigned_to=None)
+    ManagerLeave.objects.filter(assigned_to_id=mid).update(assigned_to=None)
+    ManagerResign.objects.filter(assigned_too_id=mid).update(assigned_too=None)
+
+    # 2. Delete rows belonging to this manager
+    ManagerLeave.objects.filter(user_id=mid).delete()
+    BalanceLeave.objects.filter(user_id=mid).delete()
+    ManagerResign.objects.filter(user_id=mid).delete()
+    MRegularization.objects.filter(user_id=mid).delete()
+    ManagerAttendance.objects.filter(manager_id=mid).delete()
+    ManagerSalary.objects.filter(manager_id=mid).delete()
+    ManagerPost.objects.filter(user_id=mid).delete()
+    ManagerProject.objects.filter(assigned_to_id=mid).delete()
+    MTask.objects.filter(user_id=mid).delete()
+    Asign.objects.filter(assigned_to_id=mid).delete()
+    BiometricEventLog.objects.filter(manager_id=mid).update(manager=None, manager_attendance=None)
+
+    # 3. Unlink & delete any Employee profile linked to this user (e.g. promoted staff or dual-role staff)
+    if cid:
+        for emp in Employee.objects.filter(user_id=cid):
+            eid = emp.id
+            Attendance.objects.filter(employee_id=eid).delete()
+            Leave.objects.filter(user_id=eid).delete()
+            BalanceLeaves.objects.filter(user_id=eid).delete()
+            Resign.objects.filter(user_id=eid).delete()
+            Regularization.objects.filter(user_id=eid).delete()
+            Entries.objects.filter(user_id=eid).delete()
+            EmployeeSalary.objects.filter(employee_id=eid).delete()
+            EmployeeNotification.objects.filter(user_id=eid).delete()
+            Post.objects.filter(user_id=eid).delete()
+            EmployeeDocument.objects.filter(employee_id=eid).delete()
+            Task.objects.filter(assigned_to_id=eid).delete()
+            MTask.objects.filter(assigned_to_id=eid).delete()
+            Asign.objects.filter(employee_id=eid).delete()
+            BiometricEventLog.objects.filter(employee_id=eid).update(employee=None, attendance=None)
+            emp.delete()
+
+    # 4. Delete Manager record
+    manager.delete()
+
+    # 5. Delete CompanyStaff account
+    if cid:
+        ManagerProject.objects.filter(created_by_id=cid).update(created_by=None)
+        CompanyStaff.objects.filter(id=cid).delete()
 
 
-def Remove_manager_List(request, id,company_id, company_staff_id):
+@require_POST
+def Remove_manager_List(request, id, company_id, company_staff_id):
     if company_id:
         try:
             manager = Manager.objects.get(id=id, user__company_id=company_id)
-            try:
-                with transaction.atomic():
-                    with connection.cursor() as cursor:
-                        _delete_manager_and_staff(cursor, manager)
-                messages.success(request, "Manager deleted successfully")
-            except Exception as e:
-                messages.error(request, f"Error deleting manager: {str(e)}")
+            if manager.user_id == company_staff_id:
+                messages.error(request, "You cannot delete your own logged-in staff account.")
+                return HttpResponseRedirect('/administration/all_manager_list')
+            with transaction.atomic():
+                _delete_manager_and_staff(manager)
+            messages.success(request, "Manager deleted successfully")
         except Manager.DoesNotExist:
             messages.error(request, "Manager not found.")
         except Exception as e:
@@ -737,16 +1050,17 @@ def Remove_manager_List(request, id,company_id, company_staff_id):
     return HttpResponseRedirect('/administration/all_manager_list')
 
 
-def Remove_manager(request, id,company_id,company_staff_id):
+@require_POST
+def Remove_manager(request, id, company_id, company_staff_id):
     try:
-        managers = Manager.objects.get(id=id, user__company_id=company_id)
-        try:
-            with transaction.atomic():
-                with connection.cursor() as cursor:
-                    _delete_manager_and_staff(cursor, managers)
-            messages.success(request, "Manager deleted successfully")
-        except Exception as e:
-            messages.error(request, f"Error deleting manager: {str(e)}")
+        manager = Manager.objects.get(id=id, user__company_id=company_id)
+        if manager.user_id == company_staff_id:
+            messages.error(request, "You cannot delete your own logged-in staff account.")
+            return redirect(f'/administration/all_manager/{company_id}/{company_staff_id}')
+
+        with transaction.atomic():
+            _delete_manager_and_staff(manager)
+        messages.success(request, "Manager deleted successfully")
     except Manager.DoesNotExist:
         messages.error(request, "Manager not found.")
     except Exception as e:
@@ -756,7 +1070,7 @@ def Remove_manager(request, id,company_id,company_staff_id):
 
 def Update_manager_View(request, id):
     try:
-        update_info = Manager.objects.get(id=id)
+        update_info = Manager.objects.get(id=id, user__company_id=_session_company_id(request))
         return render(request, 'administration/manager_profile.html', {'update_info': update_info})
     except Manager.DoesNotExist:
         messages.error(request, 'Manager not found.')
@@ -768,20 +1082,27 @@ def Update_manager_View(request, id):
 
 @custom_login_required
 def IndexView(request, company_id, company_staff_id):
-    # company_id = request.session.get('company')
+    staff = CompanyStaff.objects.filter(id=company_staff_id).first()
+    if staff and (staff.role == 'hr' or getattr(staff, 'is_hr', False)):
+        return redirect('hr_dashboard', company_id=company_id, company_staff_id=company_staff_id)
+    if staff and (staff.role == 'manager' or staff.is_manager) and not staff.is_company_admin:
+        return redirect('manager_dashboard', company_id=company_id, company_staff_id=company_staff_id)
+    if staff and (staff.role == 'employee' or staff.is_employee) and not staff.is_company_admin:
+        return redirect('employee_role_dashboard', company_id=company_id, company_staff_id=company_staff_id)
+
     if company_id:
         projects_count = Task.objects.filter(assigned_to__user__company__id=company_id).count()
         clients_count = Client.objects.filter(company_id=company_id).count()
         employee_count = Employee.objects.filter(user__company__id=company_id).count()
-        lead_count = Lead.objects.all().count()
+        lead_count = Lead.objects.filter(company_id=company_id).count()
         context = {
             'projects_count': projects_count,
             'clients_count': clients_count,
             'employee_count': employee_count,
             'lead_count': lead_count,
             'company_id': company_id,
-            'company_staff_id': company_staff_id
-
+            'company_staff_id': company_staff_id,
+            'staff': staff,
         }
     else:
         context = {
@@ -800,7 +1121,7 @@ def All_client_View(request,company_id, company_staff_id):
     if request.method == "POST":
         data = json.loads(request.body.decode('utf-8'))
         client_obj_id = data.get('id', None)
-        client_obj = Client.objects.get(pk=client_obj_id)
+        client_obj = Client.objects.get(pk=client_obj_id, company_id=company_id)
         return JsonResponse(client_obj.to_json())
 
     # Old Code
@@ -820,20 +1141,17 @@ def EditClient(request,company_id, company_staff_id):
     if company_id:
         if request.method == "GET":
             id = request.GET.get('id')
-            client_obj = Client.objects.get(pk=id)
+            client_obj = Client.objects.get(pk=id, company_id=company_id)
             return JsonResponse(client_obj.to_json())
 
         elif request.method == "POST":
-            client_models_fields_list = [f.name for f in Client._meta.get_fields()]
-            client_models_fields_dict = {}
             client_obj_id = request.POST.get('id')
-            client_obj = Client.objects.filter(pk=client_obj_id)
-
-            for key, value in request.POST.items():
-                if key in client_models_fields_list and key != 'id' and key != 'id' and value is not None and len(
-                        value) != 0:
-                    print(key, value)
-                    client_models_fields_dict.setdefault(key, value)
+            client_obj = Client.objects.filter(pk=client_obj_id, company_id=company_id)
+            client_models_fields_dict = _validated_model_updates(Client, request, {
+                'client_first_name', 'client_last_name', 'client_username',
+                'client_email', 'client_id', 'client_address', 'client_phone',
+                'client_status', 'technology', 'description',
+            })
             client_obj.update(**client_models_fields_dict)
             emp_id = request.POST.get('id')
 
@@ -871,6 +1189,9 @@ class CreateClientsListView(generic.ListView):
     context_object_name = "client_list"
     success_url = ('/administration/clients_grid')
 
+    def get_queryset(self):
+        return Client.objects.filter(company_id=_session_company_id(self.request))
+
 
 class CreateClientsGridView(generic.ListView):
     model = Client
@@ -878,19 +1199,24 @@ class CreateClientsGridView(generic.ListView):
     context_object_name = "client_list"
     success_url = ('/administration/clients_grid')
 
+    def get_queryset(self):
+        return Client.objects.filter(company_id=_session_company_id(self.request))
 
+
+@method_decorator(require_POST, name='dispatch')
 class ClientRemove(View):
-    def get(self, request,company_id, company_staff_id, id):
+    def post(self, request,company_id, company_staff_id, id):
         if company_id:
-            client = Client.objects.get(id=id)
+            client = Client.objects.get(id=id, company_id=company_id)
             client.delete()
             messages.success(request, 'deleted successfuully')
             return redirect(f'/administration/client_list/{company_id}/{company_staff_id}')
 
 
+@method_decorator(require_POST, name='dispatch')
 class ClientRemoveGrid(View):
-    def get(self, request, id):
-        client = Client.objects.get(id=id)
+    def post(self, request, id):
+        client = Client.objects.get(id=id, company_id=_session_company_id(request))
         client.delete()
         messages.success(request, 'deleted successfully')
         return HttpResponseRedirect('/administration/clients_grid')
@@ -904,6 +1230,9 @@ class ClientManageGrid(UpdateView):
     template_name = "administration/client_grid_manage.html"
     success_url = ("/administration/clients_grid/")
 
+    def get_queryset(self):
+        return Client.objects.filter(company_id=_session_company_id(self.request))
+
 
 class ClientManageList(UpdateView):
     model = Client
@@ -912,6 +1241,9 @@ class ClientManageList(UpdateView):
     context_object_name = "client_list_update"
     template_name = "administration/client_list_manage.html"
     success_url = ("/administration/clients_list/")
+
+    def get_queryset(self):
+        return Client.objects.filter(company_id=_session_company_id(self.request))
 
 
 # -----------------------------------/client----------------------------------------------------------------
@@ -945,20 +1277,16 @@ def lead_Edit_View(request,company_id, company_staff_id):
     if company_id:
         if request.method == "GET":
             id = request.GET.get('id')
-            lead_obj = Lead.objects.get(pk=id)
+            lead_obj = Lead.objects.get(pk=id, company_id=company_id)
             return JsonResponse(lead_obj.to_json())
 
         elif request.method == "POST":
-            lead_models_fields_list = [f.name for f in Lead._meta.get_fields()]
-            lead_models_fields_dict = {}
             lead_obj_id = request.POST.get('id')
-            lead_obj = Lead.objects.filter(pk=lead_obj_id)
-
-            for key, value in request.POST.items():
-                if key in lead_models_fields_list and key != 'id' and key != 'id' and value is not None and len(
-                        value) != 0:
-                    print(key, value)
-                    lead_models_fields_dict.setdefault(key, value)
+            lead_obj = Lead.objects.filter(pk=lead_obj_id, company_id=company_id)
+            lead_models_fields_dict = _validated_model_updates(Lead, request, {
+                'lead_name', 'lead_email', 'lead_phone', 'lead_project',
+                'lead_assign_staff', 'lead_created', 'lead_source',
+            })
             lead_obj.update(**lead_models_fields_dict)
             emp_id = request.POST.get('id')
 
@@ -971,7 +1299,7 @@ def All_lead_View(request,company_id, company_staff_id):
     if request.method == "POST":
         data = json.loads(request.body.decode('utf-8'))
         lead_obj_id = data.get('id', None)
-        lead_obj = Lead.objects.get(pk=lead_obj_id)
+        lead_obj = Lead.objects.get(pk=lead_obj_id, company_id=company_id)
         return JsonResponse(lead_obj.to_json())
 
     # Old Code
@@ -986,10 +1314,11 @@ def All_lead_View(request,company_id, company_staff_id):
         return render(request, 'administration/leads.html',context)
 
 
+@method_decorator(require_POST, name='dispatch')
 class LeadsRemove(View):
-    def get(self, request,company_id, company_staff_id, id):
+    def post(self, request,company_id, company_staff_id, id):
         if company_id:
-            lead = Lead.objects.get(id=id)
+            lead = Lead.objects.get(id=id, company_id=company_id)
             lead.delete()
             messages.success(request, f"{lead} deleted successfully")
         return redirect(f'/administration/leads_list/{company_id}/{company_staff_id}')
@@ -1030,7 +1359,7 @@ def All_entry(request,company_id, company_staff_id):
     if request.method == "POST":
         data = json.loads(request.body.decode('utf-8'))
         entry_obj_id = data.get('id', None)
-        entry_obj = Entries.objects.get(pk=entry_obj_id)
+        entry_obj = Entries.objects.get(pk=entry_obj_id, user__user__company_id=company_id)
         return JsonResponse(entry_obj.to_json())
 
     if company_id:
@@ -1079,7 +1408,7 @@ def All_entry(request,company_id, company_staff_id):
                 'user': user,
                 'email': email,
                 'name': name,
-                'total_time': user_total,
+                'total_time': format_duration(user_total),
                 'entries': entries
             })
 
@@ -1104,10 +1433,14 @@ class EntryDetailView(DetailView):
     model = Entries
     template_name = "administration/detail.html"
 
+    def get_queryset(self):
+        return Entries.objects.filter(user__user__company_id=_session_company_id(self.request))
 
+
+@method_decorator(require_POST, name='dispatch')
 class EntryRemove(View):
-    def get(self, request, id):
-        entry_list = Entries.objects.get(id=id)
+    def post(self, request, id):
+        entry_list = Entries.objects.get(id=id, user__user__company_id=_session_company_id(request))
         entry_list.delete()
         messages.success(request, f"{entry_list} deleted successfully")
         return HttpResponseRedirect('/administration/index')
@@ -1207,7 +1540,7 @@ def ManagerProject_list(request, company_id, company_staff_id):
     if request.method == "POST":
         data = json.loads(request.body.decode("utf-8"))
         project_obj_id = data.get("id", None)
-        project_obj = ManagerProject.objects.get(pk=project_obj_id)
+        project_obj = ManagerProject.objects.get(pk=project_obj_id, company_id=company_id)
         return JsonResponse(project_obj.to_json())
 
     if company_id:
@@ -1220,10 +1553,11 @@ def ManagerProject_list(request, company_id, company_staff_id):
         return render(request, "administration/list-manager-project.html", context)
 
 
+@method_decorator(require_POST, name='dispatch')
 class ManagerProjectRemove(View):
-    def get(self, request, company_id, company_staff_id, id):
+    def post(self, request, company_id, company_staff_id, id):
         if company_id:
-            project = ManagerProject.objects.get(id=id)
+            project = ManagerProject.objects.get(id=id, company_id=company_id)
             project.delete()
             return redirect(f"/administration/manager-project/list/{company_id}/{company_staff_id}")
 
@@ -1244,7 +1578,7 @@ class TaskDeleteView(DeleteView, LoginRequiredMixin, UserPassesTestMixin):
 
 def attendance(request,company_id, company_staff_id):
     if company_id:
-        attendance = Attendance.objects.filter(employee__user__company__id=company_id)
+        attendance = Attendance.objects.filter(employee__user__company__id=company_id).order_by('-check_in')
         context = {
             'attendance': attendance,
             'company_id': company_id,
@@ -1258,7 +1592,7 @@ def Project_list(request,company_id, company_staff_id):
     if request.method == "POST":
         data = json.loads(request.body.decode('utf-8'))
         project_obj_id = data.get('id', None)
-        project_obj = Task.objects.get(pk=project_obj_id)
+        project_obj = Task.objects.get(pk=project_obj_id, company_id=company_id)
         return JsonResponse(project_obj.to_json())
 
     if company_id:
@@ -1272,10 +1606,11 @@ def Project_list(request,company_id, company_staff_id):
     return render(request, 'administration/list-project.html', context)
 
 
+@method_decorator(require_POST, name='dispatch')
 class ProjectRemove(View):
-    def get(self, request,company_id, company_staff_id, id):
+    def post(self, request,company_id, company_staff_id, id):
         if company_id:
-            project = Task.objects.get(id=id)
+            project = Task.objects.get(id=id, company_id=company_id)
             project.delete()
             return redirect(f'/administration/projectlist/{company_id}/{company_staff_id}')
 
@@ -1286,11 +1621,11 @@ def leaves_list(request,company_id, company_staff_id):
         leave_obj_id = data.get('id', None)
         # Try ManagerLeave first, then Leave
         try:
-            leave_obj = ManagerLeave.objects.get(pk=leave_obj_id)
+            leave_obj = ManagerLeave.objects.get(pk=leave_obj_id, user__user__company_id=company_id)
             return JsonResponse(leave_obj.to_json())
         except ManagerLeave.DoesNotExist:
             try:
-                leave_obj = Leave.objects.get(pk=leave_obj_id)
+                leave_obj = Leave.objects.get(pk=leave_obj_id, user__user__company_id=company_id)
                 return JsonResponse(leave_obj.to_json())
             except Leave.DoesNotExist:
                 return JsonResponse({'error': 'Leave not found'}, status=404)
@@ -1299,6 +1634,10 @@ def leaves_list(request,company_id, company_staff_id):
         # Get both ManagerLeave and Leave pending leaves for the company
         manager_leaves = ManagerLeave.objects.all_pending_leaves().filter(user__user__company_id=company_id)
         employee_leaves = Leave.objects.all_pending_leaves().filter(user__user__company_id=company_id)
+        for item in manager_leaves:
+            item.admin_leave_type = 'manager'
+        for item in employee_leaves:
+            item.admin_leave_type = 'employee'
         
         # Combine both querysets
         from itertools import chain
@@ -1316,11 +1655,11 @@ def leaves_approved_list(request,company_id, company_staff_id):
         leave_obj_id = data.get('id', None)
         # Try ManagerLeave first, then Leave
         try:
-            leave_obj = ManagerLeave.objects.get(pk=leave_obj_id)
+            leave_obj = ManagerLeave.objects.get(pk=leave_obj_id, user__user__company_id=company_id)
             return JsonResponse(leave_obj.to_json())
         except ManagerLeave.DoesNotExist:
             try:
-                leave_obj = Leave.objects.get(pk=leave_obj_id)
+                leave_obj = Leave.objects.get(pk=leave_obj_id, user__user__company_id=company_id)
                 return JsonResponse(leave_obj.to_json())
             except Leave.DoesNotExist:
                 return JsonResponse({'error': 'Leave not found'}, status=404)
@@ -1351,15 +1690,32 @@ def leaves_view(request, id):
                                                                          leave.status)})
 
 
+@require_POST
 def approve_leave(request,company_id, company_staff_id, id):
     # Try ManagerLeave first, then Leave
+    is_manager_leave = False
+    leave_kind = request.GET.get('kind')
     try:
-        leave = ManagerLeave.objects.get(id=id)
+        if leave_kind == 'employee':
+            raise ManagerLeave.DoesNotExist
+        leave = ManagerLeave.objects.get(id=id, user__user__company_id=company_id)
         leave.approve_leave
         approved = True
+        is_manager_leave = True
     except ManagerLeave.DoesNotExist:
         try:
-            leave = Leave.objects.get(id=id)
+            leave = Leave.objects.get(id=id, user__user__company_id=company_id)
+            # Enforce leave approval hierarchy: employee leave requires manager approval first
+            if getattr(leave, 'manager', None) and not leave.manager_approved:
+                mgr = leave.manager
+                manager_name = f"{mgr.manager_first_name} {mgr.manager_last_name}" if hasattr(mgr, 'manager_first_name') else str(mgr)
+                messages.error(
+                    request,
+                    f'Cannot approve: This leave requires prior approval from reporting manager ({manager_name}).',
+                    extra_tags='alert alert-warning alert-dismissible show'
+                )
+                return redirect(f'/administration/leaves/pending/all/{company_id}/{company_staff_id}')
+
             leave.approve_leave
             approved = True
         except Leave.DoesNotExist:
@@ -1367,12 +1723,27 @@ def approve_leave(request,company_id, company_staff_id, id):
                            extra_tags='alert alert-danger alert-dismissible show')
             return redirect(f'/administration/leaves/pending/all/{company_id}/{company_staff_id}')
 
-    # Send email notification
-    try:
-        from administration.email_notifications import send_leave_approval_notification
-        send_leave_approval_notification(leave, approved=True)
-    except Exception as e:
-        print(f"Error sending leave approval notification: {str(e)}")
+    # Send email notification in background thread to prevent HTTP 502 / freezing
+    def _send_approval_email_background(mgr_leave, leave_id):
+        try:
+            from administration.email_notifications import send_leave_approval_notification
+            if mgr_leave:
+                from manager_leave.models import ManagerLeave
+                target_leave = ManagerLeave.objects.filter(id=leave_id).first()
+            else:
+                from leave.models import Leave
+                target_leave = Leave.objects.filter(id=leave_id).first()
+            if target_leave:
+                send_leave_approval_notification(target_leave, approved=True)
+        except Exception as e:
+            print(f"Error sending leave approval notification: {str(e)}", flush=True)
+
+    import threading
+    threading.Thread(
+        target=_send_approval_email_background,
+        args=(is_manager_leave, leave.id),
+        daemon=True
+    ).start()
 
     messages.success(request, 'Leave successfully approved',
                    extra_tags='alert alert-success alert-dismissible show')
@@ -1387,34 +1758,37 @@ def cancel_leaves_list(request):
                   {'leave_list_cancel': leaves, 'title': 'Cancel leave list'})
 
 
+@require_POST
 def unapprove_leave(request, id):
-    if not (request.user.is_authenticated and request.user.is_superuser):
-        return redirect('/')
-    leave = get_object_or_404(ManagerLeave, id=id)
+    leave = get_object_or_404(
+        ManagerLeave, id=id, user__user__company_id=_session_company_id(request)
+    )
     leave.unapprove_leave
-    return redirect('leaveslist')  # redirect to unapproved list
+    return redirect(request.META.get('HTTP_REFERER', '/'))
 
 
+@require_POST
 def cancel_leave(request, id):
-    if not (request.user.is_superuser and request.user.is_authenticated):
-        return redirect('/')
-    leave = get_object_or_404(ManagerLeave, id=id)
+    leave = get_object_or_404(
+        ManagerLeave, id=id, user__user__company_id=_session_company_id(request)
+    )
     leave.leaves_cancel
 
     messages.success(request, 'Leave is canceled', extra_tags='alert alert-success alert-dismissible show')
-    return redirect('canceleaveslist')  # work on redirecting to instance leave - detail view
+    return redirect(request.META.get('HTTP_REFERER', '/'))
 
 
+@require_POST
 def uncancel_leave(request, id):
-    if not (request.user.is_superuser and request.user.is_authenticated):
-        return redirect('/')
-    leave = get_object_or_404(ManagerLeave, id=id)
+    leave = get_object_or_404(
+        ManagerLeave, id=id, user__user__company_id=_session_company_id(request)
+    )
     leave.status = 'pending'
     leave.is_approved = False
     leave.save()
     messages.success(request, 'Leave is uncanceled,now in pending list',
                      extra_tags='alert alert-success alert-dismissible show')
-    return redirect('canceleaveslist')  # work on redirecting to instance leave - detail view
+    return redirect(request.META.get('HTTP_REFERER', '/'))
 
 
 def leave_rejected_list(request,company_id, company_staff_id):
@@ -1423,11 +1797,11 @@ def leave_rejected_list(request,company_id, company_staff_id):
         leave_obj_id = data.get('id', None)
         # Try ManagerLeave first, then Leave
         try:
-            leave_obj = ManagerLeave.objects.get(pk=leave_obj_id)
+            leave_obj = ManagerLeave.objects.get(pk=leave_obj_id, user__user__company_id=company_id)
             return JsonResponse(leave_obj.to_json())
         except ManagerLeave.DoesNotExist:
             try:
-                leave_obj = Leave.objects.get(pk=leave_obj_id)
+                leave_obj = Leave.objects.get(pk=leave_obj_id, user__user__company_id=company_id)
                 return JsonResponse(leave_obj.to_json())
             except Leave.DoesNotExist:
                 return JsonResponse({'error': 'Leave not found'}, status=404)
@@ -1450,53 +1824,78 @@ def leave_rejected_list(request,company_id, company_staff_id):
         return render(request, 'administration/rejected-leaves.html', dataset)
 
 
+@require_POST
 def reject_leave(request,company_id, company_staff_id,id):
     dataset = dict()
     # Try ManagerLeave first, then Leave
+    is_manager_leave = False
+    leave_kind = request.GET.get('kind')
     try:
-        leave = ManagerLeave.objects.get(id=id)
+        if leave_kind == 'employee':
+            raise ManagerLeave.DoesNotExist
+        leave = ManagerLeave.objects.get(id=id, user__user__company_id=company_id)
         leave.reject_leave
+        is_manager_leave = True
     except ManagerLeave.DoesNotExist:
         try:
-            leave = Leave.objects.get(id=id)
+            leave = Leave.objects.get(id=id, user__user__company_id=company_id)
             leave.reject_leave
         except Leave.DoesNotExist:
             messages.error(request, 'Leave not found',
                            extra_tags='alert alert-danger alert-dismissible show')
             return redirect(f'/administration/leaves/pending/all/{company_id}/{company_staff_id}')
     
-    # Send email notification
-    try:
-        from administration.email_notifications import send_leave_approval_notification
-        send_leave_approval_notification(leave, approved=False)
-    except Exception as e:
-        print(f"Error sending leave rejection notification: {str(e)}")
+    # Send email notification in background thread to prevent HTTP 502 / freezing
+    def _send_rejection_email_background(mgr_leave, leave_id):
+        try:
+            from administration.email_notifications import send_leave_approval_notification
+            if mgr_leave:
+                from manager_leave.models import ManagerLeave
+                target_leave = ManagerLeave.objects.filter(id=leave_id).first()
+            else:
+                from leave.models import Leave
+                target_leave = Leave.objects.filter(id=leave_id).first()
+            if target_leave:
+                send_leave_approval_notification(target_leave, approved=False)
+        except Exception as e:
+            print(f"Error sending leave rejection notification: {str(e)}", flush=True)
+
+    import threading
+    threading.Thread(
+        target=_send_rejection_email_background,
+        args=(is_manager_leave, leave.id),
+        daemon=True
+    ).start()
     
     messages.success(request, 'Leave is rejected', extra_tags='alert alert-success alert-dismissible show')
     return redirect(f'/administration/leaves/rejected/all/{company_id}/{company_staff_id}')
 
 
+@require_POST
 def unreject_leave(request, id):
-    leave = get_object_or_404(ManagerLeave, id=id)
+    leave = get_object_or_404(
+        ManagerLeave, id=id, user__user__company_id=_session_company_id(request)
+    )
     leave.status = 'pending'
     leave.is_approved = False
     leave.save()
     messages.success(request, 'Leave is now in pending list ', extra_tags='alert alert-success alert-dismissible show')
 
-    return redirect('leavesrejected')
+    return redirect(request.META.get('HTTP_REFERER', '/'))
 
 
 def add_leaves_balance(request, company_id, company_staff_id):
-    """View for Add Leaves Balance page - handles both leave application and balance management"""
+    """View for Add Employee Leave Balance page"""
     # Handle leave balance assignment form submission
     if request.method == "POST" and 'balancedays' in request.POST:
         balancedays = request.POST.get("balancedays")
-        employee_id = request.POST.get("employee_id")
+        employee_id = request.POST.get("employee_id") or request.POST.get("user")
         try:
             if employee_id:
-                employee = Employee.objects.get(id=employee_id)
+                employee = Employee.objects.get(id=employee_id, user__company_id=company_id)
                 BalanceLeaves.objects.create(user=employee, balancedays=int(balancedays))
-                messages.success(request, f'Leave balance of {balancedays} day(s) assigned to {employee.employee_first_name} {employee.employee_last_name}!')
+                messages.success(request, f'Leave balance of {balancedays} day(s) assigned to Employee {employee.employee_first_name} {employee.employee_last_name}!')
+                return redirect(f'/administration/balancelist/{company_id}/{company_staff_id}')
             else:
                 messages.error(request, 'Please select an employee.')
         except Exception as e:
@@ -1514,7 +1913,7 @@ def add_leaves_balance(request, company_id, company_staff_id):
         
         try:
             if employee_id:
-                employee = Employee.objects.get(id=employee_id)
+                employee = Employee.objects.get(id=employee_id, user__company_id=company_id)
             else:
                 # Fallback to company_staff employee
                 company_staff = CompanyStaff.objects.get(id=company_staff_id)
@@ -1581,14 +1980,15 @@ def Balance_list(request,company_id, company_staff_id):
         return render(request, 'administration/leaves-balance-list.html', context)
 
 
+@method_decorator(require_POST, name='dispatch')
 class BalanceRemove(View):
-    def get(self, request,company_id, company_staff_id, id):
+    def post(self, request,company_id, company_staff_id, id):
         if company_id:
             try:
                 try:
-                    balance = BalanceLeaves.objects.get(id=id)
+                    balance = BalanceLeaves.objects.get(id=id, user__user__company_id=company_id)
                 except BalanceLeaves.DoesNotExist:
-                    balance = BalanceLeave.objects.get(id=id)
+                    balance = BalanceLeave.objects.get(id=id, user__user__company_id=company_id)
                 balance.delete()
                 messages.success(request, 'Leave balance deleted successfully!')
             except Exception:
@@ -1625,14 +2025,14 @@ def createnotifications(request,company_id, company_staff_id):
         return render(request, 'administration/notifications.html',{'company_id':company_id, 'company_staff_id':company_staff_id})
 
 
-def getnotification(request):
-    notify = notification.objects.all()
+def getnotification(request, company_id):
+    notify = notification.objects.filter(company_id=company_id)
     notify_obj = [{'notify': i.notify} for i in notify]
     return JsonResponse({'notify': notify_obj})
 
 
-def getattendance(request):
-    attendance = Attendance.objects.all()
+def getattendance(request, company_id):
+    attendance = Attendance.objects.filter(employee__user__company_id=company_id)
     attendance_obj = [{'employee__employee_id': i.employee_id, 'check_in': i.check_in, 'check_out': i.check_out}
                       for i in attendance]
     return JsonResponse({'attendance': attendance_obj})
@@ -1640,7 +2040,7 @@ def getattendance(request):
 
 def attendance(request,company_id, company_staff_id):
     if company_id:
-        attendance = Attendance.objects.filter(employee__user__company__id=company_id)
+        attendance = Attendance.objects.filter(employee__user__company__id=company_id).order_by('-check_in')
         context = {
             'attendance': attendance,
             'company_id': company_id,
@@ -1654,20 +2054,17 @@ def attendance_Edit_View(request,company_id, company_staff_id):
     if company_id:
         if request.method == "GET":
             id = request.GET.get('id')
-            attendance_obj = Attendance.objects.get(pk=id)
+            attendance_obj = Attendance.objects.get(pk=id, employee__user__company_id=company_id)
             return JsonResponse(attendance_obj.to_json())
 
         elif request.method == "POST":
-            attendance_models_fields_list = [f.name for f in Attendance._meta.get_fields()]
-            attendance_models_fields_dict = {}
             attendance_obj_id = request.POST.get('id')
-            attendance_obj = Attendance.objects.filter(pk=attendance_obj_id)
-
-            for key, value in request.POST.items():
-                if key in attendance_models_fields_list and key != 'id' and key != 'id' and value is not None and len(
-                        value) != 0:
-                    print(key, value)
-                    attendance_models_fields_dict.setdefault(key, value)
+            attendance_obj = Attendance.objects.filter(
+                pk=attendance_obj_id, employee__user__company_id=company_id
+            )
+            attendance_models_fields_dict = _validated_model_updates(
+                Attendance, request, {'check_in', 'check_out'}
+            )
             attendance_obj.update(**attendance_models_fields_dict)
             emp_id = request.POST.get('id')
 
@@ -1676,10 +2073,11 @@ def attendance_Edit_View(request,company_id, company_staff_id):
             return redirect(f'/administration/attendancee/{company_id}/{company_staff_id}')
 
 
+@method_decorator(require_POST, name='dispatch')
 class AttendanceRemove(View):
-    def get(self, request,company_id, company_staff_id, id):
+    def post(self, request,company_id, company_staff_id, id):
         if company_id:
-            attendance = Attendance.objects.get(id=id)
+            attendance = Attendance.objects.get(id=id, employee__user__company_id=company_id)
             attendance.delete()
             messages.success(request, f"{attendance} deleted successfully")
             return redirect(f'/administration/attendancee/{company_id}/{company_staff_id}')
@@ -1695,7 +2093,9 @@ class AttendanceManage(UpdateView):
     def post(self, request, pk):
         from django.utils.dateparse import parse_datetime
         from django.utils import timezone as tz
-        data = Attendance.objects.get(id=pk)
+        data = Attendance.objects.get(
+            id=pk, employee__user__company_id=_session_company_id(request)
+        )
         check_out_str = request.POST.get('check_out')
         check_in_str = request.POST.get('check_in')
 
@@ -1724,9 +2124,11 @@ def Attendancesearch(request,company_id, company_staff_id):
     if 'q' in request.GET:
         q = request.GET['q']
         multiple_q = Q(Q(employee__user__email__icontains=q) | Q(check_in__icontains=q) | Q(check_out__icontains=q))
-        attendance = Attendance.objects.filter(multiple_q)
+        attendance = Attendance.objects.filter(
+            multiple_q, employee__user__company_id=company_id
+        ).order_by('-check_in')
     else:
-        attendance = Attendance.objects.filter(employee__user__company__id=company_id)
+        attendance = Attendance.objects.filter(employee__user__company__id=company_id).order_by('-check_in')
     context = {
         'attendance': attendance,
         'company_id': company_id,
@@ -1739,7 +2141,7 @@ def resign_list(request,company_id, company_staff_id):
     if request.method == "POST":
         data = json.loads(request.body.decode('utf-8'))
         resign_obj_id = data.get('id', None)
-        resign_obj = Resign.objects.get(pk=resign_obj_id)
+        resign_obj = Resign.objects.get(pk=resign_obj_id, user__user__company_id=company_id)
         return JsonResponse(resign_obj.to_json())
 
     if company_id:
@@ -1752,7 +2154,7 @@ def resign_approved_list(request,company_id, company_staff_id):
     if request.method == "POST":
         data = json.loads(request.body.decode('utf-8'))
         resign_obj_id = data.get('id', None)
-        resign_obj = Resign.objects.get(pk=resign_obj_id)
+        resign_obj = Resign.objects.get(pk=resign_obj_id, user__user__company_id=company_id)
         return JsonResponse(resign_obj.to_json())
 
     if company_id:
@@ -1773,9 +2175,10 @@ def resign_view(request, id):
                                                                           resign.status)})
 
 
+@require_POST
 def approve_resign(request,company_id, company_staff_id, id):
 
-    resign = get_object_or_404(Resign, id=id)
+    resign = get_object_or_404(Resign, id=id, user__user__company_id=company_id)
     # user = resign.user
     resign.approve_resign
 
@@ -1788,7 +2191,7 @@ def cancel_resign_list(request,company_id, company_staff_id):
     if request.method == "POST":
         data = json.loads(request.body.decode('utf-8'))
         resign_obj_id = data.get('id', None)
-        resign_obj = Resign.objects.get(pk=resign_obj_id)
+        resign_obj = Resign.objects.get(pk=resign_obj_id, user__user__company_id=company_id)
         return JsonResponse(resign_obj.to_json())
 
     if company_id:
@@ -1797,17 +2200,19 @@ def cancel_resign_list(request,company_id, company_staff_id):
                       {'resign_list': resign, 'title': 'Cancel resign list','company_id':company_id, 'company_staff_id':company_staff_id})
 
 
+@require_POST
 def unapprove_resign(request, id):
-    if not (request.user.is_authenticated and request.user.is_superuser):
-        return redirect('/')
-    resign = get_object_or_404(Resign, id=id)
+    resign = get_object_or_404(
+        Resign, id=id, user__user__company_id=_session_company_id(request)
+    )
     resign.unapprove_resign
-    return redirect('resignlist')  # redirect to unapproved list
+    return redirect(request.META.get('HTTP_REFERER', '/'))
 
 
+@require_POST
 def cancel_resign(request,company_id, company_staff_id, id):
 
-    resign = get_object_or_404(Resign, id=id)
+    resign = get_object_or_404(Resign, id=id, user__user__company_id=company_id)
     resign.resign_cancel
 
     messages.success(request, 'Resign is canceled', extra_tags='alert alert-success alert-dismissible show')
@@ -1815,16 +2220,17 @@ def cancel_resign(request,company_id, company_staff_id, id):
 
 
 # Current section -> here
+@require_POST
 def uncancel_resign(request, id):
-    if not (request.user.is_superuser and request.user.is_authenticated):
-        return redirect('/')
-    resign = get_object_or_404(Resign, id=id)
+    resign = get_object_or_404(
+        Resign, id=id, user__user__company_id=_session_company_id(request)
+    )
     resign.status = 'pending'
     resign.is_approved = False
     resign.save()
     messages.success(request, 'Leave is uncanceled,now in pending list',
                      extra_tags='alert alert-success alert-dismissible show')
-    return redirect('cancelresignlist')
+    return redirect(request.META.get('HTTP_REFERER', '/'))
 
 
 def resign_rejected_list(request, company_id, company_staff_id):
@@ -1833,22 +2239,25 @@ def resign_rejected_list(request, company_id, company_staff_id):
         resign = Resign.objects.all_rejected_resign().filter(user__user__company_id=company_id)
     else:
         resign = Resign.objects.all_rejected_resign()
-    dataset['resign_list_rejected'] = resign
+    dataset['resign_list'] = resign
     dataset['company_id'] = company_id
     dataset['company_staff_id'] = company_staff_id
-    return render(request, 'administration/rejected_resign_list.html', dataset)
+    dataset['page_title'] = 'Rejected Resignations'
+    return render(request, 'administration/cancelled-resignation.html', dataset)
 
 
+@require_POST
 def reject_resign(request, company_id, company_staff_id, id):
     dataset = dict()
-    resign = get_object_or_404(Resign, id=id)
+    resign = get_object_or_404(Resign, id=id, user__user__company_id=company_id)
     resign.reject_resign
     messages.success(request, 'Resignation is rejected', extra_tags='alert alert-success alert-dismissible show')
     return redirect(f'/administration/resign/rejected/all/{company_id}/{company_staff_id}')
 
 
+@require_POST
 def unreject_resign(request, company_id, company_staff_id, id):
-    resign = get_object_or_404(Resign, id=id)
+    resign = get_object_or_404(Resign, id=id, user__user__company_id=company_id)
     resign.status = 'pending'
     resign.is_approved = False
     resign.save()
@@ -1874,24 +2283,25 @@ def holidays(request,company_id, company_staff_id):
                 holiday_obj = holiday(day=day, date=date,
                                       occassion=occassion, holidaytype=type, status=status,company_id=company_id)
                 holiday_obj.save()
-                return render(request, 'administration/add-holiday.html', {'msg': 'Data updated'},{'company_id':company_id, 'company_staff_id':company_staff_id})
+                messages.success(request, 'Holiday created successfully.')
+                return redirect('holidaylist', company_id=company_id, company_staff_id=company_staff_id)
         except Exception as e:
             print(e)
         return render(request, 'administration/add-holiday.html',{'company_id':company_id, 'company_staff_id':company_staff_id})
 
 
-def fnholidays(request):
-    holidays = holiday.objects.all()
+def fnholidays(request, company_id):
+    holidays = holiday.objects.filter(company_id=company_id)
     holiday_obj = [{'id': i.id, 'day': i.day, 'date': i.date,
                     'occassion': i.occassion, 'type': i.holidaytype} for i in holidays]
     print(holiday_obj)
     return JsonResponse({'holiday': holiday_obj})
 
 
-def getdatas(request):
-    user = Employee.objects.all()
+def getdatas(request, company_id):
+    user = Employee.objects.filter(user__company_id=company_id)
     user_obj = [{'id': i.id} for i in user]
-    holidays = holiday.objects.all().count()
+    holidays = holiday.objects.filter(company_id=company_id).count()
     return JsonResponse({'user': user_obj, 'holiday': holidays})
 
 
@@ -1907,10 +2317,11 @@ def holiday_list(request,company_id, company_staff_id):
         return render(request, 'administration/list-holiday.html', context)
 
 
+@method_decorator(require_POST, name='dispatch')
 class delholiday(View):
-    def get(self, request,company_id, company_staff_id, id):
+    def post(self, request,company_id, company_staff_id, id):
         if company_id:
-            holyday = holiday.objects.get(id=id)
+            holyday = holiday.objects.get(id=id, company_id=company_id)
             holyday.delete()
             messages.success(request, f"{holyday} deleted successfully")
             return redirect(f'/administration/holidaylist/{company_id}/{company_staff_id}')
@@ -1922,7 +2333,10 @@ class PostListView(ListView):
         company_staff = CompanyStaff.objects.filter(pk=company_staff_id)
         if company_staff.exists():
             if company_staff.first().is_authenticated:
-                return super().dispatch(request, company_id, company_staff_id, *args, **kwargs)
+                return super().dispatch(
+                    request, *args, company_id=company_id,
+                    company_staff_id=company_staff_id, **kwargs
+                )
             else:
                 return redirect('/')
         else:
@@ -1933,6 +2347,22 @@ class PostListView(ListView):
     context_object_name = 'posts'
     ordering = ['-date_posted']
     paginate_by = 2
+
+    def get_queryset(self):
+        return Post.objects.filter(
+            user__user__company_id=self.kwargs['company_id']
+        ).order_by('-date_posted')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update({
+            'company_id': self.kwargs['company_id'],
+            'company_staff_id': self.kwargs['company_staff_id'],
+            'employees': Employee.objects.filter(
+                user__company_id=self.kwargs['company_id']
+            ).order_by('employee_first_name'),
+        })
+        return context
 
 
 def All_document_View(request,company_id, company_staff_id):
@@ -2006,16 +2436,17 @@ def PostDetailView(request,company_id, company_staff_id,id):
     # Old Code
     if company_id:
         # company_staff = CompanyStaff.objects.get(id=company_staff_id)
-        document_list = Post.objects.filter(id=id)
+        document_list = Post.objects.filter(id=id, user__user__company_id=company_id)
         # document_list = Post.objects.filter(user=company_staff)
         return render(request, 'administration/employee_documents.html',
                       {'document_list': document_list,'company_id':company_id, 'company_staff_id':company_staff_id})
 
 
+@method_decorator(require_POST, name='dispatch')
 class PostDeleteView(View):
-    def get(self, request,company_id, company_staff_id, id):
+    def post(self, request,company_id, company_staff_id, id):
         if company_id:
-            posts = Post.objects.get(id=id)
+            posts = Post.objects.get(id=id, user__user__company_id=company_id)
             posts.delete()
             messages.success(request, f"{posts} deleted successfully")
             return redirect(f'/administration/all_document_View/{company_id}/{company_staff_id}')
@@ -2051,9 +2482,9 @@ def DepartmentCreateView(request,company_id, company_staff_id):
 def DepartmentList(request,company_id, company_staff_id):
     if request.method == "POST":
         data = json.loads(request.body.decode('utf-8'))
-        client_obj_id = data.get('id', None)
-        client_obj = Client.objects.get(pk=client_obj_id)
-        return JsonResponse(client_obj.to_json())
+        department_obj_id = data.get('id', None)
+        department_obj = Department.objects.get(pk=department_obj_id, company_id=company_id)
+        return JsonResponse(department_obj.to_json())
 
     # Old Code
     if company_id:
@@ -2088,13 +2519,10 @@ def department_Edit_View(request,company_id, company_staff_id):
             department_models_fields_list = [f.name for f in Department._meta.get_fields()]
             department_models_fields_dict = {}
             department_obj_id = request.POST.get('id')
-            department_obj = Department.objects.filter(pk=department_obj_id)
-
-            for key, value in request.POST.items():
-                if key in department_models_fields_list and key != 'id' and key != 'id' and value is not None and len(
-                        value) != 0:
-                    print(key, value)
-                    department_models_fields_dict.setdefault(key, value)
+            department_obj = Department.objects.filter(pk=department_obj_id, company_id=company_id)
+            department_models_fields_dict = _validated_model_updates(
+                Department, request, {'department_name'}
+            )
             department_obj.update(**department_models_fields_dict)
             emp_id = request.POST.get('id')
 
@@ -2103,10 +2531,11 @@ def department_Edit_View(request,company_id, company_staff_id):
             return redirect(f'/administration/department_lst/{company_id}/{company_staff_id}')
 
 
+@method_decorator(require_POST, name='dispatch')
 class DepartmentRemove(View):
-    def get(self, request,company_id, company_staff_id, id):
+    def post(self, request,company_id, company_staff_id, id):
         if company_id:
-            department = Department.objects.get(id=id)
+            department = Department.objects.get(id=id, company_id=company_id)
             department.delete()
             messages.success(request, f"{department} deleted successfully")
             return redirect(f'/administration/department_lst/{company_id}/{company_staff_id}')
@@ -2124,7 +2553,7 @@ def regularization_list(request,company_id, company_staff_id):
     if request.method == "POST":
         data = json.loads(request.body.decode('utf-8'))
         regularization_obj_id = data.get('id', None)
-        regularization_obj = Regularization.objects.get(pk=regularization_obj_id)
+        regularization_obj = Regularization.objects.get(pk=regularization_obj_id, user__user__company_id=company_id)
         return JsonResponse(regularization_obj.to_json())
 
     if company_id:
@@ -2137,7 +2566,7 @@ def regularization_approved_list(request,company_id, company_staff_id):
     if request.method == "POST":
         data = json.loads(request.body.decode('utf-8'))
         regularization_obj_id = data.get('id', None)
-        regularization_obj = Regularization.objects.get(pk=regularization_obj_id)
+        regularization_obj = Regularization.objects.get(pk=regularization_obj_id, user__user__company_id=company_id)
         return JsonResponse(regularization_obj.to_json())
 
     regularization = Regularization.objects.all_approved_regularization().filter(user__user__company__id=company_id)  # approved leaves -> calling model manager method
@@ -2145,9 +2574,10 @@ def regularization_approved_list(request,company_id, company_staff_id):
                   {'regularization_list': regularization, 'title': 'approved regularization list','company_id':company_id, 'company_staff_id':company_staff_id})
 
 
+@require_POST
 def approve_regularization(request,company_id, company_staff_id, id):
     if company_id:
-        regularization = get_object_or_404(Regularization, id=id)
+        regularization = get_object_or_404(Regularization, id=id, user__user__company_id=company_id)
         regularization.approve_regularization
 
         messages.success(request, 'regularization is approved', extra_tags='alert alert-success alert-dismissible show')
@@ -2158,7 +2588,7 @@ def cancel_regularization_list(request,company_id, company_staff_id):
     if request.method == "POST":
         data = json.loads(request.body.decode('utf-8'))
         regularization_obj_id = data.get('id', None)
-        regularization_obj = Regularization.objects.get(pk=regularization_obj_id)
+        regularization_obj = Regularization.objects.get(pk=regularization_obj_id, user__user__company_id=company_id)
         return JsonResponse(regularization_obj.to_json())
 
     regularization = Regularization.objects.all_cancel_regularization().filter(user__user__company__id=company_id)
@@ -2166,33 +2596,36 @@ def cancel_regularization_list(request,company_id, company_staff_id):
                   {'regularization_list_cancel': regularization, 'title': 'Cancel regularization list','company_id':company_id, 'company_staff_id':company_staff_id})
 
 
+@require_POST
 def unapprove_regularization(request, id):
-    if not (request.user.is_authenticated and request.user.is_superuser):
-        return redirect('/')
-    regularization = get_object_or_404(Regularization, id=id)
+    regularization = get_object_or_404(
+        Regularization, id=id, user__user__company_id=_session_company_id(request)
+    )
     regularization.unapprove_regularization
-    return redirect('regularizationlist')  # redirect to unapproved list
+    return redirect(request.META.get('HTTP_REFERER', '/'))
 
 
+@require_POST
 def cancel_regularization(request,company_id, company_staff_id, id):
     if company_id:
-        regularization = get_object_or_404(Regularization, id=id)
+        regularization = get_object_or_404(Regularization, id=id, user__user__company_id=company_id)
         regularization.regularization_cancel
 
         messages.success(request, 'regularization is canceled', extra_tags='alert alert-success alert-dismissible show')
         return redirect(f'/administration/regularization/cancel/all/{company_id}/{company_staff_id}')
 
 
+@require_POST
 def uncancel_regularization(request, id):
-    if not (request.user.is_superuser and request.user.is_authenticated):
-        return redirect('/')
-    regularization = get_object_or_404(Regularization, id=id)
+    regularization = get_object_or_404(
+        Regularization, id=id, user__user__company_id=_session_company_id(request)
+    )
     regularization.status = 'pending'
     regularization.is_approved = False
     regularization.save()
     messages.success(request, 'Leave is uncanceled,now in pending list',
                      extra_tags='alert alert-success alert-dismissible show')
-    return redirect('cancelregularizationlist')
+    return redirect(request.META.get('HTTP_REFERER', '/'))
 
 
 def regularization_rejected_list(request):
@@ -2203,17 +2636,23 @@ def regularization_rejected_list(request):
     return render(request, 'administration/rejected_regularization_list.html', dataset)
 
 
+@require_POST
 def reject_regularization(request, id):
     dataset = dict()
-    regularization = get_object_or_404(Leave, id=id)
-    regularization.reject_leave
+    regularization = get_object_or_404(
+        Regularization, id=id, user__user__company_id=_session_company_id(request)
+    )
+    regularization.reject_regularization
     messages.success(request, 'regularizationation is rejected',
                      extra_tags='alert alert-success alert-dismissible show')
     return redirect('regularizationrejected')
 
 
+@require_POST
 def unreject_regularization(request, id):
-    regularization = get_object_or_404(Regularization, id=id)
+    regularization = get_object_or_404(
+        Regularization, id=id, user__user__company_id=_session_company_id(request)
+    )
     regularization.status = 'pending'
     regularization.is_approved = False
     regularization.save()
@@ -2227,7 +2666,7 @@ def mregularization_list(request,company_id, company_staff_id):
     if request.method == "POST":
         data = json.loads(request.body.decode('utf-8'))
         regularization_obj_id = data.get('id', None)
-        regularization_obj = MRegularization.objects.get(pk=regularization_obj_id)
+        regularization_obj = MRegularization.objects.get(pk=regularization_obj_id, user__user__company_id=company_id)
         return JsonResponse(regularization_obj.to_json())
 
     if company_id:
@@ -2240,7 +2679,7 @@ def mregularization_approved_list(request,company_id, company_staff_id):
     if request.method == "POST":
         data = json.loads(request.body.decode('utf-8'))
         regularization_obj_id = data.get('id', None)
-        regularization_obj = MRegularization.objects.get(pk=regularization_obj_id)
+        regularization_obj = MRegularization.objects.get(pk=regularization_obj_id, user__user__company_id=company_id)
         return JsonResponse(regularization_obj.to_json())
 
     if company_id:
@@ -2261,9 +2700,10 @@ def mregularization_view(request, id):
                                                                                    regularization.status)})
 
 
+@require_POST
 def mapprove_regularization(request,company_id, company_staff_id, id):
     if company_id:
-        regularization = get_object_or_404(MRegularization, id=id)
+        regularization = get_object_or_404(MRegularization, id=id, user__user__company_id=company_id)
 
         regularization.approve_regularization
 
@@ -2276,7 +2716,7 @@ def mcancel_regularization_list(request,company_id, company_staff_id):
     if request.method == "POST":
         data = json.loads(request.body.decode('utf-8'))
         regularization_obj_id = data.get('id', None)
-        regularization_obj = MRegularization.objects.get(pk=regularization_obj_id)
+        regularization_obj = MRegularization.objects.get(pk=regularization_obj_id, user__user__company_id=company_id)
         return JsonResponse(regularization_obj.to_json())
 
     if company_id:
@@ -2285,32 +2725,37 @@ def mcancel_regularization_list(request,company_id, company_staff_id):
                       {'regularization_list': regularization, 'title': 'Cancel regularization list','company_id':company_id, 'company_staff_id':company_staff_id})
 
 
+@require_POST
 def munapprove_regularization(request, id):
 
-    regularization = get_object_or_404(MRegularization, id=id)
+    regularization = get_object_or_404(
+        MRegularization, id=id, user__user__company_id=_session_company_id(request)
+    )
     regularization.unapprove_regularization
-    return redirect('mregularizationlist')  # redirect to unapproved list
+    return redirect(request.META.get('HTTP_REFERER', '/'))
 
+@require_POST
 def mcancel_regularization(request,company_id, company_staff_id, id):
     if company_id:
 
-        regularization = get_object_or_404(MRegularization, id=id)
+        regularization = get_object_or_404(MRegularization, id=id, user__user__company_id=company_id)
         regularization.regularization_cancel
 
         messages.success(request, 'regularization is canceled', extra_tags='alert alert-success alert-dismissible show')
         return redirect(f'/administration/mregularization/cancel/all/{company_id}/{company_staff_id}')
 
 
+@require_POST
 def muncancel_regularization(request, id):
-    if not (request.user.is_superuser and request.user.is_authenticated):
-        return redirect('/')
-    regularization = get_object_or_404(MRegularization, id=id)
+    regularization = get_object_or_404(
+        MRegularization, id=id, user__user__company_id=_session_company_id(request)
+    )
     regularization.status = 'pending'
     regularization.is_approved = False
     regularization.save()
     messages.success(request, 'Regularization is uncanceled,now in pending list',
                      extra_tags='alert alert-success alert-dismissible show')
-    return redirect('mcancelregularizationlist')
+    return redirect(request.META.get('HTTP_REFERER', '/'))
 
 
 def mregularization_rejected_list(request):
@@ -2321,29 +2766,35 @@ def mregularization_rejected_list(request):
     return render(request, 'administration/mrejected_regularization_list.html', dataset)
 
 
+@require_POST
 def mreject_regularization(request, id):
     dataset = dict()
-    regularization = get_object_or_404(Leave, id=id)
-    regularization.reject_leave
+    regularization = get_object_or_404(
+        MRegularization, id=id, user__user__company_id=_session_company_id(request)
+    )
+    regularization.reject_regularization
     messages.success(request, 'regularizationation is rejected',
                      extra_tags='alert alert-success alert-dismissible show')
     return redirect('mregularizationrejected')
 
 
+@require_POST
 def munreject_regularization(request, id):
-    regularization = get_object_or_404(MRegularization, id=id)
+    regularization = get_object_or_404(
+        MRegularization, id=id, user__user__company_id=_session_company_id(request)
+    )
     regularization.status = 'pending'
     regularization.is_approved = False
     regularization.save()
     messages.success(request, 'regularizationation is now in pending list ',
                      extra_tags='alert alert-success alert-dismissible show')
 
-    return redirect('mregularizationrejected')
+    return redirect(request.META.get('HTTP_REFERER', '/'))
 
 
 def mattendance(request,company_id, company_staff_id):
     if company_id:
-        attendance = ManagerAttendance.objects.filter(manager__user__company__id=company_id)
+        attendance = ManagerAttendance.objects.filter(manager__user__company__id=company_id).order_by('-check_in')
         context = {
             'attendance': attendance,
             'company_id': company_id,
@@ -2357,20 +2808,17 @@ def Mattendance_Edit_View(request,company_id, company_staff_id):
     if company_id:
         if request.method == "GET":
             id = request.GET.get('id')
-            attendance_obj = ManagerAttendance.objects.get(pk=id)
+            attendance_obj = ManagerAttendance.objects.get(pk=id, manager__user__company_id=company_id)
             return JsonResponse(attendance_obj.to_json())
 
         elif request.method == "POST":
-            attendance_models_fields_list = [f.name for f in ManagerAttendance._meta.get_fields()]
-            attendance_models_fields_dict = {}
             attendance_obj_id = request.POST.get('id')
-            attendance_obj = ManagerAttendance.objects.filter(pk=attendance_obj_id)
-
-            for key, value in request.POST.items():
-                if key in attendance_models_fields_list and key != 'id' and key != 'id' and value is not None and len(
-                        value) != 0:
-                    print(key, value)
-                    attendance_models_fields_dict.setdefault(key, value)
+            attendance_obj = ManagerAttendance.objects.filter(
+                pk=attendance_obj_id, manager__user__company_id=company_id
+            )
+            attendance_models_fields_dict = _validated_model_updates(
+                ManagerAttendance, request, {'check_in', 'check_out'}
+            )
             attendance_obj.update(**attendance_models_fields_dict)
             emp_id = request.POST.get('id')
 
@@ -2379,10 +2827,11 @@ def Mattendance_Edit_View(request,company_id, company_staff_id):
             return redirect(f'/administration/mattendancee/{company_id}/{company_staff_id}')
 
 
+@method_decorator(require_POST, name='dispatch')
 class mAttendanceRemove(View):
-    def get(self, request,company_id, company_staff_id, id):
+    def post(self, request,company_id, company_staff_id, id):
         if company_id:
-            attendance = ManagerAttendance.objects.get(id=id)
+            attendance = ManagerAttendance.objects.get(id=id, manager__user__company_id=company_id)
             attendance.delete()
             messages.success(request, f"{attendance} deleted successfully")
             return redirect(f'/administration/mattendancee/{company_id}/{company_staff_id}')
@@ -2396,7 +2845,9 @@ class mAttendanceManage(UpdateView):
     success_url = ("/administration/mattendancee/")
 
     def post(self, request, pk):
-        data = ManagerAttendance.objects.get(id=pk)
+        data = ManagerAttendance.objects.get(
+            id=pk, manager__user__company_id=_session_company_id(request)
+        )
         data.check_out = request.POST.get('check_out')
         data.check_in = request.POST.get('check_in')
         data.save()
@@ -2408,9 +2859,11 @@ def mAttendancesearch(request,company_id, company_staff_id):
     if 'q' in request.GET:
         q = request.GET['q']
         multiple_q = Q(Q(manager__user__email__icontains=q) | Q(check_in__icontains=q) | Q(check_out__icontains=q))
-        attendance = ManagerAttendance.objects.filter(multiple_q)
+        attendance = ManagerAttendance.objects.filter(
+            multiple_q, manager__user__company_id=company_id
+        ).order_by('-check_in')
     else:
-        attendance = ManagerAttendance.objects.filter(manager__user__company__id=company_id)
+        attendance = ManagerAttendance.objects.filter(manager__user__company__id=company_id).order_by('-check_in')
     context = {
         'attendance': attendance,
         'company_id': company_id,
@@ -2423,10 +2876,10 @@ def assignCreateView(request,company_id, company_staff_id):
     if company_id:
         if request.method == "POST":
             employee_id = request.POST.get("employee_id")
-            employee_to = Employee.objects.get(id=employee_id)
+            employee_to = Employee.objects.get(id=employee_id, user__company_id=company_id)
             description = request.POST.get("description")
             assign_id = request.POST.get("manager_id")
-            assigned_to = Manager.objects.get(id =assign_id)
+            assigned_to = Manager.objects.get(id=assign_id, user__company_id=company_id)
             # company_staff = CompanyStaff.objects.get(id=company_staff_id)
             # user = company_staff
             # emp = Employee.objects.get(user = user)
@@ -2456,7 +2909,7 @@ def Assign_list(request,company_id, company_staff_id):
     if request.method == "POST":
         data = json.loads(request.body.decode('utf-8'))
         assign_obj_id = data.get('id', None)
-        assign_obj = Asign.objects.get(pk=assign_obj_id)
+        assign_obj = Asign.objects.get(pk=assign_obj_id, employee__user__company_id=company_id)
         return JsonResponse(assign_obj.to_json())
 
     if company_id:
@@ -2470,9 +2923,14 @@ def Assign_list(request,company_id, company_staff_id):
         return render(request, 'administration/employee-list.html', context)
 
 
+@method_decorator(require_POST, name='dispatch')
 class AssignRemove(View):
-    def get(self, request,company_id, company_staff_id, id):
-        assign = Asign.objects.get(id=id)
+    def post(self, request,company_id, company_staff_id, id):
+        assign = Asign.objects.get(
+            id=id,
+            employee__user__company_id=company_id,
+            assigned_to__user__company_id=company_id,
+        )
         assign.delete()
         return redirect(f'/administration/assignlist/{company_id}/{company_staff_id}')
 
@@ -2483,7 +2941,9 @@ def All_document_Views(request,company_id, company_staff_id):
         data = json.loads(request.body.decode('utf-8'))
         document_obj_id = data.get('id', None)
         if document_obj_id:
-            document_obj = ManagerPost.objects.get(pk=document_obj_id)
+            document_obj = ManagerPost.objects.get(
+                pk=document_obj_id, user__user__company_id=company_id
+            )
             return JsonResponse(document_obj.to_json())
     
     # Fetch managers for the dropdown (filtered by company) - EXACTLY like All_manager_View line 268
@@ -2517,7 +2977,14 @@ def All_document_Views(request,company_id, company_staff_id):
                 'company_staff_id': company_staff_id
             })
         
-        manager = get_object_or_404(Manager, id=manager_id)
+        try:
+            for upload in request.FILES.values():
+                _validate_document_upload(upload)
+        except ValidationError as exc:
+            messages.error(request, exc.message)
+            return redirect("manager_document_View", company_id=company_id, company_staff_id=company_staff_id)
+
+        manager = get_object_or_404(Manager, id=manager_id, user__company_id=company_id)
         
         # Create ManagerPost for this manager with files
         obj = ManagerPost.objects.create(
@@ -2556,7 +3023,9 @@ def all_documents(request, company_id, company_staff_id):
         data = json.loads(request.body.decode('utf-8'))
         document_obj_id = data.get('id', None)
         if document_obj_id:
-            document_obj = Post.objects.get(pk=document_obj_id)
+            document_obj = Post.objects.get(
+                pk=document_obj_id, user__user__company_id=company_id
+            )
             return JsonResponse(document_obj.to_json())
     
     # Fetch employees for the dropdown (filtered by company) - EXACTLY like All_Employee_View line 121
@@ -2590,7 +3059,14 @@ def all_documents(request, company_id, company_staff_id):
                 'company_staff_id': company_staff_id
             })
         
-        employee = get_object_or_404(Employee, id=employee_id)
+        try:
+            for upload in request.FILES.values():
+                _validate_document_upload(upload)
+        except ValidationError as exc:
+            messages.error(request, exc.message)
+            return redirect("all_documents", company_id=company_id, company_staff_id=company_staff_id)
+
+        employee = get_object_or_404(Employee, id=employee_id, user__company_id=company_id)
         
         # Create Post for this employee with files (EXACTLY like manager)
         obj = Post.objects.create(
@@ -2623,15 +3099,15 @@ def all_documents(request, company_id, company_staff_id):
 
 
 @custom_login_required
+@require_POST
 def delete_employee_documents(request, company_id, company_staff_id, id):
     """Delete employee documents"""
-    if request.method == "GET":
-        try:
-            doc = Post.objects.get(id=id)
-            doc.delete()
-            messages.success(request, 'Employee documents deleted successfully!')
-        except Post.DoesNotExist:
-            messages.error(request, 'Documents not found!')
+    try:
+        doc = Post.objects.get(id=id, user__user__company_id=company_id)
+        doc.delete()
+        messages.success(request, 'Employee documents deleted successfully!')
+    except Post.DoesNotExist:
+        messages.error(request, 'Documents not found!')
     
     return redirect("all_documents", company_id=company_id, company_staff_id=company_staff_id)
 
@@ -2671,20 +3147,23 @@ def MPostDetailView(request,company_id, company_staff_id,id):
     if request.method == "POST":
         data = json.loads(request.body.decode('utf-8'))
         document_obj_id = data.get('id', None)
-        document_obj = Post.objects.get(pk=document_obj_id)
+        document_obj = ManagerPost.objects.get(
+            pk=document_obj_id, user__user__company_id=company_id
+        )
         return JsonResponse(document_obj.to_json())
 
     # Old Code
     if company_id:
-        document_list = ManagerPost.objects.filter(id=id)
+        document_list = ManagerPost.objects.filter(id=id, user__user__company_id=company_id)
         return render(request, 'administration/manager_documents.html',
                       {'document_list': document_list,'company_id':company_id, 'company_staff_id':company_staff_id})
 
 
+@method_decorator(require_POST, name='dispatch')
 class MPostDeleteView(View):
-    def get(self, request,company_id, company_staff_id, id):
+    def post(self, request,company_id, company_staff_id, id):
         if company_id:
-            posts = ManagerPost.objects.get(id=id)
+            posts = ManagerPost.objects.get(id=id, user__user__company_id=company_id)
             posts.delete()
             messages.success(request, f"{posts} deleted successfully")
             return redirect(f'/administration/manager_document_View/{company_id}/{company_staff_id}')
@@ -2722,20 +3201,17 @@ def Notification_Edit_View(request,company_id, company_staff_id):
     if company_id:
         if request.method == "GET":
             id = request.GET.get('id')
-            notification_obj = notification.objects.get(pk=id)
+            notification_obj = notification.objects.get(pk=id, company_id=company_id)
             return JsonResponse(notification_obj.to_json())
 
         elif request.method == "POST":
             notification_models_fields_list = [f.name for f in notification._meta.get_fields()]
             notification_models_fields_dict = {}
             notification_obj_id = request.POST.get('id')
-            notification_obj = notification.objects.filter(pk=notification_obj_id)
-
-            for key, value in request.POST.items():
-                if key in notification_models_fields_list and key != 'id' and key != 'id' and value is not None and len(
-                        value) != 0:
-                    print(key, value)
-                    notification_models_fields_dict.setdefault(key, value)
+            notification_obj = notification.objects.filter(pk=notification_obj_id, company_id=company_id)
+            notification_models_fields_dict = _validated_model_updates(
+                notification, request, {'notify'}
+            )
             notification_obj.update(**notification_models_fields_dict)
             emp_id = request.POST.get('id')
 
@@ -2743,10 +3219,11 @@ def Notification_Edit_View(request,company_id, company_staff_id):
             print(emp_id)
             return redirect(f'/administration/notifications/{company_id}/{company_staff_id}')
         
+@method_decorator(require_POST, name='dispatch')
 class NotificationRemove(View):
-    def get(self, request,company_id, company_staff_id, id):
+    def post(self, request,company_id, company_staff_id, id):
         if company_id:
-            notifications = notification.objects.get(id=id)
+            notifications = notification.objects.get(id=id, company_id=company_id)
             notifications.delete()
             messages.success(request, f"{notifications} deleted successfully")
             return redirect(f'/administration/notifications/{company_id}/{company_staff_id}')
@@ -2782,7 +3259,7 @@ def Managernotifications(request,company_id, company_staff_id):
                 })
             
             try:
-                assigned_to = Manager.objects.get(id=assign_id)
+                assigned_to = Manager.objects.get(id=assign_id, user__company_id=company_id)
                 print(f"DEBUG: Manager found: {assigned_to.manager_email}")
                 
                 # Create the notification
@@ -2859,9 +3336,7 @@ def email_notifications(request, company_id, company_staff_id):
     """View to display email notifications fetched from Gmail."""
     if company_id:
         company = Company.objects.get(id=company_id)
-        email_notifs = EmailNotification.objects.filter(
-            models.Q(company=company) | models.Q(company__isnull=True)
-        )
+        email_notifs = EmailNotification.objects.filter(company=company)
         unread_count = email_notifs.filter(is_read=False).count()
         context = {
             'email_notifications': email_notifs,
@@ -2872,6 +3347,7 @@ def email_notifications(request, company_id, company_staff_id):
         return render(request, 'administration/email_notifications.html', context)
 
 
+@require_POST
 def fetch_emails_view(request, company_id, company_staff_id):
     """View to trigger fetching emails from Gmail and redirect back."""
     if company_id:
@@ -2889,11 +3365,12 @@ def fetch_emails_view(request, company_id, company_staff_id):
         return redirect(f'/administration/email_notifications/{company_id}/{company_staff_id}')
 
 
+@require_POST
 def mark_email_read(request, company_id, company_staff_id, id):
     """Mark a single email notification as read."""
     if company_id:
         try:
-            email_notif = EmailNotification.objects.get(id=id)
+            email_notif = EmailNotification.objects.get(id=id, company_id=company_id)
             email_notif.is_read = True
             email_notif.save()
         except EmailNotification.DoesNotExist:
@@ -2901,14 +3378,12 @@ def mark_email_read(request, company_id, company_staff_id, id):
         return redirect(f'/administration/email_notifications/{company_id}/{company_staff_id}')
 
 
+@require_POST
 def mark_all_emails_read(request, company_id, company_staff_id):
     """Mark all email notifications as read."""
     if company_id:
         company = Company.objects.get(id=company_id)
-        EmailNotification.objects.filter(
-            models.Q(company=company) | models.Q(company__isnull=True),
-            is_read=False
-        ).update(is_read=True)
+        EmailNotification.objects.filter(company=company, is_read=False).update(is_read=True)
         sweetify.success(request, "All emails marked as read!", timer=2000)
         return redirect(f'/administration/email_notifications/{company_id}/{company_staff_id}')
 
@@ -2916,7 +3391,7 @@ def mark_all_emails_read(request, company_id, company_staff_id):
 def email_notification_detail(request, company_id, company_staff_id, id):
     """View to see the full email notification detail."""
     if company_id:
-        email_notif = get_object_or_404(EmailNotification, id=id)
+        email_notif = get_object_or_404(EmailNotification, id=id, company_id=company_id)
         # Mark as read when viewed
         if not email_notif.is_read:
             email_notif.is_read = True
@@ -2929,11 +3404,12 @@ def email_notification_detail(request, company_id, company_staff_id, id):
         return render(request, 'administration/email_notification_detail.html', context)
 
 
+@require_POST
 def delete_email_notification(request, company_id, company_staff_id, id):
     """Delete a single email notification."""
     if company_id:
         try:
-            email_notif = EmailNotification.objects.get(id=id)
+            email_notif = EmailNotification.objects.get(id=id, company_id=company_id)
             email_notif.delete()
             sweetify.success(request, "Email notification deleted!", timer=2000)
         except EmailNotification.DoesNotExist:

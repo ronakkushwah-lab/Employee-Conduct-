@@ -388,18 +388,17 @@
                 <div class="card-body profile-info">
                   <div class="d-block align-items-center m-auto w-50 text-center">
                     <div class="fm-icon-box radius-15">
-                      	{% if profile.manager_image  %}
                       <img
-                        src="{{profile.manager_image.url}}"
+                        src="{{profile.avatar_url}}"
                         class="img-fluid user-img manager-profile-photo-trigger"
                         id="manager_image"
                         data-bs-toggle="modal"
                         data-bs-target="#managerProfilePhotoModal"
-                        data-image-url="{{profile.manager_image.url}}"
+                        data-image-url="{{profile.avatar_url}}"
                         style="cursor: pointer;"
                         alt="Manager Profile Photo"
+                        onerror="this.src='{{profile.avatar_url}}'"
                       >
-                         {% endif %}
                       <h5 class="mt-3 mb-0">{{profile.manager_first_name}} {{profile.manager_last_name}}</h5>
                     </div>
                   </div>

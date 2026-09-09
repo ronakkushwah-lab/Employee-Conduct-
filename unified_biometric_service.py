@@ -54,6 +54,8 @@ class ADMSHandler(BaseHTTPRequestHandler):
                 if clean.startswith(prefix):
                     clean = '/iclock' + clean
                     break
+        if clean in ('/', '') or clean.startswith('/?'):
+            clean = '/iclock/cdata' + clean[1:]
         return clean
 
     def do_GET(self):
@@ -61,7 +63,7 @@ class ADMSHandler(BaseHTTPRequestHandler):
         target_url = f"{RENDER_CLOUD_URL}{norm_path}"
         client_ip = self.client_address[0]
         try:
-            resp = requests.get(target_url, headers={'User-Agent': 'ADMS-Proxy'}, timeout=8)
+            resp = requests.get(target_url, headers={'User-Agent': 'ADMS-Proxy', 'Referer': f"{RENDER_CLOUD_URL}/"}, timeout=8)
             self.send_response(resp.status_code)
             for k, v in resp.headers.items():
                 if k.lower() in ('content-type', 'content-length'):
@@ -106,7 +108,7 @@ class ADMSHandler(BaseHTTPRequestHandler):
             logger.info(f"   ↳ Punch Data: {l}")
 
         try:
-            resp = requests.post(target_url, data=body, headers={'Content-Type': 'text/plain'}, timeout=10)
+            resp = requests.post(target_url, data=body, headers={'Content-Type': 'text/plain', 'Referer': f"{RENDER_CLOUD_URL}/", 'User-Agent': 'ADMS-Proxy'}, timeout=10)
             self.send_response(resp.status_code)
             for k, v in resp.headers.items():
                 if k.lower() in ('content-type', 'content-length'):

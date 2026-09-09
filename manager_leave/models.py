@@ -136,6 +136,9 @@ class ManagerLeave(models.Model):
             'leavetype': self.leavetype,
             'leave_days': self.leave_days,
             'created': self.created,
+            'manager_approved': True,
+            'is_manager_leave': True,
+            'has_manager': False,
             }
         return leave_details_dict
 

@@ -3,12 +3,14 @@ from account.forms import SignUpForm
 from account.models import User, CompanyStaff, Company
 from django.views.generic import TemplateView, CreateView
 from django.contrib.auth.models import Group, Permission
-from django.contrib.auth.decorators import user_passes_test, login_required
 from django.utils.decorators import method_decorator
-from employee.models import Department, Designation, Employee
+from django.views.decorators.csrf import ensure_csrf_cookie, csrf_protect, csrf_exempt
+from employee.models import Department, Designation, Employee, Attendance
+from managers.models import Manager
+from django.utils import timezone
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.http.response import HttpResponseRedirect, JsonResponse
 from django.shortcuts import render, HttpResponse, redirect, get_object_or_404
 from django.urls import reverse_lazy, reverse
@@ -33,6 +35,7 @@ class SignUpView(CreateView):
     template_name = 'account/signup.html'
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class SignInView(View):
     def post(self, request):
         email = request.POST.get('email', '').strip()
@@ -354,39 +357,11 @@ class RolePermissionView(View):
 
 
 def signup(request):
-    if request.method == 'POST':
-        name = request.POST.get('name', '')
-        company_name = request.POST.get('company_name', '')
-        company_phone = request.POST.get('company_phone', '')
-        company_address = request.POST.get('company_address', '')
-        email = request.POST.get('email', '').strip()
-        password = request.POST.get('password', '')
-        password2 = request.POST.get('password2', '')
-        if not email:
-            messages.error(request, 'Email is required.')
-            return redirect('/signup/')
-        if CompanyStaff.objects.filter(email=email).exists():
-            messages.error(request, 'email Already exists')
-            return redirect('/signup/')
-
-        if password != password2:
-            messages.error(request, 'Password do not match!!')
-            return redirect('/signup/')
-
-        else:
-            company = Company.objects.create(name=name, company_name=company_name, company_phone=company_phone,
-                                             company_address=company_address)
-            extend = CompanyStaff(company=company, email=email, password=password)
-            extend.is_authenticated = True
-            extend.is_company_admin = True
-            extend.password = make_password(extend.password)
-            extend.save()
-            messages.success(request, 'User Registered Successfully! Please Login')
-            return HttpResponseRedirect('/')
-
-    return render(request, 'account/signup.html')
+    messages.error(request, 'Public registration is disabled. Please contact your company administrator to obtain login credentials.')
+    return redirect('signin')
 
 
+@method_decorator(csrf_exempt, name='dispatch')
 class Login(View):
     return_url = None
 
@@ -406,62 +381,51 @@ class Login(View):
                         messages.info(request, "Incorrect Email or Password")
                         return HttpResponseRedirect('/')
 
-                    # Role restriction check
-                    actual_role = getattr(company_staff, 'role', None) or self._role_from_flags(company_staff)
-                    expected_role = request.POST.get('login_role', '').lower()
-                    if expected_role and expected_role != actual_role:
-                        if not (expected_role == 'admin' and actual_role == CompanyStaff.ROLE_SUPERADMIN):
-                            messages.error(request, f"Access Denied: You cannot log in from the {expected_role.capitalize()} page. Please select your correct role.")
-                            return HttpResponseRedirect('/')
-
                     company_staff.is_authenticated = True
                     company_staff.save()
                     request.session['company_staff_id'] = company_staff.id
 
-                    # Role-based redirect to dashboard
                     role = getattr(company_staff, 'role', None) or self._role_from_flags(company_staff)
-                    if role == CompanyStaff.ROLE_SUPERADMIN:
-                        return HttpResponseRedirect(reverse('superadmin_dashboard'))
-                    if role == CompanyStaff.ROLE_ADMIN and company_staff.company_id:
-                        return HttpResponseRedirect(reverse('admin_dashboard', kwargs={
-                            'company_id': company_staff.company_id,
-                            'company_staff_id': company_staff.pk,
-                        }))
-                    if role == CompanyStaff.ROLE_MANAGER and company_staff.company_id:
-                        return HttpResponseRedirect(reverse('manager_dashboard', kwargs={
-                            'company_id': company_staff.company_id,
-                            'company_staff_id': company_staff.pk,
-                        }))
-                    if role == CompanyStaff.ROLE_EMPLOYEE and company_staff.company_id:
-                        # Go first to the simple employee landing dashboard
-                        return HttpResponseRedirect(reverse('employee_role_dashboard', kwargs={
-                            'company_id': company_staff.company_id,
-                            'company_staff_id': company_staff.pk,
-                        }))
+                    is_hr_user = role == CompanyStaff.ROLE_HR or getattr(company_staff, 'is_hr', False)
 
-                    # Fallback for missing role or company: use legacy flags
-                    if company_staff.is_company_admin and company_staff.company_id:
-                        return HttpResponseRedirect(f'/administration/index/{company_staff.company_id}/{company_staff.pk}')
-                    if company_staff.is_manager and company_staff.company_id:
-                        return HttpResponseRedirect(f"/managers/dashboard/{company_staff.company_id}/{company_staff.pk}")
-                    if company_staff.is_employee and company_staff.company_id:
-                        return HttpResponseRedirect(reverse('employee_role_dashboard', kwargs={
+                    # Smart auto-routing based on role - redirect directly to portal dashboards
+                    if role == CompanyStaff.ROLE_SUPERADMIN:
+                        return HttpResponseRedirect('/superadmin/')
+                    if (role == CompanyStaff.ROLE_ADMIN or company_staff.is_company_admin) and company_staff.company_id:
+                        return HttpResponseRedirect(f'/administration/index/{company_staff.company_id}/{company_staff.pk}/')
+                    if is_hr_user and company_staff.company_id:
+                        return HttpResponseRedirect(reverse('hr_dashboard', kwargs={
                             'company_id': company_staff.company_id,
                             'company_staff_id': company_staff.pk,
                         }))
+                    if (role == CompanyStaff.ROLE_MANAGER or company_staff.is_manager) and company_staff.company_id:
+                        return HttpResponseRedirect(f"/managers/dashboard/{company_staff.company_id}/{company_staff.pk}/")
+                    if (role == CompanyStaff.ROLE_EMPLOYEE or company_staff.is_employee) and company_staff.company_id:
+                        return HttpResponseRedirect(f"/employee/employee_dashboard/{company_staff.company_id}/{company_staff.pk}/")
+
+                    # Fallbacks
+                    if company_staff.is_company_admin and company_staff.company_id:
+                        return HttpResponseRedirect(f'/administration/index/{company_staff.company_id}/{company_staff.pk}/')
+                    if company_staff.is_manager and company_staff.company_id:
+                        return HttpResponseRedirect(f"/managers/dashboard/{company_staff.company_id}/{company_staff.pk}/")
+                    if company_staff.is_employee and company_staff.company_id:
+                        return HttpResponseRedirect(f"/employee/employee_dashboard/{company_staff.company_id}/{company_staff.pk}/")
                     return HttpResponseRedirect('/')
                 else:
+                    messages.error(request, "Your account is inactive. Please contact your administrator.")
                     return HttpResponseRedirect('/')
             else:
+                messages.info(request, "Incorrect Email or Password")
                 return HttpResponseRedirect('/')
-
-        except Exception:
-            messages.error(request, "Email does not  Registered!")
+        except Exception as e:
+            messages.error(request, f"Login error: {str(e)}")
             return HttpResponseRedirect('/')
 
     @staticmethod
     def _role_from_flags(company_staff):
         """Fallback: derive role from legacy flags if role field is empty."""
+        if getattr(company_staff, 'is_hr', False):
+            return CompanyStaff.ROLE_HR
         if company_staff.is_company_admin:
             return CompanyStaff.ROLE_ADMIN
         if company_staff.is_manager:
@@ -481,39 +445,23 @@ class Login(View):
 
 
 def superadmin_dashboard(request):
-    """Dashboard for superadmin role."""
-    context = {'role': 'superadmin'}
-    return render(request, 'superadmin/dashboard.html', context)
+    """Dashboard for superadmin role - redirect directly to superadmin panel."""
+    return HttpResponseRedirect('/superadmin/')
 
 
 def admin_dashboard(request, company_id, company_staff_id):
-    """Dashboard for admin role."""
-    context = {
-        'role': 'admin',
-        'company_id': company_id,
-        'company_staff_id': company_staff_id,
-    }
-    return render(request, 'admin/dashboard.html', context)
+    """Dashboard for admin role - redirect directly to administration dashboard."""
+    return HttpResponseRedirect(f'/administration/index/{company_id}/{company_staff_id}/')
 
 
 def manager_dashboard(request, company_id, company_staff_id):
-    """Dashboard for manager role."""
-    context = {
-        'role': 'manager',
-        'company_id': company_id,
-        'company_staff_id': company_staff_id,
-    }
-    return render(request, 'manager/dashboard.html', context)
+    """Dashboard for manager role - redirect directly to manager portal."""
+    return HttpResponseRedirect(f'/managers/dashboard/{company_id}/{company_staff_id}/')
 
 
 def employee_dashboard(request, company_id, company_staff_id):
-    """Dashboard for employee role."""
-    context = {
-        'role': 'employee',
-        'company_id': company_id,
-        'company_staff_id': company_staff_id,
-    }
-    return render(request, 'employee/dashboard.html', context)
+    """Dashboard for employee role - redirect directly to employee panel."""
+    return HttpResponseRedirect(f'/employee/employee_dashboard/{company_id}/{company_staff_id}/')
 
 
 def forgotpass(request):
@@ -561,4 +509,110 @@ def reset_password(request):
             return JsonResponse({"status": "error", "email": user.email})
     except Exception:
         return JsonResponse({"status": "failed"})
+
+
+def hr_dashboard(request, company_id, company_staff_id):
+    company = get_object_or_404(Company, id=company_id)
+    staff = get_object_or_404(CompanyStaff, id=company_staff_id, company=company)
+
+    from django.db.models import Q
+    from biometric.models import BiometricDevice, BiometricEventLog
+
+    total_employees = Employee.objects.filter(Q(user__company=company) | Q(user__isnull=True)).count()
+    total_managers = Manager.objects.filter(Q(user__company=company) | Q(user__isnull=True)).count()
+    today_date = timezone.now().date()
+    today_attendance = Attendance.objects.filter(
+        check_in__date=today_date
+    ).count()
+
+    devices_count = BiometricDevice.objects.filter(company=company).count()
+    recent_events = (
+        BiometricEventLog.objects.filter(
+            Q(company=company) | Q(device__company=company) | Q(company__isnull=True)
+        )
+        .exclude(biometric_user_id__icontains='fk_name')
+        .exclude(biometric_user_id__icontains='{')
+        .select_related('device', 'employee', 'manager')
+        .order_by('-received_at', '-id')[:10]
+    )
+
+    # Personal HR Employee profile & Reporting Manager
+    hr_employee = Employee.objects.filter(user=staff).first()
+    hr_manager = hr_employee.employee_reports_to if hr_employee else None
+    hr_attendance = None
+    hr_is_check_in = 'Check In'
+    hr_hours_num = ''
+    if hr_employee:
+        today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_end = timezone.now().replace(hour=23, minute=59, second=59, microsecond=999999)
+        hr_attendance = Attendance.objects.filter(
+            employee=hr_employee,
+            check_in__gte=today_start,
+            check_in__lte=today_end
+        ).first()
+
+        if hr_attendance:
+            if hr_attendance.check_out and hr_attendance.check_in:
+                time_diff = hr_attendance.check_out - hr_attendance.check_in
+                total_seconds = int(time_diff.total_seconds())
+                hours = total_seconds // 3600
+                minutes = (total_seconds % 3600) // 60
+                hr_hours_num = f"{hours}h {minutes}m"
+                hr_is_check_in = 'Completed'
+            elif hr_attendance.check_in and not hr_attendance.check_out:
+                hr_is_check_in = 'Check Out'
+
+    context = {
+        'company': company,
+        'staff': staff,
+        'company_id': company_id,
+        'company_staff_id': company_staff_id,
+        'company_staff_authenticated': True,
+        'user_initials': 'HR',
+        'total_employees': total_employees,
+        'employee_count': total_employees,
+        'total_managers': total_managers,
+        'manager_count': total_managers,
+        'today_attendance': today_attendance,
+        'today_date': today_date,
+        'devices_count': devices_count,
+        'recent_events': recent_events,
+        'hr_employee': hr_employee,
+        'hr_manager': hr_manager,
+        'hr_attendance': hr_attendance,
+        'hr_is_check_in': hr_is_check_in,
+        'hr_hours_num': hr_hours_num,
+    }
+    return render(request, 'account/hr_dashboard.html', context)
+
+
+def hr_biometric_monitor(request, company_id, company_staff_id):
+    company = get_object_or_404(Company, id=company_id)
+    staff = get_object_or_404(CompanyStaff, id=company_staff_id, company=company)
+
+    from biometric.models import BiometricDevice, BiometricEventLog
+    from django.db.models import Q
+
+    devices = BiometricDevice.objects.filter(company=company).order_by('name', 'id')
+    recent_events = (
+        BiometricEventLog.objects.filter(
+            Q(company=company) | Q(device__company=company) | Q(company__isnull=True)
+        )
+        .exclude(biometric_user_id__icontains='fk_name')
+        .exclude(biometric_user_id__icontains='{')
+        .select_related('device', 'employee', 'manager')
+        .order_by('-received_at', '-id')[:50]
+    )
+
+    context = {
+        'company': company,
+        'staff': staff,
+        'company_id': company_id,
+        'company_staff_id': company_staff_id,
+        'devices': devices,
+        'recent_events': recent_events,
+    }
+    return render(request, 'account/hr_biometric_monitor.html', context)
+
+
 

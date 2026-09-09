@@ -15,7 +15,7 @@ class LeaveManager(models.Manager):
 		'''
 		gets all pending leaves -> Leave.objects.all_pending_leaves()
 		'''
-		return super().get_queryset().filter(status = 'pending').order_by('-created')# applying FIFO 
+		return super().get_queryset().filter(status__in=['pending', 'pending_manager', 'pending_hr']).order_by('-created')# applying FIFO 
 
 
 

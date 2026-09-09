@@ -8,7 +8,7 @@ from django.views.generic import View
 
 from account.models import CompanyStaff
 from administration.models import Task, notification, holiday, MTask, Asign, ManagerNotification
-from employee.models import Attendance, Entries, Employee
+from employee.models import Attendance, Entries, Employee, format_duration
 from leave.forms import LeaveCreationForm
 from leave.models import Leave
 from manager_leave.models import ManagerLeave, BalanceLeave
@@ -289,17 +289,26 @@ def ManagerDashboardView(request, company_id, company_staff_id):
     att = None
     if manager:
         att = ManagerAttendance.objects.filter(
-            Q(check_in__gte=today) & Q(check_in__lt=tomorrow) & Q(manager=manager)
-        ).first()
+            manager=manager,
+            check_in__date=tz.localdate()
+        ).order_by('-id').first()
     ctx['attendance'] = att
     ctx['company_id'] = company_id
     ctx['company_staff_id'] = company_staff_id
     if att:
-        ctx['hours_num'] = strfdelta((att.check_out - att.check_in), "{hours}:{minutes}:{seconds}") if att.check_out else ''
+        if att.check_out and att.check_in:
+            time_diff = att.check_out - att.check_in
+            ctx['hours_num'] = strfdelta(time_diff, "{hours}:{minutes}:{seconds}")
+            diff_sec = int(time_diff.total_seconds())
+            ctx['hours_worked'] = f"{diff_sec // 3600}h {(diff_sec % 3600) // 60}m"
+        else:
+            ctx['hours_num'] = '0:0:0'
+            ctx['hours_worked'] = '0h 0m'
         ctx['is_check_in'] = attendance_type.check_out.value
         ctx['is_complete_attendance'] = bool(att.check_in and att.check_out)
     else:
         ctx['hours_num'] = '0:0:0'
+        ctx['hours_worked'] = '0h 0m'
         ctx['is_check_in'] = attendance_type.check_in.value
         ctx['is_complete_attendance'] = False
 
@@ -452,86 +461,158 @@ def BalanceLeaveView(request,company_id, company_staff_id):
     return render(request, 'managers/leave-balance.html', context)
 
 
-def attendance(request,company_id, company_staff_id):
+def attendance(request, company_id, company_staff_id):
     ctx = {}
-    today = datetime.now().date()
+    today = tz.now().date()
     tomorrow = today + timedelta(1)
 
-    company_staff = CompanyStaff.objects.get(id=company_staff_id)
-    manager = company_staff.manager
-    att = ManagerAttendance.objects.filter(Q(check_in__gt=today)
-                                           & Q(check_in__lt=tomorrow)
-                                           & Q(manager=manager)).first()
+    try:
+        company_staff = CompanyStaff.objects.get(id=company_staff_id)
+    except CompanyStaff.DoesNotExist:
+        messages.error(request, 'Staff user not found.')
+        return redirect('/')
+
+    manager = getattr(company_staff, 'manager', None)
+    if not manager:
+        manager = Manager.objects.filter(user=company_staff).first()
+
+    att = None
+    if manager:
+        att = ManagerAttendance.objects.filter(
+            manager=manager,
+            check_in__date=tz.localdate()
+        ).order_by('-id').first()
+
     ctx['attendance'] = att
     ctx['company_id'] = company_id
     ctx['company_staff_id'] = company_staff_id
     if att:
-        ctx['hours_num'] = strfdelta((att.check_out - att.check_in),
-                                     "{hours}:{minutes}:{seconds}") if att.check_out else ''
+        ctx['hours_num'] = strfdelta((att.check_out - att.check_in), "{hours}:{minutes}:{seconds}") if (att.check_in and att.check_out) else ''
         ctx['is_check_in'] = attendance_type.check_out.value
-        ctx['is_complete_attendance'] = True if att.check_in and att.check_out else False
+        ctx['is_complete_attendance'] = bool(att.check_in and att.check_out)
     else:
+        ctx['hours_num'] = '0:0:0'
         ctx['is_check_in'] = attendance_type.check_in.value
-    ctx.update(_attendance_month_context(ManagerAttendance.objects.filter(manager=manager), request))
+        ctx['is_complete_attendance'] = False
+
+    attendance_qs = ManagerAttendance.objects.filter(manager=manager) if manager else ManagerAttendance.objects.none()
+    ctx.update(_attendance_month_context(attendance_qs, request))
     return render(request, 'managers/attendance-info.html', ctx)
 
 
-def regularization_required_attendance(request,company_id, company_staff_id):
-    company_staff = CompanyStaff.objects.get(id=company_staff_id)
-    atts = ManagerAttendance.objects.filter(manager=company_staff.manager)
+def regularization_required_attendance(request, company_id, company_staff_id):
+    try:
+        company_staff = CompanyStaff.objects.get(id=company_staff_id)
+    except CompanyStaff.DoesNotExist:
+        messages.error(request, 'Staff user not found.')
+        return redirect('/')
+
+    manager = getattr(company_staff, 'manager', None)
+    if not manager:
+        manager = Manager.objects.filter(user=company_staff).first()
+
+    atts = ManagerAttendance.objects.filter(manager=manager) if manager else ManagerAttendance.objects.none()
     if atts:
         for att in atts:
-            if att.regularization_required == False:
+            if not getattr(att, 'regularization_required', False):
                 atts = atts.exclude(id=att.id)
-    print(atts)
-    return render(request, 'managers/regularization.html', context={'atts': atts,'company_id':company_id, 'company_staff_id':company_staff_id})
+    return render(request, 'managers/regularization.html', context={'atts': atts, 'company_id': company_id, 'company_staff_id': company_staff_id})
 
 
-def attendance_post(request,company_id, company_staff_id):
-    if company_id:
+def attendance_post(request, company_id, company_staff_id):
+    if not company_id:
+        return JsonResponse({'status': "FAILED", 'error': 'Invalid company_id'}, status=400)
+
+    try:
+        is_check_in_raw = str(request.POST.get('is_check_in', '')).strip().lower()
+        is_check_in = is_check_in_raw in ['1', 'true', 'check in', 'check_in', 'checkin']
+
+        attendance_id = request.POST.get('attendance_id', '').strip()
+
         try:
-            is_check_in = request.POST['is_check_in']
-            attendance_id = request.POST['attendance_id']
-            attendance_obj = ManagerAttendance.objects.filter(
-                id=attendance_id).first() if attendance_id else ManagerAttendance()
-            if is_check_in == attendance_type.check_in.value:
-                attendance_obj.check_in = tz.now()
-            else:
-                attendance_obj.check_out = tz.now()
             company_staff = CompanyStaff.objects.get(id=company_staff_id)
-            attendance_obj.manager = company_staff.manager
+        except CompanyStaff.DoesNotExist:
+            return JsonResponse({'status': "FAILED", 'error': 'Staff user not found.'}, status=404)
+
+        manager = getattr(company_staff, 'manager', None)
+        if not manager:
+            manager = Manager.objects.filter(user=company_staff).first()
+
+        # If user has an employee profile instead of manager profile (e.g. dual-role or employee on manager dashboard)
+        if not manager:
+            emp = Employee.objects.filter(user=company_staff).first()
+            if emp:
+                now = tz.now()
+                today_date = now.date()
+                att_emp = None
+                if attendance_id and attendance_id.isdigit():
+                    att_emp = Attendance.objects.filter(id=int(attendance_id), employee=emp).first()
+                if is_check_in:
+                    if not att_emp:
+                        att_emp = Attendance.objects.filter(employee=emp, check_in__date=today_date, check_out__isnull=True).order_by('-id').first()
+                    if not att_emp:
+                        att_emp = Attendance(employee=emp, check_in=now)
+                    else:
+                        if not att_emp.check_in:
+                            att_emp.check_in = now
+                    att_emp.save()
+                    msg = 'Checked in successfully!'
+                else:
+                    if not att_emp:
+                        att_emp = Attendance.objects.filter(employee=emp, check_in__date=today_date).order_by('-id').first()
+                    if not att_emp:
+                        att_emp = Attendance(employee=emp, check_in=now, check_out=now)
+                    else:
+                        if not att_emp.check_in:
+                            att_emp.check_in = now
+                        att_emp.check_out = now
+                    att_emp.save()
+                    msg = 'Checked out successfully!'
+                return JsonResponse({'status': 'SUCCESS', 'message': msg}, status=200)
+
+            return JsonResponse({'status': "FAILED", 'error': 'No employee or manager profile found for this staff account. Please ensure an employee or manager profile is created.'}, status=404)
+
+        now = tz.now()
+        today_date = now.date()
+
+        attendance_obj = None
+        if attendance_id and attendance_id.isdigit():
+            attendance_obj = ManagerAttendance.objects.filter(id=int(attendance_id), manager=manager).first()
+
+        if is_check_in:
+            if not attendance_obj:
+                attendance_obj = ManagerAttendance.objects.filter(
+                    manager=manager,
+                    check_in__date=today_date,
+                    check_out__isnull=True
+                ).order_by('-id').first()
+
+            if not attendance_obj:
+                attendance_obj = ManagerAttendance(manager=manager, check_in=now)
+            else:
+                if not attendance_obj.check_in:
+                    attendance_obj.check_in = now
             attendance_obj.save()
-            
-            # Send email notification for manager attendance
-            try:
-                from administration.email_notifications import send_attendance_notification
-                action = 'check_in' if is_check_in == attendance_type.check_in.value else 'check_out'
-                # Create a wrapper to make ManagerAttendance compatible with attendance notification
-                class AttendanceWrapper:
-                    def __init__(self, manager_attendance):
-                        self.manager_attendance = manager_attendance
-                        self.check_in = manager_attendance.check_in
-                        self.check_out = manager_attendance.check_out
-                        self.employee = None  # Managers don't have employee field
-                        # Create a mock employee-like object for manager
-                        class ManagerAsEmployee:
-                            def __init__(self, manager):
-                                self.employee_first_name = manager.manager_first_name
-                                self.employee_last_name = manager.manager_last_name
-                                self.employee_email = manager.manager_email
-                                self.employee_id = manager.manager_id
-                                self.employee_reports_to = None
-                        self.manager = ManagerAsEmployee(manager_attendance.manager)
-                
-                # For managers, we'll send a simplified notification
-                # The function needs to be updated to handle managers, but for now we'll skip
-                # send_attendance_notification(AttendanceWrapper(attendance_obj), action=action)
-            except Exception as e:
-                print(f"Error sending manager attendance notification: {str(e)}")
-            
-            return JsonResponse({'status': 'SUCCESS'}, status=200)
-        except Exception as e:
-            return JsonResponse({'status': "FAILED"}, status=500)
+            msg = 'Checked in successfully!'
+        else:
+            if not attendance_obj:
+                attendance_obj = ManagerAttendance.objects.filter(
+                    manager=manager,
+                    check_in__date=today_date
+                ).order_by('-id').first()
+
+            if not attendance_obj:
+                attendance_obj = ManagerAttendance(manager=manager, check_in=now, check_out=now)
+            else:
+                if not attendance_obj.check_in:
+                    attendance_obj.check_in = now
+                attendance_obj.check_out = now
+            attendance_obj.save()
+            msg = 'Checked out successfully!'
+
+        return JsonResponse({'status': 'SUCCESS', 'message': msg}, status=200)
+    except Exception as e:
+        return JsonResponse({'status': "FAILED", 'error': str(e)}, status=500)
 
 
 def attendance_grid_data(request,company_id, company_staff_id):
@@ -857,7 +938,7 @@ def TaskListView(request,company_id, company_staff_id):
 
 def attendanc(request,company_id, company_staff_id):
     if company_id:
-        attendance = Attendance.objects.filter(employee__user__company__id=company_id)
+        attendance = Attendance.objects.filter(employee__user__company__id=company_id).order_by('-check_in')
         context = {
             'attendance': attendance,
             'company_id': company_id,
@@ -940,9 +1021,9 @@ def Attendancesearch(request,company_id, company_staff_id):
     if 'q' in request.GET:
         q = request.GET['q']
         multiple_q = Q(Q(employee__user__email__icontains=q) | Q(check_in__icontains=q) | Q(check_out__icontains=q))
-        attendance = Attendance.objects.filter(multiple_q)
+        attendance = Attendance.objects.filter(multiple_q).order_by('-check_in')
     else:
-        attendance = Attendance.objects.filter(employee__user__company__id=company_id)
+        attendance = Attendance.objects.filter(employee__user__company__id=company_id).order_by('-check_in')
     context = {
         'attendance': attendance,
         'company_id': company_id,
@@ -1069,17 +1150,33 @@ def unreject_regularization(request, id):
 
     return redirect('mnregularizationrejected')
 
-def AssignListView(request,company_id, company_staff_id):
-    context ={}
+def AssignListView(request, company_id, company_staff_id):
+    context = {}
+    try:
+        company_staff = CompanyStaff.objects.get(id=company_staff_id)
+    except CompanyStaff.DoesNotExist:
+        messages.error(request, 'Company staff not found.')
+        return redirect('accounts:login')
 
-    company_staff = CompanyStaff.objects.get(id=company_staff_id)
+    try:
+        manager = company_staff.manager
+    except (Manager.DoesNotExist, AttributeError):
+        manager = Manager.objects.filter(user=company_staff).first()
 
-    queryset = Asign.objects.filter(assigned_to=company_staff.manager)
-    print('queryset: ', queryset)
-    context['assign']= queryset
-    context['company_id']= company_id
-    context['company_staff_id']= company_staff_id
+    employees = Employee.objects.none()
+    if manager:
+        # Fetch all employees associated with this manager
+        employees = Employee.objects.filter(
+            employee_reports_to=manager
+        ).select_related('employee_department', 'user').order_by('employee_first_name', 'employee_last_name')
+
+    context['employees'] = employees
+    context['assign'] = employees
+    context['company_id'] = company_id
+    context['company_staff_id'] = company_staff_id
     return render(request, 'managers/list-employee.html', context)
+
+
 
 
 def EntryListView(request,company_id, company_staff_id):
@@ -1123,7 +1220,7 @@ def EntryListView(request,company_id, company_staff_id):
                 'user': user,
                 'email': user.user.email if user.user else '',
                 'name': f"{user.employee_first_name} {user.employee_last_name}",
-                'total_time': user_total,
+                'total_time': format_duration(user_total),
                 'entries': entries
             })
 
@@ -1192,23 +1289,59 @@ def create_mregularizations(request,company_id, company_staff_id):
             return render(request, "managers/regularization.html", {'rassigne': Manager.objects.all()},{'company_id':company_id, 'company_staff_id':company_staff_id})
 
 
-def add_project(request,company_id, company_staff_id):
+def add_project(request, company_id, company_staff_id):
     if company_id:
-        if request.method == "POST":
-            title = request.POST.get("title")
-            description = request.POST.get("description")
-
-            assign_i = request.POST.get("employee_id")
-            assigned_t = Employee.objects.get(id=assign_i)
+        try:
             company_staff = CompanyStaff.objects.get(id=company_staff_id)
-            user = company_staff
-            emp = Manager.objects.get(user=user)
+        except CompanyStaff.DoesNotExist:
+            messages.error(request, 'Company staff account not found.')
+            return redirect('/')
+
+        emp = getattr(company_staff, 'manager', None) or Manager.objects.filter(user=company_staff).first()
+
+        if request.method == "POST":
+            title = request.POST.get("title", "").strip()
+            description = request.POST.get("description", "").strip()
+            assign_i = request.POST.get("employee_id", "").strip()
+
+            if not title:
+                messages.error(request, 'Project title is required.')
+                return redirect(f'/managers/add_project/{company_id}/{company_staff_id}')
+
+            if not assign_i or not str(assign_i).isdigit():
+                messages.error(request, 'Please select an employee.')
+                return redirect(f'/managers/add_project/{company_id}/{company_staff_id}')
+
+            assigned_t = Employee.objects.filter(id=int(assign_i)).first()
+            if not assigned_t:
+                messages.error(request, 'Selected employee profile not found.')
+                return redirect(f'/managers/add_project/{company_id}/{company_staff_id}')
 
             MTask.objects.create(user=emp, title=title, description=description, assigned_to=assigned_t)
+
+            # Send real-time notification to employee
+            try:
+                mgr_name = f"{emp.manager_first_name} {emp.manager_last_name}".strip() if emp else "Manager"
+                EmployeeNotification.objects.create(
+                    user=assigned_t,
+                    notifications=f"New project assigned: '{title}' by {mgr_name}."
+                )
+            except Exception:
+                pass
+
+            messages.success(request, f'Project "{title}" assigned to {assigned_t.employee_first_name} {assigned_t.employee_last_name} successfully!')
             return redirect(f'/managers/mprojectlist/{company_id}/{company_staff_id}')
 
         else:
-            return render(request, "managers/add-project.html", {'addProject': Employee.objects.filter(user__company__id=company_id),'company_id':company_id, 'company_staff_id':company_staff_id})
+            employees_qs = Employee.objects.filter(
+                Q(user__company__id=company_id) | Q(user__company_id=company_id) | (Q(employee_reports_to=emp) if emp else Q())
+            ).distinct().order_by('employee_first_name', 'employee_last_name')
+
+            return render(request, "managers/add-project.html", {
+                'addProject': employees_qs,
+                'company_id': company_id, 
+                'company_staff_id': company_staff_id
+            })
 
 
 def add_leave(request, company_id, company_staff_id):
@@ -1444,8 +1577,10 @@ def leave_list(request, company_id, company_staff_id):
         company_staff = CompanyStaff.objects.get(id=company_staff_id)
         try:
             manager = company_staff.manager
-            leaves = Leave.objects.all_pending_leaves().filter(user__employee_reports_to=manager)
-        except Manager.DoesNotExist:
+            leaves = Leave.objects.all_pending_leaves().filter(
+                Q(manager=manager) | Q(user__employee_reports_to=manager)
+            ).distinct().order_by('-created')
+        except Exception:
             leaves = Leave.objects.none()
         return render(request, 'managers/employee-leaves.html', {'leave_list': leaves, 'title': 'Leaves list - pending (your team)', 'company_id': company_id, 'company_staff_id': company_staff_id})
 
@@ -1479,12 +1614,26 @@ def leaves_view(request, id):
 
 def approve_leave(request,company_id, company_staff_id, id):
     if company_id:
-
         leave = get_object_or_404(Leave, id=id)
 
-        leave.approve_leave
+        # Manager approves: sets manager_approved=True, status='pending_hr'
+        leave.approve_by_manager
 
-        messages.success(request, 'Leave successfully approved')
+        # Send background email notifications (non-blocking)
+        def _send_manager_approval_email(leave_id):
+            try:
+                from administration.email_notifications import send_leave_manager_approval_notification
+                target_leave = Leave.objects.filter(id=leave_id).first()
+                if target_leave:
+                    send_leave_manager_approval_notification(target_leave)
+            except Exception as e:
+                print(f"Error sending manager leave approval email: {e}", flush=True)
+
+        import threading
+        threading.Thread(target=_send_manager_approval_email, args=(leave.id,), daemon=True).start()
+
+        messages.success(request, 'Leave approved and forwarded to HR for final approval.',
+                         extra_tags='alert alert-success alert-dismissible show')
         return redirect(f'/managers/leave_list/{company_id}/{company_staff_id}')
 
 
@@ -1539,11 +1688,24 @@ def leave_rejected_list(request):
 
 def reject_leave(request,company_id, company_staff_id, id):
     if company_id:
-        dataset = dict()
         leave = get_object_or_404(Leave, id=id)
         leave.reject_leave
+
+        def _send_manager_rejection_email(leave_id):
+            try:
+                from administration.email_notifications import send_leave_approval_notification
+                target_leave = Leave.objects.filter(id=leave_id).first()
+                if target_leave:
+                    send_leave_approval_notification(target_leave, approved=False)
+            except Exception as e:
+                print(f"Error sending manager rejection email: {e}", flush=True)
+
+        import threading
+        threading.Thread(target=_send_manager_rejection_email, args=(leave.id,), daemon=True).start()
+
         messages.success(request, 'Leave is rejected', extra_tags='alert alert-success alert-dismissible show')
         return redirect(f'/managers/leave_list/{company_id}/{company_staff_id}')
+
 
 
 def unreject_leave(request, id):

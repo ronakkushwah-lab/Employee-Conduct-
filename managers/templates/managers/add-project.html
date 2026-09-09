@@ -44,10 +44,10 @@
                       <div class="col">
                         <label for="leave-type" class="form-label">Assigned To <span class="text-danger">*</span></label>
                         <select class="form-select" aria-label="Default select example" name="employee_id" required>
-                          <option selected>Select Employee</option>
-                                    {% for i in addProject %}
-                          <option value="{{i.id}}">{{i.employee_email}}</option>
-                                        	{% endfor %}
+                          <option value="" disabled selected>Select Employee</option>
+                          {% for i in addProject %}
+                          <option value="{{i.id}}">{% if i.employee_first_name %}{{i.employee_first_name}} {{i.employee_last_name}} — {% endif %}{{i.employee_email}} {% if i.employee_id %}({{i.employee_id}}){% endif %}</option>
+                          {% endfor %}
                         </select>
                       </div>
                     </div>

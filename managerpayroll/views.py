@@ -11,6 +11,8 @@ from django.contrib import messages
 from .utils import render_to_pdf
 from django.http import HttpResponse
 from datetime import datetime
+from django.utils.decorators import method_decorator
+from django.views.decorators.http import require_POST
 
 
 class SalaryView(View):
@@ -45,7 +47,7 @@ class SalaryView(View):
 
 def SalaryDetailView(request, company_id, company_staff_id, id=None,):
 
-    salary = get_object_or_404(Salary, id=id)
+    salary = get_object_or_404(Salary, id=id, manager__user__company_id=company_id)
 
     context = {
             "id": salary.id,
@@ -73,10 +75,11 @@ def SalaryDetailView(request, company_id, company_staff_id, id=None,):
     return render(request,"managerpayroll/manager-payslip.html", context)
 
 
+@method_decorator(require_POST, name='dispatch')
 class SalaryRemove(View):
-    def get(self, request,company_id, company_staff_id, id):
+    def post(self, request,company_id, company_staff_id, id):
         if company_id:
-            salary = Salary.objects.get(id=id)
+            salary = Salary.objects.get(id=id, manager__user__company_id=company_id)
             print(salary)
             salary.delete()
             messages.success(request, f"{salary} deleted successfully")
@@ -94,7 +97,7 @@ class Update_salary_View(UpdateView):
 class GeneratePdf(View):
     def get(self,request,company_id, company_staff_id,id=None,*args, **kwargs):
         # getting the template
-        salary = get_object_or_404(Salary, id=id)
+        salary = get_object_or_404(Salary, id=id, manager__user__company_id=company_id)
         context = {
             "id": salary.id,
             "manager":salary.manager,

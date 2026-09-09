@@ -18,6 +18,69 @@
                     </div>
                   </div>
                   <ul class="metisMenu mm-show" id="menu">
+                    {% if company_staff_is_hr or staff.role == 'hr' or staff.is_hr %}
+                    <li class="{% if request.resolver_match.url_name == 'hr_dashboard' %}mm-active{% endif %}">
+                      <a href="{% url 'hr_dashboard' company_id=company_id company_staff_id=company_staff_id %}">
+                        <div class="parent-icon">
+                          <i class="bx bxs-dashboard"></i>
+                        </div>
+                        <div class="menu-title">
+                          <span>HR Dashboard</span>
+                        </div>
+                      </a>
+                    </li>
+
+                    <li class="menu-label">My Personal Space</li>
+                    <li class="{% if url_name == 'attendance' or url_name == 'create_leave' or url_name == 'staffleavetable' or url_name == 'regularization_required' or url_name == 'staffregularizationtable' or url_name == 'employee_profile' %}mm-active{% endif %}">
+                      <a class="has-arrow">
+                        <div class="parent-icon">
+                          <i class="bx bx-user-circle"></i>
+                        </div>
+                        <div class="menu-title">
+                          <span>My Self-Service</span>
+                        </div>
+                      </a>
+                      <ul class="mm-collapse {% if url_name == 'attendance' or url_name == 'create_leave' or url_name == 'staffleavetable' or url_name == 'regularization_required' or url_name == 'staffregularizationtable' or url_name == 'employee_profile' %}mm-show{% endif %}">
+                        <li>
+                          <a href="{% url 'attendance' company_id=company_id company_staff_id=company_staff_id %}" class="{% if url_name == 'attendance' %}active{% endif %}">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            My Attendance & Punch
+                          </a>
+                        </li>
+                        <li>
+                          <a href="{% url 'create_leave' company_id=company_id company_staff_id=company_staff_id %}" class="{% if url_name == 'create_leave' %}active{% endif %}">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Apply Leave (To Manager)
+                          </a>
+                        </li>
+                        <li>
+                          <a href="{% url 'staffleavetable' company_id=company_id company_staff_id=company_staff_id %}" class="{% if url_name == 'staffleavetable' %}active{% endif %}">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Leave Status
+                          </a>
+                        </li>
+                        <li>
+                          <a href="{% url 'regularization_required' company_id=company_id company_staff_id=company_staff_id %}" class="{% if url_name == 'regularization_required' %}active{% endif %}">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Apply Regularization
+                          </a>
+                        </li>
+                        <li>
+                          <a href="{% url 'staffregularizationtable' company_id=company_id company_staff_id=company_staff_id %}" class="{% if url_name == 'staffregularizationtable' %}active{% endif %}">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Regularization Status
+                          </a>
+                        </li>
+                        <li>
+                          <a href="{% url 'employee_profile' company_id=company_id company_staff_id=company_staff_id %}" class="{% if url_name == 'employee_profile' %}active{% endif %}">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            My Profile
+                          </a>
+                        </li>
+                      </ul>
+                    </li>
+                    <li class="menu-label">HR Management Space</li>
+                    {% else %}
                     <li class="{% if request.resolver_match.url_name == 'index' %}mm-active{% endif %}">
                       <a href="{% url 'index' company_id=company_id company_staff_id=company_staff_id %}">
                         <div class="parent-icon">
@@ -28,6 +91,7 @@
                         </div>
                       </a>
                     </li>
+                    {% endif %}
                     <li class="menu-label">Employees</li>
                     {% with url_name=request.resolver_match.url_name|default:"" %}
                     <li class="{% if url_name == 'all_employee' or url_name == 'edit_employee' or url_name == 'registeremployee' or url_name == 'attendancee' or url_name == 'salary' or url_name == 'all_document_View' or url_name == 'employee_search' or url_name == 'attendance_remove' or url_name == 'attendance_manage' or url_name == 'edit_attendance' or url_name == 'attendancesearch' or url_name == 'biometric_machines' %}mm-active{% endif %}">
@@ -52,12 +116,20 @@
                             Attendance List
                           </a>
                         </li>
+                        {% if not company_staff_is_hr and not staff.role == 'hr' and not staff.is_hr %}
                         <li>
                           <a href="{% url 'biometric_machines' company_id=company_id company_staff_id=company_staff_id %}" class="{% if url_name == 'biometric_machines' %}active{% endif %}">
                             <i class='bx bx-right-arrow-alt'></i>
                             Biometric Machines
                           </a>
                         </li>
+                        <li>
+                          <a href="{% url 'hr_dashboard' company_id=company_id company_staff_id=company_staff_id %}" class="{% if url_name == 'hr_dashboard' %}active{% endif %}">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            HR Portal
+                          </a>
+                        </li>
+                        {% endif %}
                         <li>
                           <a href="{% url 'salary' company_id=company_id company_staff_id=company_staff_id %}" class="{% if url_name == 'salary' %}active{% endif %}">
                             <i class='bx bx-right-arrow-alt'></i>
@@ -104,12 +176,13 @@
                         <li>
                           <a href="{% url 'assignlist' company_id=company_id company_staff_id=company_staff_id %}" class="{% if url_name == 'assignlist' %}active{% endif %}">
                             <i class='bx bx-right-arrow-alt'></i>
-                            Employee List
+                            Manager Team List
                           </a>
                         </li>
 {# All Documents (Employees/Managers) links temporarily hidden as requested #}
                       </ul>
                     </li>
+                    {% if not company_staff_is_hr and not staff.role == 'hr' and not staff.is_hr %}
                     <li class="{% if url_name == 'task-create' or url_name == 'projectlist' or url_name == 'All_entry' or url_name == 'task-detail' or url_name == 'manager-project-create' or url_name == 'managerprojectlist' %}mm-active{% endif %}">
                       <a class="has-arrow">
                         <div class="parent-icon">
@@ -176,6 +249,7 @@
                         </li>
                       </ul>
                     </li>
+                    {% endif %}
                     <li class="{% if url_name == 'department_lst' or url_name == 'department' or url_name == 'department_edit' or url_name == 'department_manage' %}mm-active{% endif %}">
                       <a href="{% url 'department_lst' company_id=company_id company_staff_id=company_staff_id %}" class="{% if url_name == 'department_lst' or url_name == 'department' or url_name == 'department_edit' or url_name == 'department_manage' %}active{% endif %}">
                         <div class="parent-icon">
@@ -221,9 +295,15 @@
                           </a>
                         </li>
                         <li>
-                          <a href="{% url 'mbalance-leave' company_id=company_id company_staff_id=company_staff_id %}" class="{% if url_name == 'mbalance-leave' or url_name == 'add_leaves_balance' %}active{% endif %}">
+                          <a href="{% url 'add_leaves_balance' company_id=company_id company_staff_id=company_staff_id %}" class="{% if url_name == 'add_leaves_balance' %}active{% endif %}">
                             <i class='bx bx-right-arrow-alt'></i>
-                            Add Leaves Balance
+                            Add Employee Leave Balance
+                          </a>
+                        </li>
+                        <li>
+                          <a href="{% url 'mbalance-leave' company_id=company_id company_staff_id=company_staff_id %}" class="{% if url_name == 'mbalance-leave' %}active{% endif %}">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Add Manager Leave Balance
                           </a>
                         </li>
                         <li>
@@ -282,6 +362,7 @@
                         </li>
                       </ul>
                     </li>
+                    {% if not company_staff_is_hr and not staff.role == 'hr' and not staff.is_hr %}
                     <li class="{% if url_name == 'invoice-create' or url_name == 'invoice-list' %}mm-active{% endif %}">
                       <a href="{% url 'invoice-create' company_id=company_id company_staff_id=company_staff_id  %}" class="{% if url_name == 'invoice-create' or url_name == 'invoice-list' %}active{% endif %}">
                         <div class="parent-icon">
@@ -292,6 +373,7 @@
                         </div>
                       </a>
                     </li>
+                    {% endif %}
                     <li class="{% if url_name == 'resignlist' or url_name == 'approvedresignlist' or url_name == 'cancelresignlist' or url_name == 'resignrejected' or url_name == 'userresignapprove' %}mm-active{% endif %}">
                       <a class="has-arrow">
                         <div class="parent-icon">
@@ -337,4 +419,26 @@
           <div class="simplebar-scrollbar" style="height: 83px; transform: translate3d(0px, 0px, 0px); display: block;"></div>
         </div>
       </div>
-    
+
+<script>
+  // Convert the final link in legacy delete modals into a CSRF-protected POST.
+  document.addEventListener('click', function (event) {
+    const link = event.target.closest('a[href]');
+    if (!link) return;
+    const path = new URL(link.href, window.location.origin).pathname;
+    const destructivePath = /\/(?:Remove_employee|Remove_Employee_List|Remove_manager|Remove_manager_List|clients_remove|clients_remove_grid|leads_remove|remove_entry|project_remove|manager-project\/remove|balance_remove|notification_remove|attendance_remove|delholiday|post-delete|department_remove|mattendance_remove|assign_remove|mpost-delete|delete-employee-documents|salary_remove|msalary_remove|invoice_remove|delete_email_notification|fetch_emails|mark_email_read|mark_all_emails_read|leave\/(?:approve|reject|cancel|unapprove|uncancel|unreject)|resign\/(?:approve|reject|cancel|unapprove|uncancel|unreject)|m?regularization\/(?:approve|reject|cancel|unapprove|uncancel|unreject))\//i;
+    if (!destructivePath.test(path)) return;
+
+    event.preventDefault();
+    const form = document.createElement('form');
+    form.method = 'post';
+    form.action = link.href;
+    const csrf = document.createElement('input');
+    csrf.type = 'hidden';
+    csrf.name = 'csrfmiddlewaretoken';
+    csrf.value = '{{ csrf_token }}';
+    form.appendChild(csrf);
+    document.body.appendChild(form);
+    form.submit();
+  });
+</script>

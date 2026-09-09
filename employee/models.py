@@ -105,7 +105,12 @@ class Employee(models.Model):
     employee_pin_code = models.CharField(max_length=50, null=True)
     employee_state = models.CharField(max_length=50, null=True)
     employee_country = models.CharField(max_length=50, null=True)
-    employee_reports_to = models.ForeignKey(to='managers.Manager', on_delete=models.CASCADE, default=True)
+    employee_reports_to = models.ForeignKey(
+        to='managers.Manager',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
     employee_image = models.FileField(upload_to='media/', blank=True)
     employee_created_date = models.DateTimeField(auto_now=True)
     employee_status = models.CharField(max_length=32, choices=employee_status, default='Active')
@@ -129,6 +134,14 @@ class Employee(models.Model):
     employee_experience_company_job_position = models.CharField(max_length=50, null=True)
     employee_experience_company_period_from = models.CharField(max_length=50, null=True)
     employee_experience_company_period_to = models.CharField(max_length=50, null=True)
+
+    @property
+    def avatar_url(self):
+        if self.employee_image:
+            return self.employee_image.url
+        if self.employee_gender and str(self.employee_gender).strip().lower() == 'female':
+            return '/static/asets/images/dummy-woman.png'
+        return '/static/asets/images/dummy-man.png'
 
     def __str__(self):
         return self.employee_email
@@ -173,10 +186,15 @@ class Employee(models.Model):
             'employee_experience_company_period_from': self.employee_experience_company_period_from,
             'employee_experience_company_period_to': self.employee_experience_company_period_to,
             'employee_reports_to': self.employee_reports_to_id if self.employee_reports_to_id else None,
-            'biometric_id': self.biometric_id or ''
+            'biometric_id': self.biometric_id or '',
+            'employee_role': getattr(self.user, 'role', 'employee') if self.user else 'employee',
+            'is_hr': bool(self.user and (self.user.role == 'hr' or getattr(self.user, 'is_hr', False)))
         }
         return employee_details_dict
 
+    @property
+    def is_hr(self):
+        return bool(self.user and (self.user.role == 'hr' or getattr(self.user, 'is_hr', False)))
 
     @property
     def formatted_employee_id(self):
@@ -219,6 +237,30 @@ class Designation(models.Model):
         return self.Designation_Name
 
 
+def format_duration(td):
+    """
+    Format a timedelta object into a human-readable string like '1 day 2 hrs', '8 hrs 30 mins', '45 mins'.
+    """
+    if not td or not isinstance(td, timedelta):
+        return "0 mins"
+    total_seconds = int(td.total_seconds())
+    if total_seconds <= 0:
+        return "0 mins"
+    days = total_seconds // 86400
+    remaining_secs = total_seconds % 86400
+    hours = remaining_secs // 3600
+    minutes = (remaining_secs % 3600) // 60
+
+    parts = []
+    if days > 0:
+        parts.append(f"{days} day{'s' if days > 1 else ''}")
+    if hours > 0:
+        parts.append(f"{hours} hr{'s' if hours > 1 else ''}")
+    if minutes > 0:
+        parts.append(f"{minutes} min{'s' if minutes != 1 else ''}")
+    return " ".join(parts) if parts else "0 mins"
+
+
 class Entries(models.Model):
     '''The Task dataclass to store the task in database'''
     user = models.ForeignKey(Employee, on_delete=models.CASCADE, null=True,blank=True)
@@ -257,6 +299,13 @@ class Entries(models.Model):
         return self.end_time - self.start_time
 
     @property
+    def formatted_duration(self):
+        """
+        Human-readable formatted total duration
+        """
+        return format_duration(self.total_duration)
+
+    @property
     def time_left(self):
         """
         Entry's property for the total duration left
@@ -290,17 +339,20 @@ class Entries(models.Model):
         return seconds
 
     def to_json(self):
+        local_start = timezone.localtime(self.start_time) if self.start_time else None
+        local_end = timezone.localtime(self.end_time) if self.end_time else None
+
         entry_details_dict = {
             'id': self.id,
-            'start_time': self.start_time,
-            'end_time': self.end_time,
+            'start_time': local_start.strftime("%d %b %Y, %I:%M %p") if local_start else '',
+            'end_time': local_end.strftime("%d %b %Y, %I:%M %p") if local_end else '',
             'task': self.task,
             'project': self.project,
             'blocker_name': self.blocker_name,
             'attachment_url': self.attachment.url if self.attachment else '',
             'attachment_name': self.attachment.name.split('/')[-1] if self.attachment else '',
-            'total_duration': self.total_duration,
-            'assigned_to': self.assigned_to.manager_email
+            'total_duration': self.formatted_duration,
+            'assigned_to': self.assigned_to.manager_email if self.assigned_to else ''
         }
         return entry_details_dict
 
@@ -325,8 +377,21 @@ class Attendance(models.Model):
     created = models.DateTimeField(auto_now=False, auto_now_add=True,null=True)
 
     class Meta:
-        ordering = ['-created']  # recent objects
+        ordering = ['-check_in']  # chronological by attendance punch time
 
+
+    @property
+    def formatted_working_hours(self):
+        if self.check_in and self.check_out:
+            total_seconds = int((self.check_out - self.check_in).total_seconds())
+            if total_seconds > 0:
+                hours = total_seconds // 3600
+                minutes = (total_seconds % 3600) // 60
+                return f"{hours}h {minutes}m"
+            return "0m"
+        elif self.check_in and not self.check_out:
+            return "In Progress"
+        return "-"
 
     @property
     def working_hour(self):

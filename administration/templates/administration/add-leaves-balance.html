@@ -16,103 +16,27 @@
                       <i class="bx bx-home"></i>
                     </a>
                   </li>
-                  <li class="breadcrumb-item active" aria-current="page">Add Leaves Balance</li>
+                  <li class="breadcrumb-item active" aria-current="page">Add Employee Leave Balance</li>
                 </ol>
               </nav>
             </div>            
           </div>
           <hr>
           
-          <!-- Apply Leave Form -->
           <div class="row mt-3">
             <div class="col-12">
               <div class="card">
-                <div class="card-header">
-                  <h5 class="card-title mb-0">Apply for Leave</h5>
-                </div>
                 <div class="card-body">
                   <form method="POST" action="{% url 'add_leaves_balance' company_id=company_id company_staff_id=company_staff_id %}">
                     {% csrf_token %}
                     <div class="row mb-2">
                       <div class="col">
-                        <label for="employee-select" class="form-label">Select Employee <span class="text-danger">*</span></label>
-                        <select class="form-select" id="employee-select" name="employee_id" required>
-                          <option value="">Select Employee</option>
-                          {% if employees %}
-                            {% for emp in employees %}
-                            <option value="{{ emp.id }}">{{ emp.employee_first_name }} {{ emp.employee_last_name }} ({{ emp.employee_email }})</option>
-                            {% endfor %}
-                          {% endif %}
-                        </select>
-                      </div>
-                    </div>
-                    <div class="row mb-2">
-                      <div class="col-md-6">
-                        <label for="start-time" class="form-label">Start Date <span class="text-danger">*</span></label>
-                        <input class="form-control" type="date" id="start-time" name="startdate" required>
-                      </div>
-                      <div class="col-md-6">
-                        <label for="end-time" class="form-label">End Date <span class="text-danger">*</span></label>
-                        <input class="form-control" type="date" id="end-time" name="enddate" required>
-                      </div>
-                    </div>
-                    <div class="row mb-2">
-                      <div class="col-md-6">
-                        <label for="leave-days" class="form-label">Leave Days</label>
-                        <input class="form-control" type="number" id="leave-days" name="leave_days" readonly>
-                        <small class="text-muted">Automatically calculated based on start and end date</small>
-                      </div>
-                      <div class="col-md-6">
-                        <label for="leave-type" class="form-label">Leave Type <span class="text-danger">*</span></label>
-                        <select class="form-select" aria-label="Default select example" name="leavetype" id="leave-type" required>
-                          <option value="">Select Leave Type</option>
-                          <option value="sick">Sick Leave</option>
-                          <option value="casual">Casual Leave</option>
-                          <option value="emergency">Emergency Leave</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div class="row mb-2">
-                      <div class="col">
-                        <label for="reason" class="form-label">Leave Reason <span class="text-danger">*</span></label>
-                        <textarea class="form-control" id="reason" name="reason" rows="3" required></textarea>
-                      </div>
-                    </div>
-                    <div class="row mb-2">
-                      <div class="col">
-                        <label for="description" class="form-label">Description</label>
-                        <textarea class="form-control" id="description" name="description" rows="4" placeholder="Enter detailed description of your leave..."></textarea>
-                      </div>
-                    </div>
-                    <div class="mt-4 mb-2 button-right">
-                      <button type="submit" class="btn btn-outline-orangeyellow">Apply Leave</button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Add Leave Balance Form -->
-          <div class="row mt-3">
-            <div class="col-12">
-              <div class="card">
-                <div class="card-header">
-                  <h5 class="card-title mb-0">Assign Leave Balance to Employee</h5>
-                </div>
-                <div class="card-body">
-                  <form method="POST" action="{% url 'add_leaves_balance' company_id=company_id company_staff_id=company_staff_id %}">
-                    {% csrf_token %}
-                    <div class="row mb-2">
-                      <div class="col">
-                        <label for="assign_user" class="form-label">Employee <span class="text-danger">*</span></label>
+                        <label for="assign_user" class="form-label">User <span class="text-danger">*</span></label>
                         <select class="form-select" id="assign_user" name="employee_id" required>
-                          <option value="">Select Employee</option>
-                          {% if employees %}
-                            {% for emp in employees %}
+                          <option value="" selected disabled>Select Employee</option>
+                          {% for emp in employees %}
                             <option value="{{ emp.id }}">{{ emp.employee_first_name }} {{ emp.employee_last_name }} ({{ emp.employee_email }})</option>
-                            {% endfor %}
-                          {% endif %}
+                          {% endfor %}
                         </select>
                       </div>                      
                     </div>
@@ -123,7 +47,7 @@
                       </div>                      
                     </div>
                     <div class="mt-4 mb-2 button-right">
-                      <button type="submit" class="btn btn-outline-orangeyellow">Assign Balance</button>
+                      <button type="submit" class="btn btn-outline-orangeyellow">Submit</button>
                     </div>
                   </form>
                 </div>

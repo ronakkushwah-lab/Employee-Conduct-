@@ -87,11 +87,13 @@ class Company(models.Model):
 class CompanyStaff(models.Model):
     ROLE_SUPERADMIN = 'superadmin'
     ROLE_ADMIN = 'admin'
+    ROLE_HR = 'hr'
     ROLE_MANAGER = 'manager'
     ROLE_EMPLOYEE = 'employee'
     ROLE_CHOICES = [
         (ROLE_SUPERADMIN, _('Super Admin')),
         (ROLE_ADMIN, _('Admin')),
+        (ROLE_HR, _('HR')),
         (ROLE_MANAGER, _('Manager')),
         (ROLE_EMPLOYEE, _('Employee')),
     ]
@@ -108,6 +110,7 @@ class CompanyStaff(models.Model):
         blank=True,
     )
     is_company_admin = models.BooleanField(default=False)
+    is_hr = models.BooleanField(default=False)
     is_manager = models.BooleanField(default=False)
     is_employee = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)

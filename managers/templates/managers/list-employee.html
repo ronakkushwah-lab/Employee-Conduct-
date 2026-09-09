@@ -26,20 +26,60 @@
               <div class="card shadow-none border radius-15">
                 <div class="card-body">
                   <div class="table-responsive">
-                    <table class="table table-fluid table-hover" id="myTable">
+                    <table class="table table-fluid table-hover align-middle" id="myTable">
                       <thead>
                         <tr>
-                          <th width="25%">Assigned Date</th>
-                          <th width="25%">Assigned Employee</th>
-                          <th>Description</th>
+                          <th>Employee</th>
+                          <th>Email</th>
+                          <th>Phone</th>
+                          <th>Department</th>
+                          <th>Designation</th>
+                          <th>Status</th>
                         </tr>
                       </thead>
                       <tbody>
-                         {% for task in assign %}
+                         {% for emp in employees %}
                         <tr>
-                          <td>{{ task.created_date|date:"F d, Y" }}</td>
-                          <td>{{ task.employee }}</td>
-                          <td>{{ task.description }}</td>
+                          <td>
+                            <div class="d-flex align-items-center">
+                              {% if emp.employee_image %}
+                                <img src="{{ emp.employee_image.url }}" class="rounded-circle me-2" width="36" height="36" style="object-fit: cover;">
+                              {% else %}
+                                <div class="avatar-initials me-2" style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 13px;">
+                                  {{ emp.employee_first_name|first|upper }}{{ emp.employee_last_name|first|upper }}
+                                </div>
+                              {% endif %}
+                              <div>
+                                <span class="fw-bold">{{ emp.employee_first_name }} {{ emp.employee_last_name }}</span>
+                                {% if emp.employee_id %}
+                                  <br><span class="text-muted small">ID: {{ emp.employee_id }}</span>
+                                {% endif %}
+                              </div>
+                            </div>
+                          </td>
+                          <td>{{ emp.employee_email }}</td>
+                          <td>{{ emp.employee_phone|default:"-" }}</td>
+                          <td>{{ emp.employee_department.department_name|default:"-" }}</td>
+                          <td>
+                            {% if emp.employee_designation %}
+                              {{ emp.employee_designation }}
+                            {% elif emp.employee_experience_company_job_position %}
+                              {{ emp.employee_experience_company_job_position }}
+                            {% else %}
+                              -
+                            {% endif %}
+                          </td>
+                          <td>
+                            {% if emp.employee_status == 'Active' or not emp.employee_status %}
+                              <span class="badge bg-success">Active</span>
+                            {% else %}
+                              <span class="badge bg-secondary">{{ emp.employee_status }}</span>
+                            {% endif %}
+                          </td>
+                        </tr>
+                         {% empty %}
+                        <tr>
+                          <td colspan="6" class="text-center text-muted py-4">No employees associated with this manager yet.</td>
                         </tr>
                          {% endfor %}
                       </tbody>

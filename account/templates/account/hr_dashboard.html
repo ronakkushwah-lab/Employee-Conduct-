@@ -1,0 +1,315 @@
+{% load static %}
+{% include "administration/header.html" %}
+{% include "administration/sidebar.html" %}
+{% include "administration/topbar.html" %}
+
+      <div class="page_wrapper">
+        <div class="page-content">
+          {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+              <strong>Message: </strong> {{ message }}
+            </div>
+          {% endfor %}
+
+          <!-- Welcome Banner -->
+          <div class="row">
+            <div class="col">
+              <div class="card message">
+                <div class="card-body">
+                  <div class="d-flex align-items-center">
+                    <div class="message-content">
+                      <script type="text/javascript">
+                        document.write("<h1 class='wish'>");
+                        var day = new Date();
+                        var hr = day.getHours();
+                        if (hr >= 0 && hr < 12){
+                          document.write("Good Morning!");
+                        }
+                        else if (hr == 12) {
+                          document.write("Good Noon!");
+                        }
+                        else if (hr >= 12 && hr <= 17) {
+                          document.write("Good Afternoon!");
+                        }
+                        else {
+                          document.write("Good Evening!");
+                        }
+                        document.write("</h1>");
+                      </script>
+                      <h4>Welcome to the HR Management Portal</h4>
+                      <p>Manage employees, monitor real-time biometric attendance, track leaves and regularizations.</p>
+                    </div>
+                    <div class="ms-auto">
+                      <div class="message-img">
+                        <img src="{% static 'asets/images/message-image.png' %}" class="img-fluid">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- HR Personal Workspace & Attendance Quick Punch Card -->
+          <div class="card radius-10 shadow-sm border-0 mb-4" style="background: #ffffff; border-left: 5px solid #0d6efd !important;">
+            <div class="card-body p-4">
+              <div class="row align-items-center">
+                <!-- Left: Profile & Reporting Manager Info -->
+                <div class="col-lg-5 col-md-12 border-end pe-lg-4 mb-3 mb-lg-0">
+                  <div class="d-flex align-items-center">
+                    <div class="avatar-box me-3">
+                      {% if hr_employee.employee_image %}
+                        <img src="{{ hr_employee.employee_image.url }}" class="rounded-circle shadow-sm" style="width: 58px; height: 58px; object-fit: cover;">
+                      {% else %}
+                        <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm" style="width: 58px; height: 58px; background: linear-gradient(135deg, #0d6efd, #6610f2); font-size: 1.25rem;">
+                          HR
+                        </div>
+                      {% endif %}
+                    </div>
+                    <div>
+                      <h5 class="mb-1 fw-bold text-dark">{{ hr_employee.get_full_name|default:staff.email }} <span class="badge bg-warning text-dark ms-1" style="font-size: 0.72rem;">HR Staff</span></h5>
+                      <p class="mb-1 text-muted small"><i class="bx bx-id-card me-1"></i><strong>Emp ID:</strong> {{ hr_employee.employee_id|default:"EIC-028" }} &nbsp;|&nbsp; <i class="bx bx-fingerprint me-1"></i><strong>Bio ID:</strong> {{ hr_employee.biometric_id|default:staff.id }}</p>
+                      <p class="mb-0 small text-primary">
+                        <i class="bx bx-user-check me-1"></i><strong>Reports To (Manager):</strong> 
+                        {% if hr_manager %}
+                          <span class="fw-semibold">{{ hr_manager.manager_first_name }} {{ hr_manager.manager_last_name }}</span> ({{ hr_manager.manager_email }})
+                        {% else %}
+                          <span class="text-muted">No manager assigned</span>
+                        {% endif %}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Middle: Personal Today's Attendance Info -->
+                <div class="col-lg-4 col-md-7 border-end pe-lg-4 mb-3 mb-md-0">
+                  <div class="row text-center g-2">
+                    <div class="col-4">
+                      <div class="p-2 rounded bg-light">
+                        <span class="text-muted d-block small mb-1">Check In</span>
+                        <strong class="text-dark small">{% if hr_attendance and hr_attendance.check_in %}{{ hr_attendance.check_in|date:"h:i A" }}{% else %}--:--{% endif %}</strong>
+                      </div>
+                    </div>
+                    <div class="col-4">
+                      <div class="p-2 rounded bg-light">
+                        <span class="text-muted d-block small mb-1">Check Out</span>
+                        <strong class="text-dark small">{% if hr_attendance and hr_attendance.check_out %}{{ hr_attendance.check_out|date:"h:i A" }}{% else %}--:--{% endif %}</strong>
+                      </div>
+                    </div>
+                    <div class="col-4">
+                      <div class="p-2 rounded bg-light">
+                        <span class="text-muted d-block small mb-1">Worked</span>
+                        <strong class="text-success small">{{ hr_hours_num|default:"0h 0m" }}</strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Right: 1-Click Punch & Self-Service Links -->
+                <div class="col-lg-3 col-md-5 ps-lg-4 text-center text-md-end">
+                  {% if hr_is_check_in == 'Completed' %}
+                    <span class="badge bg-success py-2 px-3 mb-2 d-inline-block rounded-3"><i class="bx bx-check-double me-1"></i>Punch Completed Today</span>
+                  {% else %}
+                    <form action="{% url 'attendance_post' company_id=company_id company_staff_id=company_staff_id %}" method="post" class="d-inline-block mb-2">
+                      {% csrf_token %}
+                      <input type="hidden" name="is_check_in" value="{% if hr_is_check_in == 'Check Out' %}0{% else %}1{% endif %}">
+                      <input type="hidden" name="attendance_id" value="{{ hr_attendance.id|default:'' }}">
+                      <button type="submit" class="btn btn-sm {% if hr_is_check_in == 'Check Out' %}btn-danger{% else %}btn-primary{% endif %} px-3 py-2 rounded-3 shadow-sm fw-semibold">
+                        <i class="bx {% if hr_is_check_in == 'Check Out' %}bx-log-out-circle{% else %}bx-log-in-circle{% endif %} me-1"></i>
+                        {{ hr_is_check_in }}
+                      </button>
+                    </form>
+                  {% endif %}
+                  <div class="d-flex justify-content-center justify-content-md-end gap-2 mt-1">
+                    <a href="{% url 'attendance' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-outline-secondary btn-xs small py-1 px-2" style="font-size: 0.78rem;" title="View Monthly Attendance Calendar">
+                      <i class="bx bx-calendar me-1"></i>My Attendance
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Metric Cards Grid (Standard HRMS Rocker Theme) -->
+          <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 row-cols-xl-4">
+            <div class="col">
+              <div class="card radius-10 bg-gradient-cosmic">
+                <div class="card-body">
+                  <div class="d-flex align-items-center">
+                    <div class="me-auto">
+                      <p class="mb-0 text-white">Total Employees</p>
+                      <h4 class="my-1 text-white">{{ total_employees }}</h4>
+                    </div>
+                    <div class="fs-1 text-white"><i class='bx bxs-group'></i></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="card radius-10 bg-gradient-ibiza">
+                <div class="card-body">
+                  <div class="d-flex align-items-center">
+                    <div class="me-auto">
+                      <p class="mb-0 text-white">Total Managers</p>
+                      <h4 class="my-1 text-white">{{ total_managers }}</h4>
+                    </div>
+                    <div class="fs-1 text-white"><i class='bx bxs-user-badge'></i></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="card radius-10 bg-gradient-ohhappiness">
+                <div class="card-body">
+                  <div class="d-flex align-items-center">
+                    <div class="me-auto">
+                      <p class="mb-0 text-white">Present Today</p>
+                      <h4 class="my-1 text-white">{{ today_attendance }}</h4>
+                    </div>
+                    <div class="fs-1 text-white"><i class='bx bxs-calendar-check'></i></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="card radius-10 bg-gradient-deepblue">
+                <div class="card-body">
+                  <div class="d-flex align-items-center">
+                    <div class="me-auto">
+                      <p class="mb-0 text-white">Biometric Devices</p>
+                      <h4 class="my-1 text-white">{{ devices_count|default:"1" }}</h4>
+                    </div>
+                    <div class="fs-1 text-white"><i class='bx bx-fingerprint'></i></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recent Biometric Events (Live Auto-Refresh Table) -->
+          <div class="card radius-10 mt-3 shadow-sm border-0">
+            <div class="card-body p-4">
+              <div class="d-flex align-items-center mb-4">
+                <h5 class="mb-0 fw-bold me-3 text-dark">Recent Biometric Events</h5>
+                <span class="badge" style="background-color: #0f766e; color: #ffffff; font-size: 0.8rem; font-weight: 600; padding: 6px 12px; border-radius: 6px;">
+                  <i class="bx bxs-circle me-1" style="font-size: 0.6rem; color: #6ee7b7;"></i> Live Webhook Auto-Refresh Active
+                </span>
+                <div class="ms-auto">
+                  <a href="{% url 'hr_biometric_monitor' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-sm btn-outline-secondary">View All Events</a>
+                </div>
+              </div>
+
+              <div class="table-responsive">
+                <table class="table align-middle mb-0 table-hover">
+                  <thead>
+                    <tr style="border-bottom: 2px solid #edf2f7;">
+                      <th class="fw-bold py-3 text-dark">Bio ID</th>
+                      <th class="fw-bold py-3 text-dark">Staff Name</th>
+                      <th class="fw-bold py-3 text-dark">Role</th>
+                      <th class="fw-bold py-3 text-dark">Department</th>
+                      <th class="fw-bold py-3 text-dark">Punch Timestamp</th>
+                      <th class="fw-bold py-3 text-dark">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for ev in recent_events %}
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                      <td class="py-3 text-dark fw-normal">{{ ev.biometric_user_id }}</td>
+                      <td class="py-3">
+                        {% if ev.employee %}
+                          <span class="text-dark fw-normal">{{ ev.employee.employee_first_name }} {{ ev.employee.employee_last_name }}</span>
+                        {% elif ev.manager %}
+                          <span class="text-dark fw-normal">{{ ev.manager.manager_first_name }} {{ ev.manager.manager_last_name }}</span>
+                        {% else %}
+                          <span class="text-muted fw-normal" style="color: #94a3b8 !important;">Unmapped User</span>
+                        {% endif %}
+                      </td>
+                      <td class="py-3 text-dark fw-normal">
+                        {% if ev.employee %}
+                          Employee
+                        {% elif ev.manager %}
+                          Manager
+                        {% else %}
+                          Staff
+                        {% endif %}
+                      </td>
+                      <td class="py-3 text-dark fw-normal">
+                        {% if ev.employee and ev.employee.employee_department %}
+                          {{ ev.employee.employee_department.department_name }}
+                        {% elif ev.manager and ev.manager.manager_department %}
+                          {{ ev.manager.manager_department.department_name }}
+                        {% else %}
+                          General
+                        {% endif %}
+                      </td>
+                      <td class="py-3 text-dark fw-normal">{{ ev.received_at|date:"d M Y, h:i:s A" }}</td>
+                      <td class="py-3 fw-normal">
+                        {% if ev.employee or ev.manager %}
+                          <span class="text-dark">Recorded</span>
+                        {% else %}
+                          <span class="text-muted" style="color: #94a3b8 !important;">Unmatched</span>
+                        {% endif %}
+                      </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                      <td colspan="6" class="text-center text-muted py-4">No recent biometric events. Punches will automatically appear here.</td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div> <!-- Close .wrapper opened in header.html -->
+
+    <!-- Scripts (Standard HRMS Setup) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/simplebar@latest/dist/simplebar.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/metisMenu/3.0.7/metisMenu.min.js"></script>
+    <script src="https://unpkg.com/boxicons@2.1.2/dist/boxicons.js"></script>
+    <script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/js/all.min.js"></script>
+    <script src="{% static '/asets/js/jquery.sparkline.min.js' %}"></script>
+    <script src="{% static '/asets/js/script.js' %}"></script>
+    <script>
+      // Instantly dismiss preloader once DOM is ready
+      $(document).ready(function() {
+        $('#preloader').fadeOut(200);
+      });
+      window.addEventListener('load', function() {
+        var p = document.getElementById('preloader');
+        if (p) p.style.display = 'none';
+      });
+      setTimeout(function() {
+        var p = document.getElementById('preloader');
+        if (p) p.style.display = 'none';
+      }, 300);
+
+      (function() {
+        let lastKnownEventId = null;
+        function checkLiveBiometricPunch() {
+          if (typeof $ === 'undefined') return;
+          $.ajax({
+            url: '/api/latest-events/',
+            type: 'GET',
+            dataType: 'json',
+            success: function(response) {
+              if (response && response.status === 'success') {
+                if (lastKnownEventId !== null && response.latest_id !== lastKnownEventId) {
+                  window.location.reload();
+                } else if (lastKnownEventId === null) {
+                  lastKnownEventId = response.latest_id;
+                }
+              }
+            }
+          });
+        }
+        setInterval(checkLiveBiometricPunch, 3000);
+      })();
+    </script>
+  </body>
+</html>

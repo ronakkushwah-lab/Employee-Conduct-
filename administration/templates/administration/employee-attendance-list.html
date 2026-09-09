@@ -57,6 +57,7 @@
                           <th>Email</th>
                           <th>Check In</th>
                           <th>Check Out</th>
+                          <th>Working Hours</th>
                           <th>Action</th>
                         </tr>
                       </thead>
@@ -67,6 +68,15 @@
                           <td>{{i.employee.employee_email}}</td>
                           <td>{% if i.check_in %}{{ i.check_in|date:"M. d, Y, g:i a" }}{% else %}-{% endif %}</td>
                           <td>{% if i.check_out %}{{ i.check_out|date:"M. d, Y, g:i a" }}{% else %}-{% endif %}</td>
+                          <td>
+                            {% if i.formatted_working_hours == 'In Progress' %}
+                              <span class="badge bg-light-primary text-primary">In Progress</span>
+                            {% elif i.formatted_working_hours != '-' %}
+                              <span class="fw-semibold text-dark">{{ i.formatted_working_hours }}</span>
+                            {% else %}
+                              -
+                            {% endif %}
+                          </td>
                           <td class="dropdown">
                             <a class="d-flex align-items-center nav-link dropdown-toggle dropdown-toggle-nocaret" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                               <i class="bx bx-dots-vertical-rounded"></i>

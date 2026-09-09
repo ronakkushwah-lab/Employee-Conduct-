@@ -26,14 +26,26 @@ import sweetify
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-SECRET_KEY = '^2gq+gcpq@#4exlzp&tt*yl8@4%^6o7hf^kkzyz!5hpk_r0e^&'
-DEBUG = True
-ALLOWED_HOSTS = ['*']
+SECRET_KEY = os.environ.get(
+    'DJANGO_SECRET_KEY',
+    'dev-only-insecure-key-change-before-production',
+)
+DEBUG = os.environ.get('DJANGO_DEBUG', 'true').lower() in {'1', 'true', 'yes'}
+ALLOWED_HOSTS = [
+    host.strip() for host in os.environ.get(
+        'DJANGO_ALLOWED_HOSTS',
+        'localhost,127.0.0.1,employee-conduct-mcak.onrender.com,65.0.32.183',
+    ).split(',') if host.strip()
+]
 
 # CSRF Trusted Origins for Render, ngrok and other external domains
 CSRF_TRUSTED_ORIGINS = [
     'https://employee-conduct-mcak.onrender.com',
+    'http://employee-conduct-mcak.onrender.com',
     'https://*.onrender.com',
+    'http://*.onrender.com',
+    'http://65.0.32.183',
+    'https://65.0.32.183',
     'http://localhost:8000',
     'http://127.0.0.1:8000',
     'https://maryetta-semiacademical-eufemia.ngrok-free.dev',
@@ -46,9 +58,15 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 USE_X_FORWARDED_HOST = True
 USE_X_FORWARDED_PORT = True
 
-# For development: Allow all origins (use only in development, not production)
-# Uncomment the line below if you want to allow all origins (less secure)
-# CSRF_TRUSTED_ORIGINS = ['*']
+SECURE_SSL_REDIRECT = not DEBUG
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
+SECURE_HSTS_SECONDS = 31536000 if not DEBUG else 0
+SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
+SECURE_HSTS_PRELOAD = not DEBUG
+CSRF_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_HTTPONLY = False
 
 DATE_INPUT_FORMATS = ('%d/%m/%Y','%d-%m-%Y','%Y-%m-%d')
 
@@ -223,9 +241,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
 # Gmail IMAP Configuration (for reading inquiry emails from Gmail inbox)
 GMAIL_IMAP_HOST = 'imap.gmail.com'
 GMAIL_IMAP_PORT = 993
-GMAIL_EMAIL = 'eic.developer.testing@gmail.com'
-# IMPORTANT: For production, use env var: export GMAIL_APP_PASSWORD='your-app-password-here'
-GMAIL_APP_PASSWORD = 'tyoxjiqcigxjbiut'
+GMAIL_EMAIL = os.environ.get('GMAIL_EMAIL', '')
+GMAIL_APP_PASSWORD = os.environ.get('GMAIL_APP_PASSWORD', '')
 
 # Outgoing email via Gmail SMTP
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -235,6 +252,7 @@ EMAIL_HOST_USER = GMAIL_EMAIL
 EMAIL_HOST_PASSWORD = GMAIL_APP_PASSWORD
 EMAIL_USE_TLS = True
 DEFAULT_FROM_EMAIL = GMAIL_EMAIL
+EMAIL_TIMEOUT = 10
 
 # Logging - so leave/email notification logs show in console
 LOGGING = {

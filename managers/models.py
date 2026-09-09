@@ -128,7 +128,13 @@ class Manager(models.Model):
             return f"EIC-{self.pk:03d}"
         if mid.upper().startswith("EIC-"):
             return mid
-        return f"EIC-{mid}"
+    @property
+    def avatar_url(self):
+        if self.manager_image:
+            return self.manager_image.url
+        if self.manager_gender and str(self.manager_gender).strip().lower() == 'female':
+            return '/static/asets/images/dummy-woman.png'
+        return '/static/asets/images/dummy-man.png'
 
     @property
     def get_full_name(self):
@@ -217,6 +223,14 @@ class ManagerEntry(models.Model):
         return self.end_time - self.start_time
 
     @property
+    def formatted_duration(self):
+        """
+        Human-readable formatted total duration
+        """
+        from employee.models import format_duration
+        return format_duration(self.total_duration)
+
+    @property
     def time_left(self):
         """
         Entry's property for the total duration left
@@ -266,6 +280,23 @@ class ManagerAttendance(models.Model):
     check_out = models.DateTimeField(blank=True, null=True)
     manager = models.ForeignKey(Manager, null=True, on_delete=models.CASCADE)
 
+    class Meta:
+        ordering = ['-check_in']
+
+
+
+    @property
+    def formatted_working_hours(self):
+        if self.check_in and self.check_out:
+            total_seconds = int((self.check_out - self.check_in).total_seconds())
+            if total_seconds > 0:
+                hours = total_seconds // 3600
+                minutes = (total_seconds % 3600) // 60
+                return f"{hours}h {minutes}m"
+            return "0m"
+        elif self.check_in and not self.check_out:
+            return "In Progress"
+        return "-"
 
     @property
     def working_hour(self):
