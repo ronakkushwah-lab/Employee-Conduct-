@@ -58,39 +58,43 @@
         <a class="d-flex align-items-center nav-link dropdown-toggle dropdown-toggle-nocaret"
            href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
           
-          {% if employee and employee.avatar_base64 or employee and employee.employee_image %}
-            <img src="{{ employee.avatar_url }}" class="user-img" alt="user avatar" onerror="this.onerror=null; this.src='{% if employee.employee_gender|lower == 'female' %}{% static 'asets/images/dummy-woman.png' %}{% else %}{% static 'asets/images/dummy-man.png' %}{% endif %}';">
-          {% elif employee %}
-            <div class="avatar-initials" style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-size: 16px; font-weight: bold;">
-              {{ employee.employee_first_name|first|upper }}{{ employee.employee_last_name|first|upper }}
-            </div>
-          {% elif user_initials %}
-            <div class="avatar-initials" style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-size: 16px; font-weight: bold;">
-              {{ user_initials }}
-            </div>
-          {% else %}
-          <img src="{% static 'asets/images/dummy-man.png' %}" class="user-img" alt="user avatar">
-          {% endif %}
-
-          <div class="user-info ps-3">
-            {% if user.is_authenticated or company_staff_authenticated %}
-                <p class="user-name mb-0">
-                  Hello 
-                  {% if employee %}
-                      {{ employee.employee_first_name|capfirst }}
-                  {% elif user.full_name %}
-                      {{ user.full_name|truncatewords:1|capfirst }}
-                  {% else %}
-                      Admin
-                  {% endif %}
-                </p>
+          {% with active_emp=employee|default:hr_employee|default:profile %}
+            {% if active_emp and active_emp.avatar_base64 or active_emp and active_emp.employee_image %}
+              <img src="{{ active_emp.avatar_url }}" class="user-img" alt="user avatar" onerror="this.onerror=null; this.src='{% if active_emp.employee_gender|lower == 'female' %}{% static 'asets/images/dummy-woman.png' %}{% else %}{% static 'asets/images/dummy-man.png' %}{% endif %}';">
+            {% elif active_emp and active_emp.employee_first_name %}
+              <div class="avatar-initials" style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-size: 16px; font-weight: bold;">
+                {{ active_emp.employee_first_name|first|upper }}{{ active_emp.employee_last_name|first|upper }}
+              </div>
+            {% elif user_initials %}
+              <div class="avatar-initials" style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-size: 16px; font-weight: bold;">
+                {{ user_initials }}
+              </div>
+            {% else %}
+              <img src="{% static 'asets/images/dummy-man.png' %}" class="user-img" alt="user avatar">
             {% endif %}
-          </div>
+
+            <div class="user-info ps-3">
+              {% if user.is_authenticated or company_staff_authenticated %}
+                  <p class="user-name mb-0">
+                    Hello 
+                    {% if active_emp and active_emp.employee_first_name %}
+                        {{ active_emp.employee_first_name|capfirst }}
+                    {% elif user.full_name %}
+                        {{ user.full_name|truncatewords:1|capfirst }}
+                    {% elif staff and staff.name %}
+                        {{ staff.name|truncatewords:1|capfirst }}
+                    {% else %}
+                        Admin
+                    {% endif %}
+                  </p>
+              {% endif %}
+            </div>
+          {% endwith %}
 
         </a>
 
         <ul class="dropdown-menu dropdown-menu-end">
-          {% if company_staff_is_hr or staff.role == 'hr' or staff.is_hr %}
+          {% if company_staff_is_hr or staff.role == 'hr' or staff.is_hr or hr_employee %}
           <li>
             <a href="{% url 'hr_profile' company_id=company_id company_staff_id=company_staff_id %}" class="dropdown-item">
               <i class='bx bx-user me-2'></i> My Profile

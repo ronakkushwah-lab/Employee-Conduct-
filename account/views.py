@@ -577,6 +577,8 @@ def hr_dashboard(request, company_id, company_staff_id):
         'today_date': today_date,
         'devices_count': devices_count,
         'recent_events': recent_events,
+        'employee': hr_employee,
+        'company_staff_is_hr': True,
         'hr_employee': hr_employee,
         'hr_manager': hr_manager,
         'hr_attendance': hr_attendance,
@@ -720,6 +722,8 @@ def hr_profile_view(request, company_id, company_staff_id):
         'company_id': company_id,
         'company_staff_id': company_staff_id,
         'hr_employee': hr_employee,
+        'employee': hr_employee,
+        'company_staff_is_hr': True,
         'profile': hr_employee,
         'post': post,
     }
