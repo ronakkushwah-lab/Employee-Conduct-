@@ -397,7 +397,7 @@
                         data-image-url="{{profile.avatar_url}}"
                         style="cursor: pointer;"
                         alt="Manager Profile Photo"
-                        onerror="this.src='{{profile.avatar_url}}'"
+                        onerror="this.onerror=null; this.src='{% static 'asets/images/dummy-man.png' %}';"
                       >
                       <h5 class="mt-3 mb-0">{{profile.manager_first_name}} {{profile.manager_last_name}}</h5>
                     </div>
