@@ -388,40 +388,28 @@ class Login(View):
                     role = getattr(company_staff, 'role', None) or self._role_from_flags(company_staff)
                     is_hr_user = role == CompanyStaff.ROLE_HR or getattr(company_staff, 'is_hr', False)
 
-                    # Smart auto-routing based on role
+                    # Smart auto-routing based on role - redirect directly to portal dashboards
                     if role == CompanyStaff.ROLE_SUPERADMIN:
-                        return HttpResponseRedirect(reverse('superadmin_dashboard'))
+                        return HttpResponseRedirect('/superadmin/')
                     if (role == CompanyStaff.ROLE_ADMIN or company_staff.is_company_admin) and company_staff.company_id:
-                        return HttpResponseRedirect(reverse('admin_dashboard', kwargs={
-                            'company_id': company_staff.company_id,
-                            'company_staff_id': company_staff.pk,
-                        }))
+                        return HttpResponseRedirect(f'/administration/index/{company_staff.company_id}/{company_staff.pk}/')
                     if is_hr_user and company_staff.company_id:
                         return HttpResponseRedirect(reverse('hr_dashboard', kwargs={
                             'company_id': company_staff.company_id,
                             'company_staff_id': company_staff.pk,
                         }))
                     if (role == CompanyStaff.ROLE_MANAGER or company_staff.is_manager) and company_staff.company_id:
-                        return HttpResponseRedirect(reverse('manager_dashboard', kwargs={
-                            'company_id': company_staff.company_id,
-                            'company_staff_id': company_staff.pk,
-                        }))
+                        return HttpResponseRedirect(f"/managers/dashboard/{company_staff.company_id}/{company_staff.pk}/")
                     if (role == CompanyStaff.ROLE_EMPLOYEE or company_staff.is_employee) and company_staff.company_id:
-                        return HttpResponseRedirect(reverse('employee_role_dashboard', kwargs={
-                            'company_id': company_staff.company_id,
-                            'company_staff_id': company_staff.pk,
-                        }))
+                        return HttpResponseRedirect(f"/employee/employee_dashboard/{company_staff.company_id}/{company_staff.pk}/")
 
                     # Fallbacks
                     if company_staff.is_company_admin and company_staff.company_id:
-                        return HttpResponseRedirect(f'/administration/index/{company_staff.company_id}/{company_staff.pk}')
+                        return HttpResponseRedirect(f'/administration/index/{company_staff.company_id}/{company_staff.pk}/')
                     if company_staff.is_manager and company_staff.company_id:
-                        return HttpResponseRedirect(f"/managers/dashboard/{company_staff.company_id}/{company_staff.pk}")
+                        return HttpResponseRedirect(f"/managers/dashboard/{company_staff.company_id}/{company_staff.pk}/")
                     if company_staff.is_employee and company_staff.company_id:
-                        return HttpResponseRedirect(reverse('employee_role_dashboard', kwargs={
-                            'company_id': company_staff.company_id,
-                            'company_staff_id': company_staff.pk,
-                        }))
+                        return HttpResponseRedirect(f"/employee/employee_dashboard/{company_staff.company_id}/{company_staff.pk}/")
                     return HttpResponseRedirect('/')
                 else:
                     messages.error(request, "Your account is inactive. Please contact your administrator.")
@@ -457,39 +445,23 @@ class Login(View):
 
 
 def superadmin_dashboard(request):
-    """Dashboard for superadmin role."""
-    context = {'role': 'superadmin'}
-    return render(request, 'superadmin/dashboard.html', context)
+    """Dashboard for superadmin role - redirect directly to superadmin panel."""
+    return HttpResponseRedirect('/superadmin/')
 
 
 def admin_dashboard(request, company_id, company_staff_id):
-    """Dashboard for admin role."""
-    context = {
-        'role': 'admin',
-        'company_id': company_id,
-        'company_staff_id': company_staff_id,
-    }
-    return render(request, 'admin/dashboard.html', context)
+    """Dashboard for admin role - redirect directly to administration dashboard."""
+    return HttpResponseRedirect(f'/administration/index/{company_id}/{company_staff_id}/')
 
 
 def manager_dashboard(request, company_id, company_staff_id):
-    """Dashboard for manager role."""
-    context = {
-        'role': 'manager',
-        'company_id': company_id,
-        'company_staff_id': company_staff_id,
-    }
-    return render(request, 'manager/dashboard.html', context)
+    """Dashboard for manager role - redirect directly to manager portal."""
+    return HttpResponseRedirect(f'/managers/dashboard/{company_id}/{company_staff_id}/')
 
 
 def employee_dashboard(request, company_id, company_staff_id):
-    """Dashboard for employee role."""
-    context = {
-        'role': 'employee',
-        'company_id': company_id,
-        'company_staff_id': company_staff_id,
-    }
-    return render(request, 'employee/dashboard.html', context)
+    """Dashboard for employee role - redirect directly to employee panel."""
+    return HttpResponseRedirect(f'/employee/employee_dashboard/{company_id}/{company_staff_id}/')
 
 
 def forgotpass(request):
