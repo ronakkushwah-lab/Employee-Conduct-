@@ -163,10 +163,9 @@
               <div class="card shadow-none border radius-15 employee-card">
                 <div class="card-body">
                   <div class="align-items-center">
-                    		
                     <div class="fm-icon-box radius-15 text-center">
-                         {% if employee.employee_image %}
-                      <img src="{{employee.employee_image.url}}" class="img-fluid user-img">
+                      {% if employee.avatar_base64 or employee.employee_image %}
+                        <img src="{{ employee.avatar_url }}" class="img-fluid user-img" onerror="this.style.display='none';">
                         {% else %}
                         <div class="avatar-initials" style="width: 100px; height: 100px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; margin: 0 auto; color: white; font-size: 36px; font-weight: bold;">
                           {{ employee.employee_first_name|first|upper }}{{ employee.employee_last_name|first|upper }}

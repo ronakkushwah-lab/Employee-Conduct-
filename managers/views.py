@@ -198,6 +198,8 @@ def manager_profile_view(request, company_id, company_staff_id):
             from django.utils.text import slugify
             import uuid
             try:
+                # Save base64 directly into database (permanent on Neon)
+                profile.avatar_base64 = cropped_image_data
                 format_part, imgstr = cropped_image_data.split(';base64,')
                 ext = format_part.split('/')[-1] if '/' in format_part else 'jpg'
                 name = f"manager_{slugify(profile.manager_first_name or '')}_{uuid.uuid4().hex[:8]}.{ext}"
@@ -205,7 +207,18 @@ def manager_profile_view(request, company_id, company_staff_id):
             except Exception as e:
                 messages.error(request, f'Error processing cropped image: {str(e)}')
         elif 'manager_image' in request.FILES:
-            profile.manager_image = request.FILES['manager_image']
+            uploaded_image = request.FILES['manager_image']
+            profile.manager_image = uploaded_image
+            try:
+                import base64
+                import mimetypes
+                uploaded_image.seek(0)
+                content = uploaded_image.read()
+                uploaded_image.seek(0)
+                content_type = mimetypes.guess_type(uploaded_image.name)[0] or 'image/jpeg'
+                profile.avatar_base64 = f"data:{content_type};base64,{base64.b64encode(content).decode('utf-8')}"
+            except Exception:
+                pass
 
         profile.save()
         messages.success(request, 'Profile updated successfully!')
@@ -228,12 +241,23 @@ def upload_manager_profile_image(request, company_id, company_staff_id):
     if 'manager_image' not in request.FILES:
         return JsonResponse({'error': 'No image file provided'}, status=400)
     try:
-        profile.manager_image = request.FILES['manager_image']
+        uploaded_image = request.FILES['manager_image']
+        profile.manager_image = uploaded_image
+        try:
+            import base64
+            import mimetypes
+            uploaded_image.seek(0)
+            content = uploaded_image.read()
+            uploaded_image.seek(0)
+            content_type = mimetypes.guess_type(uploaded_image.name)[0] or 'image/jpeg'
+            profile.avatar_base64 = f"data:{content_type};base64,{base64.b64encode(content).decode('utf-8')}"
+        except Exception:
+            pass
         profile.save()
         return JsonResponse({
             'success': True,
             'message': 'Profile photo updated.',
-            'image_url': profile.manager_image.url if profile.manager_image else None,
+            'image_url': profile.avatar_url,
         })
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
@@ -260,10 +284,17 @@ def remove_manager_profile_image(request, company_id, company_staff_id):
             except Exception:
                 pass
         profile.manager_image = ''
-        profile.save()
+        profile.avatar_base64 = ''
+        profile.save(update_fields=['manager_image', 'avatar_base64'])
         messages.success(request, 'Profile photo removed.')
     except Exception as e:
-        messages.error(request, f'Error removing photo: {str(e)}')
+        try:
+            profile.manager_image = ''
+            profile.avatar_base64 = ''
+            profile.save()
+            messages.success(request, 'Profile photo removed.')
+        except Exception as e2:
+            messages.error(request, f'Error removing photo: {str(e2)}')
     return redirect('manager_profile', company_id=company_id, company_staff_id=company_staff_id)
 
 

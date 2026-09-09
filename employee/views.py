@@ -272,6 +272,9 @@ def employee_profile_view(request,company_id, company_staff_id):
                     import uuid
                     
                     try:
+                        # Store base64 directly in database for permanent persistence (e.g. on Neon)
+                        profile.avatar_base64 = cropped_image_data
+                        
                         # Remove data URL prefix
                         format, imgstr = cropped_image_data.split(';base64,', 1)
                         ext = format.split('/')[-1]
@@ -291,6 +294,15 @@ def employee_profile_view(request,company_id, company_staff_id):
                     uploaded_image = request.FILES['employee_image']
                     _validate_profile_image(uploaded_image)
                     profile.employee_image = uploaded_image
+                    try:
+                        import mimetypes
+                        uploaded_image.seek(0)
+                        content = uploaded_image.read()
+                        uploaded_image.seek(0)
+                        content_type = mimetypes.guess_type(uploaded_image.name)[0] or 'image/jpeg'
+                        profile.avatar_base64 = f"data:{content_type};base64,{base64.b64encode(content).decode('utf-8')}"
+                    except Exception:
+                        pass
 
                 profile.save()
                 messages.success(request, 'Profile updated successfully!')
@@ -354,6 +366,15 @@ def upload_profile_image(request, company_id, company_staff_id):
         uploaded_image = request.FILES['employee_image']
         _validate_profile_image(uploaded_image)
         profile.employee_image = uploaded_image
+        try:
+            import mimetypes
+            uploaded_image.seek(0)
+            content = uploaded_image.read()
+            uploaded_image.seek(0)
+            content_type = mimetypes.guess_type(uploaded_image.name)[0] or 'image/jpeg'
+            profile.avatar_base64 = f"data:{content_type};base64,{base64.b64encode(content).decode('utf-8')}"
+        except Exception:
+            pass
         profile.save()
         return JsonResponse({
             'success': True,
@@ -387,11 +408,13 @@ def remove_profile_image(request, company_id, company_staff_id):
             except Exception:
                 pass
         profile.employee_image = ''
-        profile.save(update_fields=['employee_image'])
+        profile.avatar_base64 = ''
+        profile.save(update_fields=['employee_image', 'avatar_base64'])
         messages.success(request, 'Profile photo removed successfully.')
     except Exception as e:
         try:
             profile.employee_image = ''
+            profile.avatar_base64 = ''
             profile.save()
             messages.success(request, 'Profile photo removed successfully.')
         except Exception as e2:

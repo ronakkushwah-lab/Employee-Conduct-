@@ -59,8 +59,8 @@
                 <div class="col-lg-5 col-md-12 border-end pe-lg-4 mb-3 mb-lg-0">
                   <div class="d-flex align-items-center">
                     <div class="avatar-box me-3">
-                      {% if employee.employee_image %}
-                        <img src="{{ employee.employee_image.url }}" class="rounded-circle shadow-sm" style="width: 58px; height: 58px; object-fit: cover;">
+                      {% if employee.avatar_base64 or employee.employee_image %}
+                        <img src="{{ employee.avatar_url }}" class="rounded-circle shadow-sm" style="width: 58px; height: 58px; object-fit: cover;" onerror="this.style.display='none';">
                       {% else %}
                         <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm" style="width: 58px; height: 58px; background: linear-gradient(135deg, #0d6efd, #6610f2); font-size: 1.25rem;">
                           {{ employee.employee_first_name|first|upper }}{{ employee.employee_last_name|first|upper }}

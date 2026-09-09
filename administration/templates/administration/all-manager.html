@@ -143,8 +143,8 @@
                   <div class="align-items-center">
                     		
                     <div class="fm-icon-box radius-15 text-center">
-                         {% if manager.manager_image %}
-                      <img src="{{manager.manager_image.url}}" class="img-fluid user-img">
+                         {% if manager.avatar_base64 or manager.manager_image %}
+                      <img src="{{ manager.avatar_url }}" class="img-fluid user-img" onerror="this.style.display='none';">
                         {% else %}
                         <div class="avatar-initials" style="width: 100px; height: 100px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; margin: 0 auto; color: white; font-size: 36px; font-weight: bold;">
                           {{ manager.manager_first_name|first|upper }}{{ manager.manager_last_name|first|upper }}

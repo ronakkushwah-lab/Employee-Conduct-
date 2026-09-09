@@ -42,8 +42,8 @@
                         <tr>
                           <td>
                             <div class="d-flex align-items-center">
-                              {% if emp.employee_image %}
-                                <img src="{{ emp.employee_image.url }}" class="rounded-circle me-2" width="36" height="36" style="object-fit: cover;">
+                              {% if emp.avatar_base64 or emp.employee_image %}
+                                <img src="{{ emp.avatar_url }}" class="rounded-circle me-2" width="36" height="36" style="object-fit: cover;" onerror="this.style.display='none';">
                               {% else %}
                                 <div class="avatar-initials me-2" style="width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 13px;">
                                   {{ emp.employee_first_name|first|upper }}{{ emp.employee_last_name|first|upper }}

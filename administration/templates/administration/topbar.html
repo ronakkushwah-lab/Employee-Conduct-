@@ -58,8 +58,8 @@
         <a class="d-flex align-items-center nav-link dropdown-toggle dropdown-toggle-nocaret"
            href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
           
-          {% if employee and employee.employee_image %}
-            <img src="{{ employee.employee_image.url }}" class="user-img" alt="user avatar">
+          {% if employee and employee.avatar_base64 or employee and employee.employee_image %}
+            <img src="{{ employee.avatar_url }}" class="user-img" alt="user avatar" onerror="this.onerror=null; this.src='{% if employee.employee_gender|lower == 'female' %}{% static 'asets/images/dummy-woman.png' %}{% else %}{% static 'asets/images/dummy-man.png' %}{% endif %}';">
           {% elif employee %}
             <div class="avatar-initials" style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-size: 16px; font-weight: bold;">
               {{ employee.employee_first_name|first|upper }}{{ employee.employee_last_name|first|upper }}

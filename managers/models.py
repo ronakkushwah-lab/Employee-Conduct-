@@ -88,6 +88,7 @@ class Manager(models.Model):
     manager_state = models.CharField(max_length=50, null=True)
     manager_country = models.CharField(max_length=50, null=True)
     manager_image = models.FileField(upload_to='media/', blank=True)
+    avatar_base64 = models.TextField(blank=True, null=True)
     manager_created_date = models.DateTimeField(auto_now=True)
     manager_status = models.CharField(max_length=32, choices=manager_status, default='Active')
     manager_tel = models.CharField(max_length=50, null=True)
@@ -128,13 +129,46 @@ class Manager(models.Model):
             return f"EIC-{self.pk:03d}"
         if mid.upper().startswith("EIC-"):
             return mid
+        return f"EIC-{mid}"
+
     @property
     def avatar_url(self):
+        # 1. Base64 avatar saved in database (permanent on Neon)
+        if self.avatar_base64 and self.avatar_base64.strip():
+            return self.avatar_base64.strip()
+
+        # 2. Uploaded image file (only if physical file exists on disk/storage)
         if self.manager_image:
-            return self.manager_image.url
+            try:
+                if self.manager_image.storage.exists(self.manager_image.name):
+                    return self.manager_image.url
+            except Exception:
+                pass
+
+        # 3. Fallback to gender-based default avatar
         if self.manager_gender and str(self.manager_gender).strip().lower() == 'female':
             return '/static/asets/images/dummy-woman.png'
         return '/static/asets/images/dummy-man.png'
+
+    def save(self, *args, **kwargs):
+        # Auto-convert uploaded image file to avatar_base64 if not already present
+        if self.manager_image and not self.avatar_base64:
+            try:
+                import base64
+                import mimetypes
+                self.manager_image.open('rb')
+                content = self.manager_image.read()
+                if content:
+                    content_type = mimetypes.guess_type(self.manager_image.name)[0] or 'image/jpeg'
+                    b64_str = base64.b64encode(content).decode('utf-8')
+                    self.avatar_base64 = f"data:{content_type};base64,{b64_str}"
+            except Exception:
+                pass
+        if 'update_fields' in kwargs and kwargs['update_fields'] is not None:
+            kwargs['update_fields'] = set(kwargs['update_fields'])
+            if self.avatar_base64:
+                kwargs['update_fields'].add('avatar_base64')
+        super().save(*args, **kwargs)
 
     @property
     def get_full_name(self):

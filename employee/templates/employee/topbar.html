@@ -22,13 +22,13 @@
             <div class="user-box dropdown">
               <a class="d-flex align-items-center nav-link dropdown-toggle dropdown-toggle-nocaret" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                 {% if employee %}
-                  <img src="{{ employee.avatar_url }}" class="user-img" alt="user avatar" id="topbar-avatar" onerror="this.src='{% static 'asets/images/dummy-man.png' %}'">
+                  <img src="{{ employee.avatar_url }}" class="user-img" alt="user avatar" id="topbar-avatar" onerror="this.src='{% if employee.employee_gender|lower == 'female' %}{% static 'asets/images/dummy-woman.png' %}{% else %}{% static 'asets/images/dummy-man.png' %}{% endif %}'">
                 {% elif profile %}
-                  <img src="{{ profile.avatar_url }}" class="user-img" alt="user avatar" id="topbar-avatar" onerror="this.src='{% static 'asets/images/dummy-man.png' %}'">
+                  <img src="{{ profile.avatar_url }}" class="user-img" alt="user avatar" id="topbar-avatar" onerror="this.src='{% if profile.employee_gender|lower == 'female' %}{% static 'asets/images/dummy-woman.png' %}{% else %}{% static 'asets/images/dummy-man.png' %}{% endif %}'">
                 {% elif company_staff_id %}
                   {% get_employee company_staff_id as current_employee %}
                   {% if current_employee %}
-                    <img src="{{ current_employee.avatar_url }}" class="user-img" alt="user avatar" id="topbar-avatar" onerror="this.src='{% static 'asets/images/dummy-man.png' %}'">
+                    <img src="{{ current_employee.avatar_url }}" class="user-img" alt="user avatar" id="topbar-avatar" onerror="this.src='{% if current_employee.employee_gender|lower == 'female' %}{% static 'asets/images/dummy-woman.png' %}{% else %}{% static 'asets/images/dummy-man.png' %}{% endif %}'">
                   {% else %}
                     <img src="{% static 'asets/images/dummy-man.png' %}" class="user-img" alt="user avatar" id="topbar-avatar">
                   {% endif %}
@@ -236,13 +236,13 @@
       <div class="user-box dropdown">
         <a class="d-flex align-items-center nav-link dropdown-toggle dropdown-toggle-nocaret" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
           {% if employee %}
-            <img src="{{ employee.avatar_url }}" class="user-img" alt="user avatar" id="topbar-avatar" onerror="this.src='{% static 'asets/images/dummy-man.png' %}'">
+            <img src="{{ employee.avatar_url }}" class="user-img" alt="user avatar" id="topbar-avatar" onerror="this.src='{% if employee.employee_gender|lower == 'female' %}{% static 'asets/images/dummy-woman.png' %}{% else %}{% static 'asets/images/dummy-man.png' %}{% endif %}'">
           {% elif profile %}
-            <img src="{{ profile.avatar_url }}" class="user-img" alt="user avatar" id="topbar-avatar" onerror="this.src='{% static 'asets/images/dummy-man.png' %}'">
+            <img src="{{ profile.avatar_url }}" class="user-img" alt="user avatar" id="topbar-avatar" onerror="this.src='{% if profile.employee_gender|lower == 'female' %}{% static 'asets/images/dummy-woman.png' %}{% else %}{% static 'asets/images/dummy-man.png' %}{% endif %}'">
           {% elif company_staff_id %}
             {% get_employee company_staff_id as current_employee %}
             {% if current_employee %}
-              <img src="{{ current_employee.avatar_url }}" class="user-img" alt="user avatar" id="topbar-avatar" onerror="this.src='{% static 'asets/images/dummy-man.png' %}'">
+              <img src="{{ current_employee.avatar_url }}" class="user-img" alt="user avatar" id="topbar-avatar" onerror="this.src='{% if current_employee.employee_gender|lower == 'female' %}{% static 'asets/images/dummy-woman.png' %}{% else %}{% static 'asets/images/dummy-man.png' %}{% endif %}'">
             {% else %}
               <img src="{% static 'asets/images/dummy-man.png' %}" class="user-img" alt="user avatar" id="topbar-avatar">
             {% endif %}

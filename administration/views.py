@@ -550,6 +550,8 @@ def Promote_Employee_To_Manager_View(request, company_id, company_staff_id):
                 )
                 if employee.employee_image:
                     manager.manager_image = employee.employee_image
+                if getattr(employee, 'avatar_base64', None):
+                    manager.avatar_base64 = employee.avatar_base64
                 manager.save()
             else:
                 manager.manager_designation = manager_designation
