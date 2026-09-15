@@ -186,7 +186,8 @@ class Employee(models.Model):
         employee_details_dict = {
             'employee_first_name': self.employee_first_name,
             'employee_last_name': self.employee_last_name,
-            'employee_department': self.employee_department.department_name,
+            'employee_department': self.employee_department.department_name if self.employee_department else '',
+            'employee_department_id': self.employee_department.id if self.employee_department else '',
             'employee_image': self.employee_image.url if self.employee_image else None,
             'employee_gender': self.employee_gender,
             'employee_address': self.employee_address,

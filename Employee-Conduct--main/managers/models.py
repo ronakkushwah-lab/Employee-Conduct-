@@ -185,7 +185,8 @@ class Manager(models.Model):
         manager_details_dict = {
             'manager_first_name': self.manager_first_name,
             'manager_last_name': self.manager_last_name,
-            'manager_department': self.manager_department.department_name,
+            'manager_department': self.manager_department.department_name if self.manager_department else '',
+            'manager_department_id': self.manager_department.id if self.manager_department else '',
             'manager_image': self.manager_image.url if self.manager_image else None,
             'manager_gender': self.manager_gender,
             'manager_address': self.manager_address,

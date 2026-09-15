@@ -647,6 +647,15 @@ def Employee_Edit_View(request, company_id,company_staff_id):
                     elif value is not None and len(value) != 0:
                         employee_models_fields_dict.setdefault(key, value)
             
+            # Handle Department update
+            dept_id = request.POST.get('department_id') or request.POST.get('employee_department')
+            if dept_id:
+                try:
+                    dept_obj = Department.objects.get(id=dept_id, company_id=company_id)
+                    employee_models_fields_dict['employee_department'] = dept_obj
+                except Exception:
+                    pass
+
             # Check if manager is being changed
             if 'employee_reports_to' in employee_models_fields_dict:
                 try:
@@ -987,6 +996,16 @@ def manager_Edit_View(request,company_id, company_staff_id):
                         manager_models_fields_dict[key] = value.strip() or None
                     elif value is not None and len(value) != 0:
                         manager_models_fields_dict.setdefault(key, value)
+
+            # Handle Department update
+            dept_id = request.POST.get('department_id') or request.POST.get('manager_department')
+            if dept_id:
+                try:
+                    dept_obj = Department.objects.get(id=dept_id, company_id=company_id)
+                    manager_models_fields_dict['manager_department'] = dept_obj
+                except Exception:
+                    pass
+
             manager_obj.update(**manager_models_fields_dict)
             emp_id = request.POST.get('manager_id')
 

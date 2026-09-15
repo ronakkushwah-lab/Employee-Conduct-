@@ -418,43 +418,54 @@
                                           <input type="text" class="form-control phone-input" id="employee_phone_heading_edit" name="employee_phone" maxlength="17">
                                         </div>
                                       </div>
-                                        <div class="row mb-2">
-                                        <div class="col-md-6">
-                                          <label for="status" class="form-label">Status <span class="text-danger">*</span></label>
-                                          <select class="form-select" aria-label="Default select example" id="employee_status_edit" name="employee_status">
-                                            <option selected>Select Status</option>
-                                            <option value="Active">Active</option>
-                                            <option value="Inactive">Inactive</option>
-                                          </select>
-                                        </div>
-                                        <div class="col-md-6">
-                                          <label for="manager-edit" class="form-label">Reporting to (Manager)</label>
-                                          <select class="form-select" id="employee_reports_to_edit" name="employee_reports_to" aria-label="Select Manager">
-                                            <option value="">Select Manager</option>
-                                            {% for m in reports_to %}
-                                            <option value="{{ m.id }}">{{ m.manager_first_name }} {{ m.manager_last_name }} ({{ m.manager_email }})</option>
-                                            {% endfor %}
-                                          </select>
-                                        </div>
-                                      </div>
-                                      <div class="row mb-2">
-                                        <div class="col-md-6">
-                                          <label for="employee_role_edit" class="form-label">System Role <span class="text-danger">*</span></label>
-                                          {% if is_admin %}
-                                          <select class="form-select" id="employee_role_edit" name="employee_role" aria-label="Select Role">
-                                            <option value="employee">Employee</option>
-                                            <option value="hr">HR (Human Resources)</option>
-                                          </select>
-                                          {% else %}
-                                          <input type="text" class="form-control bg-light" id="employee_role_display" value="Employee" readonly>
-                                          <input type="hidden" id="employee_role_edit" name="employee_role" value="employee">
-                                          {% endif %}
-                                        </div>
-                                        <div class="col-md-6">
-                                          <label for="employee_biometric_id_edit" class="form-label">Biometric ID</label>
-                                          <input type="text" class="form-control" id="employee_biometric_id_edit" name="biometric_id" placeholder="e.g. 101">
-                                        </div>
-                                      </div>
+                                       <div class="row mb-2">
+                                         <div class="col-md-6">
+                                           <label for="employee_status_edit" class="form-label">Status <span class="text-danger">*</span></label>
+                                           <select class="form-select" aria-label="Default select example" id="employee_status_edit" name="employee_status">
+                                             <option selected>Select Status</option>
+                                             <option value="Active">Active</option>
+                                             <option value="Inactive">Inactive</option>
+                                           </select>
+                                         </div>
+                                         <div class="col-md-6">
+                                           <label for="employee_department_edit" class="form-label">Department <span class="text-danger">*</span></label>
+                                           <select class="form-select" id="employee_department_edit" name="department_id" required>
+                                             <option value="">Select Department</option>
+                                             {% for dept in departments %}
+                                             <option value="{{ dept.id }}">{{ dept.department_name }}</option>
+                                             {% endfor %}
+                                           </select>
+                                         </div>
+                                       </div>
+                                       <div class="row mb-2">
+                                         <div class="col-md-6">
+                                           <label for="manager-edit" class="form-label">Reporting to (Manager)</label>
+                                           <select class="form-select" id="employee_reports_to_edit" name="employee_reports_to" aria-label="Select Manager">
+                                             <option value="">Select Manager</option>
+                                             {% for m in reports_to %}
+                                             <option value="{{ m.id }}">{{ m.manager_first_name }} {{ m.manager_last_name }} ({{ m.manager_email }})</option>
+                                             {% endfor %}
+                                           </select>
+                                         </div>
+                                         <div class="col-md-6">
+                                           <label for="employee_biometric_id_edit" class="form-label">Biometric ID</label>
+                                           <input type="text" class="form-control" id="employee_biometric_id_edit" name="biometric_id" placeholder="e.g. 101">
+                                         </div>
+                                       </div>
+                                       <div class="row mb-2">
+                                         <div class="col-md-6">
+                                           <label for="employee_role_edit" class="form-label">System Role <span class="text-danger">*</span></label>
+                                           {% if is_admin %}
+                                           <select class="form-select" id="employee_role_edit" name="employee_role" aria-label="Select Role">
+                                             <option value="employee">Employee</option>
+                                             <option value="hr">HR (Human Resources)</option>
+                                           </select>
+                                           {% else %}
+                                           <input type="text" class="form-control bg-light" id="employee_role_display" value="Employee" readonly>
+                                           <input type="hidden" id="employee_role_edit" name="employee_role" value="employee">
+                                           {% endif %}
+                                         </div>
+                                       </div>
                                     </div>
                                   </div>
                                 </div>
@@ -914,6 +925,10 @@
             employee_birth_heading_edit.value = res['employee_birth_date']
             employee_country_heading_edit.value = res['employee_country']
             employee_status_edit.value = res['employee_status']
+            var employee_department_edit = document.getElementById("employee_department_edit");
+            if (employee_department_edit && res['employee_department_id']) {
+              employee_department_edit.value = res['employee_department_id'];
+            }
             if (employee_reports_to_edit) employee_reports_to_edit.value = res['employee_reports_to'] || '';
             if (employee_biometric_id_edit) employee_biometric_id_edit.value = res['biometric_id'] || '';
             var employee_role_edit = document.getElementById("employee_role_edit");

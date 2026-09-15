@@ -389,13 +389,24 @@
                                       </div>
                                       <div class="row mb-2">
                                         <div class="col-md-6">
-                                          <label for="status" class="form-label">Status <span class="text-danger">*</span></label>
-                                          <select class="form-select" aria-label="Default select example" id="manager_status_edit">
+                                          <label for="manager_status_edit" class="form-label">Status <span class="text-danger">*</span></label>
+                                          <select class="form-select" aria-label="Default select example" id="manager_status_edit" name="manager_status">
                                             <option selected>Select Status</option>
                                             <option value="Active">Active</option>
                                             <option value="Inactive">Inactive</option>
                                           </select>
                                         </div>
+                                        <div class="col-md-6">
+                                          <label for="manager_department_edit" class="form-label">Department <span class="text-danger">*</span></label>
+                                          <select class="form-select" id="manager_department_edit" name="department_id" required>
+                                            <option value="">Select Department</option>
+                                            {% for dept in departments %}
+                                            <option value="{{ dept.id }}">{{ dept.department_name }}</option>
+                                            {% endfor %}
+                                          </select>
+                                        </div>
+                                      </div>
+                                      <div class="row mb-2">
                                         <div class="col-md-6">
                                           <label for="manager_biometric_id_edit" class="form-label">Biometric ID</label>
                                           <input type="text" class="form-control" id="manager_biometric_id_edit" name="biometric_id" placeholder="e.g. 201">
@@ -793,6 +804,10 @@
             manager_birth_heading_edit.value = res['manager_birth_date']
             manager_country_heading_edit.value = res['manager_country']
             manager_status_edit.value = res['manager_status']
+            var manager_department_edit = document.getElementById("manager_department_edit");
+            if (manager_department_edit && res['manager_department_id']) {
+              manager_department_edit.value = res['manager_department_id'];
+            }
             if (manager_biometric_id_edit) manager_biometric_id_edit.value = res['biometric_id'] || '';
 
             manager_first_name_edit.value = res['manager_first_name'] || '';
