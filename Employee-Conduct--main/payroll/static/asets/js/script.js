@@ -11,6 +11,8 @@ $("#menu").metisMenu();
 /* sidebar responsive script */
 $("#btn").click(function(){
     $(".wrapper").toggleClass("active");
+    $(".sidebar_wrapper .toggle-icon").removeClass("ms-auto");
+    $(".sidebar_wrapper .toggle-icon").addClass("m-auto");
 });
 
 /* dashboard charts script */

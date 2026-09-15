@@ -1,6 +1,14 @@
 {% load static %}
 
-      <div class="sidebar_wrapper">
+      <div class="sidebar_wrapper" data-simplebar>
+        <div class="simplebar-wrapper">
+          <div class="simplebar-height-auto-observer-wrapper">
+            <div class="simplebar-height-auto-observer"></div>
+          </div>
+          <div class="simplebar-mask">
+            <div class="simplebar-offset">
+              <div class="simplebar-content-wrapper">
+                <div class="simplebar-content mm-active">
                   <div class="sidebar-header">
                     <div>
                       <img src="{% static 'asets/images/employee_conduct_logo.png' %}" class="img-fluid">
@@ -402,6 +410,18 @@
                     </li>
                     {% endwith %}
                   </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="simplebar-placeholder"></div>
+        </div>
+        <div class="simplebar-track simplebar-horizontal" style="visibility: hidden;">
+          <div class="simplebar-scrollbar" style="width: 0px; display: none;"></div>
+        </div>
+        <div class="simplebar-track simplebar-vertical" style="visibility: visible;">
+          <div class="simplebar-scrollbar" style="height: 83px; transform: translate3d(0px, 0px, 0px); display: block;"></div>
+        </div>
       </div>
 
 <script>
