@@ -508,7 +508,7 @@ def reset_password(request):
             return JsonResponse({"status": "sent", "email": user.email, "rotp": otp})
         except Exception as e:
             logger.exception("Failed to send OTP email to %s: %s", user.email, e)
-            if getattr(settings, 'DEBUG', False) or not getattr(settings, 'GMAIL_APP_PASSWORD', ''):
+            if not getattr(settings, 'GMAIL_APP_PASSWORD', ''):
                 logger.info("Development fallback: Password Reset OTP for %s is %s", user.email, otp)
                 return JsonResponse({"status": "sent", "email": user.email, "rotp": otp})
             return JsonResponse({"status": "error", "email": user.email})
