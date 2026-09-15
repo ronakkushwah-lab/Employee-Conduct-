@@ -2962,11 +2962,28 @@ def Assign_list(request,company_id, company_staff_id):
             )
 
         assign = Asign.objects.filter(employee__user__company__id=company_id).select_related('employee', 'assigned_to')
+        
+        # Build grouped manager teams for manager-first dropdown and accordion view
+        managers_list = Manager.objects.filter(user__company_id=company_id).order_by('manager_first_name', 'manager_last_name')
+        manager_teams = []
+        for mgr in managers_list:
+            team_members = Asign.objects.filter(
+                assigned_to=mgr,
+                employee__user__company_id=company_id
+            ).select_related('employee', 'employee__employee_department', 'employee__user').order_by('employee__employee_first_name', 'employee__employee_last_name')
+            
+            manager_teams.append({
+                'manager': mgr,
+                'team_count': team_members.count(),
+                'team_members': team_members
+            })
+
         context = {
             'assign': assign,
+            'managers_list': managers_list,
+            'manager_teams': manager_teams,
             'company_id': company_id,
             'company_staff_id': company_staff_id,
-
         }
         return render(request, 'administration/employee-list.html', context)
 

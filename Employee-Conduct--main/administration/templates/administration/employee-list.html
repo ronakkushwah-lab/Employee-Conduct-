@@ -3,9 +3,9 @@
 {% include "administration/sidebar.html" %}
 {% include "administration/topbar.html" %}
 
-
       <div class="page_wrapper">
         <div class="page-content">
+          <!-- Breadcrumb -->
           <div class="page-breadcrumb d-sm-flex align-items-center mb-3">
             <div class="breadcrumb-title pe-3">Manager</div>
             <div class="ps-3">
@@ -20,100 +20,210 @@
                 </ol>
               </nav>
             </div>
+            <div class="ms-auto">
+              <a href="{% url 'assign-create' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-primary px-3">
+                <i class="bx bx-user-plus me-1"></i>Assign Employee
+              </a>
+            </div>
           </div>
           <hr>
-          <div class="row mt-3">
-            <div class="col-12">
-              <div class="card">
-                <div class="card-body">
-                  <div class="table-responsive">
-                    <table class="table table-fluid table-hover" id="myTable">
-                      <thead>
-                        <tr>
-                          <th>Assigned To</th>
-                          <th>Employee</th>
-                          <th>Assigned Date</th>                        
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                      {% for i in assign %}
-                        <tr>
-                          <td>{{ i.assigned_to.manager_email}}</td>
-                          <td>{{ i.employee.employee_email}}</td>
-                          <td>{{ i.created_date}}</td>
-                          <td class="dropdown">
-                            <a class="d-flex align-items-center nav-link dropdown-toggle dropdown-toggle-nocaret" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                              <i class="bx bx-dots-vertical-rounded"></i>
-                            </a>
-                            <ul class="dropdown-menu dropdown-menu-end">
-                              <li>
-                                <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#viewempolyeelistModal" id="viewBtn"  onclick="assign_details_fetch('{{i.pk}}')">View</button>
-                              </li>                            
-                              <li>
-                                <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#deleteempolyeelistModal" id="deleteBtn" onClick="getId('{{i.id}}')">Delete</button>
-                              </li>
-                            </ul>
-                            <div class="modal" id="viewempolyeelistModal">
-                              <div class="modal-dialog w-80">
-                                <div class="modal-content">
-                                  <div class="modal-header">
-                                    <h5 class="modal-title" id="exampleModalLabel">Employee Details</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                  </div>
-                                  <div class="modal-body">
-                                    <div class="row">
-                                      <div class="col">
-                                        <table class="table table-fluid table-bordered">
-                                          <tr>
-                                            <th>Assigned To</th>
-                                            <td id="employee_assigned_to_heading"></td>
-                                          </tr>
-                                            <th>Employee</th>
-                                          <td id="employee_detailed_info_heading"></td>
-                                          </tr>
-                                          <tr>
-                                            <th>Assigned Date</th>
-                                              <td id="employee_created_date_heading"></td>
-                                          </tr>
-                                          <tr>
-                                            <th>Description</th>
-                                            <td id="employee_description_heading"></td>
-                                          </tr>
-                                        </table>                                      
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>                          
-                            <div class="modal" id="deleteempolyeelistModal">
-                              <div class="modal-dialog">
-                                <div class="modal-content">
-                                  <div class="modal-header">
-                                    <h5 class="modal-title" id="exampleModalLabel">Delete Employee</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                  </div>
-                                  <div class="modal-body text-center">                                  
-                                    <p>Are you sure want to delete?</p>
-                                       <div class="col-12">
-                                  <a href="javascript:void(0);"  id="delete" class="btn btn-outline-orangeyellow w-100 mb-2">Delete</a>
-                                   </div>
-                                    <button type="button" class="btn btn-outline-orangeyellow w-100" data-bs-dismiss="modal">Cancel</button>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                        {% endfor %}
-                      </tbody>
-                    </table>
+
+          <!-- Filter & Controls Card -->
+          <div class="card shadow-sm border-0 mb-4 radius-10">
+            <div class="card-body py-3">
+              <div class="row g-3 align-items-center">
+                <div class="col-md-5">
+                  <label for="managerSelectDropdown" class="form-label fw-bold text-secondary mb-1">
+                    <i class="bx bx-user-pin me-1 text-primary"></i>Filter by Manager:
+                  </label>
+                  <select class="form-select shadow-none" id="managerSelectDropdown">
+                    <option value="all" selected>All Managers ({{ manager_teams|length }} Teams)</option>
+                    {% for team in manager_teams %}
+                      <option value="manager-{{ team.manager.id }}">
+                        {{ team.manager.manager_first_name }} {{ team.manager.manager_last_name }} ({{ team.manager.manager_email }}) — {{ team.team_count }} Employee{{ team.team_count|pluralize }}
+                      </option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-4">
+                  <label for="teamSearchInput" class="form-label fw-bold text-secondary mb-1">
+                    <i class="bx bx-search me-1 text-primary"></i>Quick Search:
+                  </label>
+                  <div class="input-group">
+                    <span class="input-group-text bg-light border-end-0"><i class="bx bx-search"></i></span>
+                    <input type="text" id="teamSearchInput" class="form-control border-start-0 shadow-none" placeholder="Search manager or employee...">
                   </div>
+                </div>
+                <div class="col-md-3 text-md-end pt-md-4">
+                  <button type="button" id="expandAllBtn" class="btn btn-outline-secondary btn-sm me-1">
+                    <i class="bx bx-expand me-1"></i>Expand All
+                  </button>
+                  <button type="button" id="collapseAllBtn" class="btn btn-outline-secondary btn-sm">
+                    <i class="bx bx-collapse me-1"></i>Collapse All
+                  </button>
                 </div>
               </div>
             </div>
           </div>
+
+          <!-- Manager Accordion Cards List -->
+          <div id="managerTeamsContainer" class="row">
+            {% for team in manager_teams %}
+              <div class="col-12 mb-3 manager-team-card" id="manager-card-{{ team.manager.id }}" data-manager-id="manager-{{ team.manager.id }}" data-manager-name="{{ team.manager.manager_first_name }} {{ team.manager.manager_last_name }} {{ team.manager.manager_email }}">
+                <div class="card shadow-sm border radius-10 overflow-hidden mb-0">
+                  <!-- Manager Header (Clickable Accordion Trigger) -->
+                  <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between cursor-pointer manager-header" 
+                       data-bs-toggle="collapse" 
+                       data-bs-target="#collapse-manager-{{ team.manager.id }}" 
+                       aria-expanded="{% if forloop.first %}true{% else %}false{% endif %}" 
+                       aria-controls="collapse-manager-{{ team.manager.id }}"
+                       style="cursor: pointer; transition: background-color 0.2s;">
+                    <div class="d-flex align-items-center">
+                      <div class="avatar-initials me-3" style="width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 16px;">
+                        {{ team.manager.manager_first_name|first|upper }}{{ team.manager.manager_last_name|first|upper }}
+                      </div>
+                      <div>
+                        <h6 class="mb-0 fw-bold text-dark">
+                          {{ team.manager.manager_first_name }} {{ team.manager.manager_last_name }}
+                        </h6>
+                        <div class="text-muted small">
+                          <i class="bx bx-envelope me-1"></i>{{ team.manager.manager_email }}
+                          {% if team.manager.manager_department %}
+                            <span class="mx-2">•</span><i class="bx bx-briefcase me-1"></i>{{ team.manager.manager_department.department_name }}
+                          {% endif %}
+                        </div>
+                      </div>
+                    </div>
+                    <div class="d-flex align-items-center">
+                      {% if team.team_count > 0 %}
+                        <span class="badge bg-primary rounded-pill px-3 py-2 me-3 fs-7">
+                          <i class="bx bx-group me-1"></i>{{ team.team_count }} Assigned Employee{{ team.team_count|pluralize }}
+                        </span>
+                      {% else %}
+                        <span class="badge bg-light text-muted border rounded-pill px-3 py-2 me-3 fs-7">
+                          0 Assigned
+                        </span>
+                      {% endif %}
+                      <div class="chevron-box rounded-circle bg-light p-2 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                        <i class="bx bx-chevron-down fs-5 transition-chevron"></i>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Collapsible Team Members Table -->
+                  <div id="collapse-manager-{{ team.manager.id }}" class="collapse {% if forloop.first %}show{% endif %}" data-bs-parent="#managerTeamsAccordion">
+                    <div class="card-body p-0">
+                      {% if team.team_count > 0 %}
+                        <div class="table-responsive">
+                          <table class="table table-hover align-middle mb-0 employee-table">
+                            <thead class="table-light">
+                              <tr>
+                                <th class="ps-4">Employee</th>
+                                <th>Email</th>
+                                <th>Department / Position</th>
+                                <th>Assigned Date</th>
+                                <th class="text-center pe-4" style="width: 100px;">Action</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {% for item in team.team_members %}
+                                <tr class="employee-row" data-search-text="{{ item.employee.employee_first_name }} {{ item.employee.employee_last_name }} {{ item.employee.employee_email }} {{ item.employee.employee_id }}">
+                                  <td class="ps-4">
+                                    <div class="d-flex align-items-center">
+                                      {% if item.employee.avatar_base64 or item.employee.employee_image %}
+                                        <img src="{{ item.employee.avatar_url }}" class="rounded-circle me-2" width="34" height="34" style="object-fit: cover;" onerror="this.style.display='none';">
+                                      {% else %}
+                                        <div class="avatar-initials me-2" style="width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 12px;">
+                                          {{ item.employee.employee_first_name|first|upper }}{{ item.employee.employee_last_name|first|upper }}
+                                        </div>
+                                      {% endif %}
+                                      <div>
+                                        <span class="fw-semibold text-dark">{{ item.employee.employee_first_name }} {{ item.employee.employee_last_name }}</span>
+                                        {% if item.employee.employee_id %}
+                                          <div class="text-muted small">ID: {{ item.employee.employee_id }}</div>
+                                        {% endif %}
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td>
+                                    <span class="text-muted">{{ item.employee.employee_email }}</span>
+                                  </td>
+                                  <td>
+                                    {% if item.employee.employee_department %}
+                                      <span class="badge bg-light text-dark border">{{ item.employee.employee_department.department_name }}</span>
+                                    {% else %}
+                                      <span class="text-muted">-</span>
+                                    {% endif %}
+                                    {% if item.employee.employee_designation %}
+                                      <div class="text-muted small mt-1">{{ item.employee.employee_designation }}</div>
+                                    {% endif %}
+                                  </td>
+                                  <td>
+                                    <span class="badge bg-light text-secondary"><i class="bx bx-calendar me-1"></i>{{ item.created_date }}</span>
+                                  </td>
+                                  <td class="text-center pe-4">
+                                    <div class="dropdown">
+                                      <button class="btn btn-sm btn-light rounded-circle shadow-none p-1" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="width: 32px; height: 32px;">
+                                        <i class="bx bx-dots-vertical-rounded fs-5"></i>
+                                      </button>
+                                      <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+                                        <li>
+                                          <button type="button" class="dropdown-item py-2" data-bs-toggle="modal" data-bs-target="#viewempolyeelistModal" onclick="assign_details_fetch('{{ item.pk }}')">
+                                            <i class="bx bx-show text-primary me-2"></i>View Details
+                                          </button>
+                                        </li>
+                                        <li><hr class="dropdown-divider my-1"></li>
+                                        <li>
+                                          <button type="button" class="dropdown-item py-2 text-danger" data-bs-toggle="modal" data-bs-target="#deleteempolyeelistModal" onClick="getId('{{ item.id }}')">
+                                            <i class="bx bx-trash text-danger me-2"></i>Remove Assignment
+                                          </button>
+                                        </li>
+                                      </ul>
+                                    </div>
+                                  </td>
+                                </tr>
+                              {% endfor %}
+                            </tbody>
+                          </table>
+                        </div>
+                      {% else %}
+                        <div class="text-center py-4 text-muted">
+                          <i class="bx bx-user-x fs-1 text-secondary opacity-50 d-block mb-2"></i>
+                          <p class="mb-2">No employees currently assigned to this manager.</p>
+                          <a href="{% url 'assign-create' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-sm btn-outline-primary">
+                            <i class="bx bx-plus me-1"></i>Assign an Employee
+                          </a>
+                        </div>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            {% empty %}
+              <div class="col-12">
+                <div class="card shadow-sm border-0 py-5 text-center">
+                  <div class="card-body">
+                    <i class="bx bx-group fs-1 text-muted mb-3 d-block"></i>
+                    <h5 class="fw-bold">No Managers Found</h5>
+                    <p class="text-muted">Register a manager and assign employees to get started.</p>
+                    <a href="{% url 'registermanager' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-primary px-4">
+                      <i class="bx bx-user-plus me-1"></i>Register Manager
+                    </a>
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+
+          <!-- Empty Search State -->
+          <div id="noSearchResults" class="card shadow-sm border-0 py-5 text-center d-none">
+            <div class="card-body">
+              <i class="bx bx-search-alt fs-1 text-muted mb-3 d-block"></i>
+              <h5 class="fw-bold">No Matching Teams or Employees Found</h5>
+              <p class="text-muted">Try refining your search keyword or clear the manager filter.</p>
+            </div>
+          </div>
+
         </div>
         <footer class="page-footer">
           <p class="mb-0">Copyright © 2022. All right reserved.</p>
@@ -121,78 +231,216 @@
       </div>
     </div>
 
+    <!-- View Employee Modal -->
+    <div class="modal fade" id="viewempolyeelistModal" tabindex="-1" aria-labelledby="viewModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+          <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title text-white" id="viewModalLabel"><i class="bx bx-info-circle me-2"></i>Assignment Details</h5>
+            <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body p-4">
+            <table class="table table-bordered mb-0">
+              <tbody>
+                <tr>
+                  <th class="bg-light" style="width: 35%;">Assigned Manager</th>
+                  <td id="employee_assigned_to_heading" class="fw-semibold text-primary">-</td>
+                </tr>
+                <tr>
+                  <th class="bg-light">Employee Email</th>
+                  <td id="employee_detailed_info_heading" class="fw-semibold">-</td>
+                </tr>
+                <tr>
+                  <th class="bg-light">Assigned Date</th>
+                  <td id="employee_created_date_heading">-</td>
+                </tr>
+                <tr>
+                  <th class="bg-light">Description</th>
+                  <td id="employee_description_heading" class="text-muted">-</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="modal-footer bg-light border-0">
+            <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" id="deleteempolyeelistModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 shadow">
+          <div class="modal-body text-center p-4">
+            <div class="text-danger mb-3">
+              <i class="bx bx-error-circle" style="font-size: 56px;"></i>
+            </div>
+            <h5 class="fw-bold mb-2">Remove Assignment?</h5>
+            <p class="text-muted small mb-4">Are you sure you want to remove this employee from the manager's team?</p>
+            <div class="d-grid gap-2">
+              <a href="javascript:void(0);" id="delete" class="btn btn-danger py-2">
+                <i class="bx bx-trash me-1"></i>Yes, Remove
+              </a>
+              <button type="button" class="btn btn-light py-2" data-bs-dismiss="modal">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <style>
+      .cursor-pointer { cursor: pointer; }
+      .manager-header:hover { background-color: #f8fafc !important; }
+      .transition-chevron {
+        transition: transform 0.25s ease-in-out;
+      }
+      .manager-header[aria-expanded="true"] .transition-chevron {
+        transform: rotate(180deg);
+      }
+      .radius-10 { border-radius: 10px; }
+      .fs-7 { font-size: 0.85rem; }
+    </style>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/simplebar@latest/dist/simplebar.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/metisMenu/3.0.7/metisMenu.min.js"></script>
     <script src="https://unpkg.com/boxicons@2.1.2/dist/boxicons.js"></script>
-    <script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/js/all.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.5.3/jspdf.debug.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.8.0/html2pdf.bundle.js"></script>
-    <script src="{% static 'asets/js/jquery.sparkline.min.js' %}"></script>
-    <script src="{% static 'asets/js/Chart.min.js' %}"></script>
-    <script src="{% static 'asets/js/Chart.extension.js' %}"></script>
     <script src="{% static 'asets/js/script.js' %}"></script>
 
-      <script>
-       function assign_details_fetch(id){
+    <script>
+      // 1. Manager Dropdown Filter
+      document.getElementById('managerSelectDropdown').addEventListener('change', function() {
+        var selectedValue = this.value;
+        var cards = document.querySelectorAll('.manager-team-card');
+        
+        cards.forEach(function(card) {
+          var collapseElement = card.querySelector('.collapse');
+          var headerTrigger = card.querySelector('.manager-header');
+          
+          if (selectedValue === 'all') {
+            card.classList.remove('d-none');
+          } else if (card.getAttribute('data-manager-id') === selectedValue) {
+            card.classList.remove('d-none');
+            // Auto expand the selected manager
+            if (collapseElement && !collapseElement.classList.contains('show')) {
+              var bsCollapse = new bootstrap.Collapse(collapseElement, { toggle: true });
+              if (headerTrigger) headerTrigger.setAttribute('aria-expanded', 'true');
+            }
+          } else {
+            card.classList.add('d-none');
+          }
+        });
+        checkEmptyResults();
+      });
 
+      // 2. Quick Search
+      document.getElementById('teamSearchInput').addEventListener('input', function() {
+        var query = this.value.toLowerCase().trim();
+        var cards = document.querySelectorAll('.manager-team-card');
+        var selectedManager = document.getElementById('managerSelectDropdown').value;
 
-        // Ajax POST Request
+        cards.forEach(function(card) {
+          var managerMatches = card.getAttribute('data-manager-name').toLowerCase().includes(query);
+          var rows = card.querySelectorAll('.employee-row');
+          var hasMatchingRow = false;
+
+          rows.forEach(function(row) {
+            var rowText = (row.getAttribute('data-search-text') || '').toLowerCase();
+            if (!query || rowText.includes(query) || managerMatches) {
+              row.classList.remove('d-none');
+              hasMatchingRow = true;
+            } else {
+              row.classList.add('d-none');
+            }
+          });
+
+          var managerIdMatch = (selectedManager === 'all' || card.getAttribute('data-manager-id') === selectedManager);
+
+          if (managerIdMatch && (managerMatches || hasMatchingRow || !query)) {
+            card.classList.remove('d-none');
+            // If searching with query, auto-expand matching cards
+            if (query) {
+              var collapseElement = card.querySelector('.collapse');
+              var headerTrigger = card.querySelector('.manager-header');
+              if (collapseElement && !collapseElement.classList.contains('show')) {
+                new bootstrap.Collapse(collapseElement, { toggle: true });
+                if (headerTrigger) headerTrigger.setAttribute('aria-expanded', 'true');
+              }
+            }
+          } else {
+            card.classList.add('d-none');
+          }
+        });
+        checkEmptyResults();
+      });
+
+      function checkEmptyResults() {
+        var visibleCards = document.querySelectorAll('.manager-team-card:not(.d-none)');
+        var noResultsDiv = document.getElementById('noSearchResults');
+        if (visibleCards.length === 0) {
+          noResultsDiv.classList.remove('d-none');
+        } else {
+          noResultsDiv.classList.add('d-none');
+        }
+      }
+
+      // 3. Expand All / Collapse All Buttons
+      document.getElementById('expandAllBtn').addEventListener('click', function() {
+        document.querySelectorAll('.manager-team-card:not(.d-none) .collapse').forEach(function(collapseEl) {
+          if (!collapseEl.classList.contains('show')) {
+            new bootstrap.Collapse(collapseEl, { toggle: true });
+          }
+        });
+        document.querySelectorAll('.manager-header').forEach(function(hdr) {
+          hdr.setAttribute('aria-expanded', 'true');
+        });
+      });
+
+      document.getElementById('collapseAllBtn').addEventListener('click', function() {
+        document.querySelectorAll('.manager-team-card:not(.d-none) .collapse').forEach(function(collapseEl) {
+          if (collapseEl.classList.contains('show')) {
+            new bootstrap.Collapse(collapseEl, { toggle: true });
+          }
+        });
+        document.querySelectorAll('.manager-header').forEach(function(hdr) {
+          hdr.setAttribute('aria-expanded', 'false');
+        });
+      });
+
+      // 4. AJAX Details Fetch
+      function assign_details_fetch(id) {
         var employee_detailed_info_heading = document.getElementById("employee_detailed_info_heading");
         var employee_description_heading = document.getElementById("employee_description_heading");
         var employee_created_date_heading = document.getElementById("employee_created_date_heading");
         var employee_assigned_to_heading = document.getElementById("employee_assigned_to_heading");
 
-
-
         $.ajax({
-                  url: '{% url "assignlist" company_id=company_id company_staff_id=company_staff_id %}',
-                  method: "POST",
-                  processData: false,
-                  contentType: 'application/json',
-                  mimeType: "multipart/form-data",
-                  headers: {'X-CSRFToken': "{{csrf_token}}", "Content-Type":"application/json"},
-                  data: JSON.stringify({'id': id}),
-                  dataType: "json",
-                  success: function(res){
+          url: '{% url "assignlist" company_id=company_id company_staff_id=company_staff_id %}',
+          method: "POST",
+          processData: false,
+          contentType: 'application/json',
+          headers: {'X-CSRFToken': "{{ csrf_token }}", "Content-Type": "application/json"},
+          data: JSON.stringify({'id': id}),
+          dataType: "json",
+          success: function(res) {
+            employee_detailed_info_heading.textContent = res['employee'] || '-';
+            employee_description_heading.textContent = res['description'] || '-';
+            employee_created_date_heading.textContent = res['created_date'] || '-';
+            employee_assigned_to_heading.textContent = res['assigned_to'] || '-';
+          },
+          error: function(xhr, status, error) {
+            console.error("Error fetching assignment details:", error);
+          }
+        });
+      }
 
-                  employee = res['employee'];
-                  description = res['description'];
-                  created_date = res['created_date'];
-                  assigned_to = res['assigned_to'];
-
-
-
-                  employee_detailed_info_heading.textContent = employee;
-                  employee_description_heading.textContent = description;
-                  employee_created_date_heading.textContent = created_date;
-                  employee_assigned_to_heading.textContent = assigned_to;
-
-
-
-                },
-                error: function(xhr, status, error){
-                  console.log(error);
-                  console.log(status);
-                  console.log(xhr);
-                }
-        })
+      // 5. Delete Action ID setter
+      function getId(id) {
+        var a = document.getElementById('delete');
+        a.href = "/administration/assign_remove/{{ company_id }}/{{ company_staff_id }}/" + id;
       }
     </script>
-
-   <script>
-
-  	function getId(id) {
-		// alert(id)
-		var a =document.getElementById('delete');
-		a.href = "/administration/assign_remove/{{company_id}}/{{company_staff_id}}/"+id;
-	}
-
-   </script>
-
-    
   </body>
 </html>
