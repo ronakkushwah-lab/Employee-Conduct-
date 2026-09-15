@@ -68,13 +68,18 @@
                         $("#result").html("<p class='alert alert-danger'>Could not send email to "+data.email+" Something went wrong!!!</p>");
                     }
                     else if(data.status=="sent"){
-                        $("#result").html(
-                            "<p class='alert alert-success'>An OTP has been sent to your registered Email ID: <strong>"+data.email+"</strong></p>"+
-                            "<p class='text-muted small mb-0'>If you don't see the email in a few minutes, check your <strong>Spam/Junk</strong> folder. Make sure the email address is correct.</p>"
-                        );
+                        let resetHtml = "<p class='alert alert-success'>Password reset request processed for <strong>"+data.email+"</strong></p>";
+                        if(data.reset_link){
+                            resetHtml += "<div class='my-3 p-3 text-center border rounded bg-light'>"+
+                                "<p class='mb-2 text-dark font-weight-bold'>⚡ 1-Click Password Reset Link:</p>"+
+                                "<a href='"+data.reset_link+"' class='btn btn-primary btn-block text-white font-weight-bold py-2'><i class='fa fa-key mr-2'></i>Reset My Password Now</a>"+
+                                "</div>";
+                        }
+                        resetHtml += "<p class='text-muted small mb-2'>Alternatively, enter the 4-digit OTP below if received via email.</p>";
+                        $("#result").html(resetHtml);
                         $("#continue").hide();
                         $("#afterotp").slideDown(1000);
-                        $("#realotp").val(data.rotp)
+                        $("#realotp").val(data.rotp);
                     }
                 }
             })

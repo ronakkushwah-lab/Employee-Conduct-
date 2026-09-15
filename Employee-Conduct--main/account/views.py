@@ -478,6 +478,19 @@ def forgotpass(request):
     return render(request, "account/forgot_pass.html", context)
 
 
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
+
+class StaffPasswordResetTokenGenerator(PasswordResetTokenGenerator):
+    def _make_hash_value(self, user, timestamp):
+        email = user.email or ''
+        password = user.password or ''
+        return f"{user.pk}{password}{timestamp}{email}"
+
+staff_token_generator = StaffPasswordResetTokenGenerator()
+
+
 def reset_password(request):
     import logging
     logger = logging.getLogger(__name__)
@@ -487,33 +500,69 @@ def reset_password(request):
     try:
         user = get_object_or_404(CompanyStaff, email=email_address)
         otp = random.randint(1000, 9999)
+        
+        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+        token = staff_token_generator.make_token(user)
+        reset_path = reverse('reset_password_confirm_staff', kwargs={'uidb64': uidb64, 'token': token})
+        reset_link = request.build_absolute_uri(reset_path)
+
         msz = (
-            "Dear {},\n\n"
-            "{} is your One Time Password (OTP) for password reset.\n\n"
-            "Do not share it with others.\n\n"
-            "Thanks & Regards,\nHRMS Portal"
-        ).format(user.email, otp)
+            f"Dear {user.email},\n\n"
+            f"You requested a password reset for your HRMS account.\n\n"
+            f"Your OTP code is: {otp}\n\n"
+            f"Or click the 1-click link below to reset your password instantly:\n"
+            f"{reset_link}\n\n"
+            f"If you did not request this, please ignore this email.\n\n"
+            f"Thanks & Regards,\nHRMS Portal"
+        )
         from_email = (getattr(settings, 'DEFAULT_FROM_EMAIL', None) or getattr(settings, 'EMAIL_HOST_USER', None) or 'noreply@eagleincloud.io').strip()
         if not from_email:
             from_email = 'noreply@eagleincloud.io'
         try:
             msg = EmailMessage(
-                subject="Password Reset OTP - HRMS Portal",
+                subject="Password Reset - HRMS Portal",
                 body=msz,
                 from_email=from_email,
                 to=[user.email],
             )
             msg.send(fail_silently=False)
-            logger.info("OTP email sent to %s", user.email)
-            return JsonResponse({"status": "sent", "email": user.email, "rotp": otp})
+            logger.info("Password reset email sent to %s", user.email)
+            return JsonResponse({"status": "sent", "email": user.email, "rotp": otp, "reset_link": reset_link})
         except Exception as e:
-            logger.exception("Failed to send OTP email to %s: %s", user.email, e)
-            if not getattr(settings, 'GMAIL_APP_PASSWORD', ''):
-                logger.info("Development fallback: Password Reset OTP for %s is %s", user.email, otp)
-                return JsonResponse({"status": "sent", "email": user.email, "rotp": otp})
-            return JsonResponse({"status": "error", "email": user.email})
+            logger.exception("Failed to send reset email to %s: %s", user.email, e)
+            logger.info("Development fallback: Password Reset Link for %s is %s", user.email, reset_link)
+            return JsonResponse({"status": "sent", "email": user.email, "rotp": otp, "reset_link": reset_link})
     except Exception:
         return JsonResponse({"status": "failed"})
+
+
+@csrf_exempt
+def reset_password_confirm(request, uidb64, token):
+    try:
+        uid = force_str(urlsafe_base64_decode(uidb64))
+        user = CompanyStaff.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, CompanyStaff.DoesNotExist):
+        user = None
+
+    if user is not None and staff_token_generator.check_token(user, token):
+        if request.method == 'POST':
+            password = request.POST.get('password')
+            confirm_password = request.POST.get('confirm_password')
+            if not password or password != confirm_password:
+                return render(request, 'account/password_reset_confirm.html', {
+                    'validlink': True,
+                    'error': 'Passwords do not match. Please try again.',
+                    'email': user.email
+                })
+            user.password = make_password(password)
+            user.save()
+            sweetify.success(request, 'Password Reset Successful', text='Your password has been changed. Please sign in.', persistent='OK')
+            messages.success(request, "Your password has been reset successfully! Please sign in with your new password.")
+            return redirect('/')
+
+        return render(request, 'account/password_reset_confirm.html', {'validlink': True, 'email': user.email})
+    else:
+        return render(request, 'account/password_reset_confirm.html', {'validlink': False})
 
 
 def hr_dashboard(request, company_id, company_staff_id):

@@ -47,6 +47,7 @@ urlpatterns = [
 
     path("forgotpass/", views.forgotpass, name="forgotpass"),
     path("reset_password/", views.reset_password, name="reset_password"),
+    path("reset_confirm/<uidb64>/<token>/", views.reset_password_confirm, name="reset_password_confirm_staff"),
 
     # Favicon: uncomment when you add static/favicon.ico to avoid 404
     # path(
