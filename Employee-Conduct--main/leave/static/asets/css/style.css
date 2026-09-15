@@ -1,6 +1,10 @@
 body{
-	font-family: Roboto, sans-serif !important;
-	background: #f7f7ff;
+	font-family: 'Inter', sans-serif !important;
+	background: #f4f7fe;
+	/* Blue border around full page (admin + employee + manager) */
+	/* border: 6px solid #4f7cff !important; */
+	box-sizing: border-box !important;
+	min-height: 100vh;
 }
 .hidden {
     display: none;
@@ -65,67 +69,89 @@ body{
 /* sidebar style */
 .wrapper .sidebar_wrapper {
 	width: 250px;
-	height: 100%;
+	height: 100vh;
 	position: fixed;
 	top: 0;
 	bottom: 0;
 	left: 0;
-	background: #fff;
+	background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
 	border-right: 0 solid #e4e4e4;
-	z-index: 11;
-	box-shadow: 0 2px 6px 0 rgb(218 218 253/65%), 0 2px 6px 0 rgb(206 206 238/54%);
-	transition: all .2s ease-out;
+	z-index: 1001;
+	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.18);
+	transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s ease;
+	will-change: width, transform;
+	overflow-x: hidden;
+	overflow-y: auto;
+	scrollbar-width: thin;
+	scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
 }
-.wrapper .sidebar_wrapper .simplebar_wrapper {
-	margin: 0px;
+.wrapper .sidebar_wrapper::-webkit-scrollbar {
+	width: 5px;
 }
-.wrapper .sidebar_wrapper .simplebar_wrapper .simplebar-mask .simplebar-offset {
-	right: 0;
-	bottom: 0;
+.wrapper .sidebar_wrapper::-webkit-scrollbar-track {
+	background: transparent;
 }
-.wrapper .sidebar_wrapper .simplebar_wrapper .simplebar-mask .simplebar-offset .simplebar-content-wrapper {
-	height: 100%;
-    overflow: hidden scroll;
+.wrapper .sidebar_wrapper::-webkit-scrollbar-thumb {
+	background: rgba(255, 255, 255, 0.2);
+	border-radius: 4px;
 }
-.wrapper .sidebar_wrapper .simplebar_wrapper .simplebar-mask .simplebar-offset .simplebar-content-wrapper .simplebar-content {
-	padding: 0px;
+.wrapper .sidebar_wrapper .simplebar_wrapper,
+.wrapper .sidebar_wrapper .simplebar-mask,
+.wrapper .sidebar_wrapper .simplebar-offset,
+.wrapper .sidebar_wrapper .simplebar-content-wrapper,
+.wrapper .sidebar_wrapper .simplebar-content {
+	height: auto;
+	padding: 0;
+	margin: 0;
 }
+.sidebar-header,
 .simplebar-content .sidebar-header {
 	width: 250px;
-    height: 60px;
-    display: flex;
-    align-items: center;
-    position: fixed;
-    top: 0;
-    bottom: 0;
-    padding: 0 15px;
-    z-index: 5;
-    background: #fff;
-    background-clip: padding-box;
-    border-bottom: 1px solid #e4e4e4;
+	height: 60px;
+	display: flex;
+	align-items: center;
+	position: sticky;
+	top: 0;
+	padding: 0 15px;
+	z-index: 5;
+	background: #1e293b;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+	transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), padding 0.25s ease;
+	overflow: hidden;
+	flex-shrink: 0;
 }
+.sidebar-header img,
 .simplebar-content .sidebar-header img {
 	width: 150px;
+	background: #fff;
+	padding: 4px 6px;
+	border-radius: 4px;
+	filter: none !important;
+	-webkit-filter: none !important;
+	mix-blend-mode: normal !important;
+	box-shadow: none !important;
+	transition: opacity 0.2s ease, transform 0.2s ease;
 }
+.sidebar-header .toggle-icon,
 .simplebar-content .sidebar-header .toggle-icon {
 	font-size: 22px;
-    cursor: pointer;
-    color: #475aaf;
+	cursor: pointer;
+	color: #fff;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: margin 0.25s ease;
 }
 .fa-regular {
 	font-family: boxicons!important;
-    font-weight: 400;
-    font-style: normal;
-    font-variant: normal;
-    line-height: inherit;
-    display: inline-block;
-    text-transform: none;
-    speak: none;
-    -webkit-font-smoothing: antialiased;
-}
-.wrapper .sidebar_wrapper .simplebar_wrapper .simplebar-placeholder {
-	width: auto;
-	height: 1404px;
+	font-weight: 400;
+	font-style: normal;
+	font-variant: normal;
+	line-height: inherit;
+	display: inline-block;
+	text-transform: none;
+	speak: none;
+	-webkit-font-smoothing: antialiased;
 }
 .sidebar_wrapper .metismenu {
 	background: 0 0;
@@ -164,19 +190,29 @@ body{
     justify-content: left;
     padding: 8px 15px;
     font-size: 15px;
-    color: #5f5f5f;
+    color: #fff;
     outline-width: 0;
     text-overflow: ellipsis;
     overflow: hidden;
     letter-spacing: .5px;
-    border: 1px solid #ffffff00;
+    border: 1px solid transparent;
     transition: all .3s ease-out;
+}
+.sidebar_wrapper .metismenu a .parent-icon,
+.sidebar_wrapper .metismenu a .parent-icon i {
+    color: #fff;
 }
 .sidebar_wrapper .metismenu .mm-active>a, .sidebar_wrapper .metismenu a:active, 
 .sidebar_wrapper .metismenu a:focus, .sidebar_wrapper .metismenu a:hover {
-    color: #475aaf;
+    color: #fff;
     text-decoration: none;
-    background: rgb(13 110 253 / .12);
+    background: rgba(255, 255, 255, 0.2);
+}
+.sidebar_wrapper .metismenu .mm-active>a .parent-icon,
+.sidebar_wrapper .metismenu .mm-active>a .parent-icon i,
+.sidebar_wrapper .metismenu a:hover .parent-icon,
+.sidebar_wrapper .metismenu a:hover .parent-icon i {
+    color: #fff;
 }
 .sidebar_wrapper .metismenu a .parent-icon {
     font-size: 24px;
@@ -188,9 +224,9 @@ body{
 .sidebar_wrapper .metismenu li+li {
     margin-top: 5px;
 }
-.menu-label {
+.sidebar_wrapper .menu-label {
     padding: 20px 15px 5px 5px;
-    color: #b0afaf;
+    color: #fff;
     text-transform: uppercase;
     font-size: 12px;
     letter-spacing: .5px;
@@ -202,7 +238,7 @@ body{
     height: 0.5em;
     border-style: solid;
     border-width: 1.2px 0 0 1.2px;
-    border-color: initial;
+    border-color: #fff;
     right: 15px;
     transform: rotate(-45deg) translateY(-50%);
     transform-origin: top;
@@ -213,17 +249,24 @@ body{
 	height: 2px;
 }
 .sidebar_wrapper .metismenu ul {
-    border: 1px solid #ededed !important;
-    background: #fff !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    background: rgba(255, 255, 255, 0.08) !important;
     height: 100%;
 }
 .sidebar_wrapper .metismenu ul a {
     padding: 6px 15px 6px 15px;
     font-size: 15px;
     border: 0;
+    color: #fff;
+}
+.sidebar_wrapper .metismenu ul a:hover,
+.sidebar_wrapper .metismenu ul a.active {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.15);
 }
 .sidebar_wrapper .metismenu ul a i {
     margin-right: 10px;
+    color: #fff;
 }
 
 /* topbar style */
@@ -301,50 +344,109 @@ body{
 }
 
 /* responsive sidebar style */
-.wrapper.active .sidebar_wrapper, .wrapper.active .sidebar-header {
-    width: 80px;
+.wrapper.active .sidebar_wrapper {
+    width: 70px;
 }
-.wrapper.active .sidebar-header img, .wrapper.active .sidebar_wrapper .metisMenu .menu-label, 
-.wrapper.active .sidebar_wrapper .metisMenu .menu-title, 
-.wrapper.active .metismenu .mm-active>.has-arrow::after, 
-.wrapper.active .metismenu li>.has-arrow::after, 
-.wrapper.active .metismenu .has-arrow[aria-expanded=true]::after, 
-.wrapper.active .mm-collapse {
+.wrapper.active .sidebar-header,
+.wrapper.active .simplebar-content .sidebar-header {
+    width: 70px;
+    padding: 0 10px;
+}
+.wrapper.active .sidebar-header img,
+.wrapper.active .simplebar-content .sidebar-header img {
+    opacity: 0;
+    visibility: hidden;
+    width: 0;
+    padding: 0;
+    margin: 0;
     display: none;
-    transition: .2s ease-out;
 }
-.wrapper.active .sidebar-header .ms-auto {
-    margin: auto;
+.wrapper.active .sidebar-header .toggle-icon,
+.wrapper.active .simplebar-content .sidebar-header .toggle-icon {
+    margin: 0 auto;
 }
+.sidebar-header .toggle-icon i#btn,
+.simplebar-content .sidebar-header .toggle-icon i#btn {
+    transition: transform 0.25s ease-out;
+}
+.wrapper.active .sidebar-header .toggle-icon i#btn,
+.wrapper.active .simplebar-content .sidebar-header .toggle-icon i#btn {
+    transform: rotate(180deg);
+}
+.wrapper.active .sidebar_wrapper .metisMenu .menu-label,
+.wrapper.active .sidebar_wrapper .metismenu .menu-label,
+.wrapper.active .sidebar_wrapper .metisMenu .menu-title,
+.wrapper.active .sidebar_wrapper .metismenu .menu-title,
+.wrapper.active .metismenu .mm-active>.has-arrow::after,
+.wrapper.active .metismenu li>.has-arrow::after,
+.wrapper.active .metismenu .has-arrow[aria-expanded=true]::after,
+.wrapper.active .sidebar_wrapper .metismenu .mm-collapse {
+    display: none !important;
+}
+.wrapper.active .sidebar_wrapper .metismenu>li>a {
+    justify-content: center;
+    padding: 10px 0;
+}
+.wrapper.active .sidebar_wrapper .metismenu>li>a .parent-icon {
+    margin: 0 auto;
+}
+
+/* Hover over collapsed sidebar - smooth overlay expansion without reflowing .page_wrapper */
 .wrapper.active .sidebar_wrapper:hover {
     width: 250px;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.35);
 }
-.wrapper.active header .topbar, .wrapper.active footer {
-    width: calc(100% - 80px);
-    margin-left: -170px;
-}
-.wrapper.active .sidebar_wrapper:hover .sidebar-header {
+.wrapper.active .sidebar_wrapper:hover .sidebar-header,
+.wrapper.active .sidebar_wrapper:hover .simplebar-content .sidebar-header {
     width: 250px;
+    padding: 0 15px;
+    justify-content: space-between;
 }
-.wrapper .sidebar_wrapper:hover .sidebar-header .ms-auto {
-    margin-left: auto !important;
-}
-.wrapper .sidebar_wrapper:hover .sidebar-header img, 
-.wrapper .sidebar_wrapper:hover .metisMenu .menu-label, 
-.wrapper .sidebar_wrapper:hover .metisMenu .menu-title, 
-.wrapper .sidebar_wrapper:hover .metismenu .mm-active>.has-arrow::after, 
-.wrapper .sidebar_wrapper:hover .metismenu li>.has-arrow::after, 
-.wrapper .sidebar_wrapper:hover .metismenu .has-arrow[aria-expanded=true]::after, 
-.wrapper .sidebar_wrapper:hover .mm-active .mm-collapse.mm-show {
+.wrapper.active .sidebar_wrapper:hover .sidebar-header img,
+.wrapper.active .sidebar_wrapper:hover .simplebar-content .sidebar-header img {
+    opacity: 1;
+    visibility: visible;
+    width: 150px;
+    padding: 4px 6px;
     display: block;
-    transition: .2s ease-out;
 }
-.wrapper.active .sidebar_wrapper:hover header .topbar {
-    width: inherit;
+.wrapper.active .sidebar_wrapper:hover .sidebar-header .toggle-icon,
+.wrapper.active .sidebar_wrapper:hover .simplebar-content .sidebar-header .toggle-icon {
+    margin-left: auto;
 }
+.wrapper.active .sidebar_wrapper:hover .metisMenu .menu-label,
+.wrapper.active .sidebar_wrapper:hover .metismenu .menu-label,
+.wrapper.active .sidebar_wrapper:hover .metisMenu .menu-title,
+.wrapper.active .sidebar_wrapper:hover .metismenu .menu-title,
+.wrapper.active .sidebar_wrapper:hover .metismenu .mm-active>.has-arrow::after,
+.wrapper.active .sidebar_wrapper:hover .metismenu li>.has-arrow::after,
+.wrapper.active .sidebar_wrapper:hover .metismenu .has-arrow[aria-expanded=true]::after {
+    display: block !important;
+}
+.wrapper.active .sidebar_wrapper:hover .sidebar_wrapper .metismenu>li>a,
+.wrapper.active .sidebar_wrapper:hover .metismenu>li>a {
+    justify-content: flex-start;
+    padding: 8px 15px;
+}
+.wrapper.active .sidebar_wrapper:hover .metismenu>li>a .parent-icon {
+    margin: 0;
+}
+.wrapper.active .sidebar_wrapper:hover .metismenu .mm-collapse.mm-show {
+    display: block !important;
+}
+
+/* Collapsed main layout spacing - stays fixed so hover does not cause full page reflow */
 .wrapper.active .page_wrapper {
-    width: calc(100% - 80px);
-    margin-left: 80px;
+    width: calc(100% - 70px);
+    margin-left: 70px;
+    transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1), width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.wrapper.active header .topbar,
+.wrapper.active footer.page-footer {
+    left: 70px;
+    width: calc(100% - 70px);
+    margin-left: 0;
+    transition: left 0.25s cubic-bezier(0.4, 0, 0.2, 1), width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* page wrapper style */
@@ -357,10 +459,17 @@ body{
 .page_wrapper .page-content {
 	padding: 1.5rem 1.5rem 0.7rem 1.5rem;
 }
-.page_wrapper .page-content .card {
-	border-radius: 10px;
+.page_wrapper .page-content .card,
+.page_wrapper .page-content .card.shadow-none.border.radius-15 {
+	border-radius: 16px;
 	margin-bottom: 1.5rem;
-	box-shadow: 0 2px 6px 0 rgb(218 218 253 / 65%), 0 2px 6px 0 rgb(206 206 238 / 54%);
+	box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.04);
+	border: none !important;
+}
+
+/* Highlight welcome message card with blue border */
+.page_wrapper .page-content .card.message {
+	border: none;
 }
 
 .page_wrapper .page-content .message .wish {
@@ -387,14 +496,14 @@ body{
     color: #fff;
 }
 .bg-gradient-cosmic {
-    background: linear-gradient(to right, #8e2de2, #4a00e0)!important;
+    background: linear-gradient(135deg, #4F46E5 0%, #3B82F6 100%)!important;
 }
 .bg-gradient-ibiza {
-    background: linear-gradient(to right, #ee0979, #ff6a00)!important;
+    background: linear-gradient(135deg, #F43F5E 0%, #FB923C 100%)!important;
     transition: .5s all ease;
 }
 .bg-gradient-ohhappiness {
-    background: linear-gradient(to right, #00b09b, #96c93d)!important;
+    background: linear-gradient(135deg, #10B981 0%, #34D399 100%)!important;
 }
 .bg-gradient-kyoto {
     background: linear-gradient(to right, #f7971e, #ffd200)!important;
@@ -410,11 +519,11 @@ body{
     background: linear-gradient(to right, #f54ea2, #ff7676)!important;
 }
 .bg-gradient-deepblue {
-    background: #673AB7!important;
+    background: linear-gradient(to right, #6a11cb, #2575fc)!important;
     transition: .5s all ease;
 }
 .profile-button .bg-gradient-deepblue:hover {
-    background: #5E35B1!important;
+    background: linear-gradient(to left, #6a11cb 100%, #2575fc 0%)!important;
     transition: .5s all ease;
 }
 .profile-button .bg-gradient-quepal:hover {
@@ -427,9 +536,6 @@ body{
 }
 .cursor-pointer {
     cursor: pointer;
-}
-.card {
-}
 }
 
 /* admin dashboard style */
@@ -546,6 +652,105 @@ body{
 	border-radius: 50%;
 	width: 90px;
 }
+
+/* Ensure employee cards show image and initials at same size */
+.card .card-body img.user-img {
+    width: 56px !important;
+    height: 56px !important;
+    border-radius: 50% !important;
+    object-fit: cover;
+    display: block;
+    margin: 0 auto;
+}
+/* Override inline style on initials avatar so size matches photo */
+.profile-card-compact .avatar-initials {
+    width: 56px !important;
+    height: 56px !important;
+    border-radius: 50% !important;
+    font-size: 24px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 auto !important;
+}
+
+/* (card layout width/padding returned to default Bootstrap;
+   only image/avatar size is customized above) */
+
+/* Hover effect for employee/manager cards */
+.employee-card,
+.manager-card {
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.employee-card:hover,
+.manager-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 22px rgba(79, 124, 255, 0.18) !important;
+    border-color: rgba(79, 124, 255, 0.65) !important;
+}
+
+/* When any Bootstrap modal is open, disable hover lifting on background cards */
+body.modal-open .employee-card:hover,
+body.modal-open .manager-card:hover,
+body.modal-open .page_wrapper .page-content .card:hover {
+    transform: none !important;
+    box-shadow: none !important;
+    border-color: inherit !important;
+}
+
+/* Admin panel: hover effect for all cards */
+.page_wrapper .page-content .card {
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.page_wrapper .page-content .card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 22px rgba(79, 124, 255, 0.18) !important;
+}
+
+/* Manager cards: compact and aligned */
+.manager-card .card-body {
+    padding: 14px 16px !important;
+}
+.manager-card .profile-button .btn {
+    padding: 5px 14px !important;
+    font-size: 12px !important;
+    min-width: 74px;
+    border-radius: 20px !important;
+}
+.manager-card img.user-img {
+    width: 72px !important;
+    height: 72px !important;
+}
+.employee-card .profile-button .btn {
+    padding: 5px 14px !important;
+    font-size: 12px !important;
+    min-width: 74px;
+    border-radius: 20px !important;
+}
+.employee-card img.user-img {
+    width: 72px !important;
+    height: 72px !important;
+}
+.manager-card .avatar-initials {
+    width: 56px !important;
+    height: 56px !important;
+    border-radius: 50% !important;
+    font-size: 24px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 auto !important;
+}
+.employee-card .avatar-initials {
+    width: 56px !important;
+    height: 56px !important;
+    border-radius: 50% !important;
+    font-size: 24px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 auto !important;
+}
 .modal-dialog.w-80 {
     max-width: 80%;
     margin: auto;
@@ -647,8 +852,21 @@ body{
 
 /* employee payslip style */
 .logo img {
-    width: 80% !important;
+    width: 200px !important;
+    max-width: 100% !important;
+    height: auto !important;
     border-radius: 0px !important;
+    filter: none !important;
+    -webkit-filter: none !important;
+    mix-blend-mode: normal !important;
+    box-shadow: none !important;
+}
+/* Force old embedded base64 logos to use same official static logo */
+#print-salary .logo img[src^="data:image/png;base64"] {
+    content: url("/static/asets/images/employee_conduct_logo.png");
+    width: 200px !important;
+    max-width: 100% !important;
+    height: auto !important;
 }
 .text-right {
     text-align: right;
@@ -670,6 +888,33 @@ body{
 .notifications-box i {
     margin-right: 10px;
     font-size: 20px;
+}
+
+/* notifications header bar: orange gradient */
+.notifications-header {
+    background: linear-gradient(to right, #f28c22 0%, #f01c1f 100%) !important;
+    color: #fff !important;
+    border-radius: 8px 8px 0 0;
+}
+
+/* Status badges for leave/resignation tables */
+.status-badge {
+    display: inline-block;
+    padding: 4px 14px;
+    border-radius: 18px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    color: #fff;
+}
+.status-approved {
+    background-color: #1b8d3b;
+}
+.status-rejected {
+    background-color: #d63333;
+}
+.status-pending {
+    background-color: #6c757d;
 }
 
 /* employee dashbroad style */
@@ -749,6 +994,26 @@ body{
 }
 .w-15 {
     width: 15%;
+}
+
+/* Profile section cards (Employee My Profile) */
+.profile-section-card {
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 6px 0 rgb(218 218 253 / 65%), 0 2px 6px 0 rgb(206 206 238 / 54%);
+    border: 1px solid rgba(111, 136, 255, 0.35);
+    margin-bottom: 1.5rem;
+    background: #fdfdff;
+}
+.profile-section-header {
+    background: linear-gradient(90deg, #667eea 0%, #a855f7 50%, #ff6a95 100%);
+    color: #fff;
+    padding: 8px 16px;
+    font-weight: 600;
+    font-size: 15px;
+}
+.profile-section-card table {
+    margin-bottom: 0;
 }
 
 /* footer style */

@@ -26,84 +26,9 @@
 }
 
 @media screen and (max-width: 838px) {
-	/* Hide sidebar completely by default on mobile */
-	.wrapper .sidebar_wrapper {
-	    position: fixed !important;
-	    left: -250px !important;
-	    top: 0 !important;
-	    width: 250px !important;
-	    height: 100vh !important;
-	    transition: left 0.3s ease !important;
-	    z-index: 1000 !important;
-	    background: #fff !important;
-	    overflow-y: auto !important;
-	    box-shadow: 2px 0 10px rgba(0,0,0,0.1) !important;
-	}
-	
-	/* Show sidebar when active (hamburger clicked) */
-	.wrapper.active .sidebar_wrapper {
-	    left: 0 !important;
-	}
-	
-	.wrapper .sidebar-header img, .wrapper .sidebar_wrapper .metisMenu .menu-label, 
-	.wrapper .sidebar_wrapper .metisMenu .menu-title, 
-	.wrapper .metismenu .mm-active>.has-arrow::after, .wrapper .metismenu li>.has-arrow::after, 
-	.wrapper .metismenu .has-arrow[aria-expanded=true]::after, .wrapper .mm-collapse {
-	    display: none !important;
-	    transition: .2s ease-out;
-	}
-	.wrapper.active .sidebar_wrapper, .wrapper.active .sidebar-header {
-	    width: 250px !important;
-	}
-	.wrapper.active .mm-collapse {
-		display: none;
-	}
-	.wrapper.active .mm-collapse.mm-show {
-		display: block !important;
-	}
-	.wrapper.active .sidebar-header img, .wrapper.active .sidebar_wrapper .metisMenu .menu-label, 
-	.wrapper.active .sidebar_wrapper .metisMenu .menu-title, 
-	.wrapper.active .metismenu .mm-active>.has-arrow::after, 
-	.wrapper.active .metismenu li>.has-arrow::after, 
-	.wrapper.active .metismenu .has-arrow[aria-expanded=true]::after, 
-	.wrapper.active li {
-		display: block !important;
-		transition: .2s ease-out;
-	}
-	
-	/* Adjust page wrapper for mobile - always full width */
-	.wrapper .page_wrapper {
-	    width: 100% !important;
-	    margin-left: 0 !important;
-	}
-	
-	.wrapper header .topbar, .wrapper footer {
-	    width: 100% !important;
-	    margin-left: 0 !important;
-	    left: 0 !important;
-	}
-	
-	/* Show hamburger menu button on mobile */
-	.mobile-menu-toggle {
-		display: block !important;
-	}
-	
 	.wrapper header .topbar .navbar .search-bar .position-relative.search-bar-box {
 	    width: 100% !important;
 	}
-	
-	/* Add overlay when sidebar is open */
-	.wrapper.active::before {
-		content: '';
-		position: fixed;
-		top: 0;
-		left: 0;
-		right: 0;
-		bottom: 0;
-		background: rgba(0, 0, 0, 0.5);
-		z-index: 999;
-	}
-	
 	.accordion-button {
 		width: 100% !important;
 	}
@@ -168,7 +93,8 @@
 		display: block !important;
 	}
 	#print-salary .logo img {
-	    width: 40% !important;
+	    width: 200px !important;
+	    max-width: 100% !important;
 	    border-radius: 0px !important;
 	    margin: auto;
 	    display: block;
