@@ -251,7 +251,7 @@ EMAIL_PORT = 587
 EMAIL_HOST_USER = GMAIL_EMAIL
 EMAIL_HOST_PASSWORD = GMAIL_APP_PASSWORD
 EMAIL_USE_TLS = True
-DEFAULT_FROM_EMAIL = GMAIL_EMAIL
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL') or GMAIL_EMAIL or 'noreply@eagleincloud.io'
 EMAIL_TIMEOUT = 10
 
 # Logging - so leave/email notification logs show in console
