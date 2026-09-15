@@ -124,8 +124,8 @@ class CompanyStaff(models.Model):
     def get_Staff_by_email(email):
         try:
             return CompanyStaff.objects.get(email=email)
-        except:
-            return False
+        except Exception:
+            return None
 
     def isExists(self):
         if CompanyStaff.objects.filter(email=self.email):

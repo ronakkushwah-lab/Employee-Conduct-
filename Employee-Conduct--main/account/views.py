@@ -373,8 +373,8 @@ class Login(View):
             return iclock_cdata(request)
         company_staff = CompanyStaff.get_Staff_by_email(email)
         try:
-            if company_staff is not None:
-                request.session["new_notification"] = company_staff.new_notification
+            if company_staff:
+                request.session["new_notification"] = getattr(company_staff, 'new_notification', False)
                 if company_staff.is_active:
                     flag = check_password(password, company_staff.password)
                     if not flag:

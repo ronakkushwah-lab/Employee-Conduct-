@@ -379,6 +379,15 @@ def Register_Employee_View(request,company_id, company_staff_id):
 
                         register_employee.save()
                         
+                        if employee_reports_to:
+                            Asign.objects.update_or_create(
+                                employee=register_employee,
+                                defaults={
+                                    'assigned_to': employee_reports_to,
+                                    'description': f"Assigned to {employee_reports_to.manager_first_name} {employee_reports_to.manager_last_name}".strip()
+                                }
+                            )
+
                         # Send email notification for new user
                         try:
                             from administration.email_notifications import send_new_user_notification
@@ -646,6 +655,20 @@ def Employee_Edit_View(request, company_id,company_staff_id):
             
             employee_obj.update(**employee_models_fields_dict)
             emp_id = request.POST.get('employee_id')
+
+            if 'employee_reports_to' in employee_models_fields_dict:
+                emp_inst = employee_obj.first()
+                if emp_inst:
+                    if new_manager:
+                        Asign.objects.update_or_create(
+                            employee=emp_inst,
+                            defaults={
+                                'assigned_to': new_manager,
+                                'description': f"Assigned to {new_manager.manager_first_name} {new_manager.manager_last_name}".strip()
+                            }
+                        )
+                    else:
+                        Asign.objects.filter(employee=emp_inst).delete()
 
             # Check if role or department is being updated
             editor = CompanyStaff.objects.filter(id=company_staff_id).first()
@@ -2879,14 +2902,22 @@ def assignCreateView(request,company_id, company_staff_id):
         if request.method == "POST":
             employee_id = request.POST.get("employee_id")
             employee_to = Employee.objects.get(id=employee_id, user__company_id=company_id)
-            description = request.POST.get("description")
+            description = request.POST.get("description", "")
             assign_id = request.POST.get("manager_id")
             assigned_to = Manager.objects.get(id=assign_id, user__company_id=company_id)
-            # company_staff = CompanyStaff.objects.get(id=company_staff_id)
-            # user = company_staff
-            # emp = Employee.objects.get(user = user)
 
-            Asign.objects.create(employee=employee_to,description=description,assigned_to=assigned_to)
+            # Sync employee_reports_to on the Employee model
+            employee_to.employee_reports_to = assigned_to
+            employee_to.save(update_fields=['employee_reports_to'])
+
+            # Create or update Asign record
+            Asign.objects.update_or_create(
+                employee=employee_to,
+                defaults={
+                    'assigned_to': assigned_to,
+                    'description': description or f"Assigned to {assigned_to.manager_first_name} {assigned_to.manager_last_name}".strip()
+                }
+            )
             return redirect(f'/administration/assignlist/{company_id}/{company_staff_id}')
 
         else:
@@ -2915,7 +2946,22 @@ def Assign_list(request,company_id, company_staff_id):
         return JsonResponse(assign_obj.to_json())
 
     if company_id:
-        assign = Asign.objects.filter(employee__user__company__id=company_id)
+        # Auto-sync any employees who have a manager assigned via employee_reports_to but missing in Asign table
+        employees_with_manager = Employee.objects.filter(
+            user__company_id=company_id,
+            employee_reports_to__isnull=False
+        ).select_related('employee_reports_to')
+        
+        for emp in employees_with_manager:
+            Asign.objects.get_or_create(
+                employee=emp,
+                defaults={
+                    'assigned_to': emp.employee_reports_to,
+                    'description': f"Assigned to {emp.employee_reports_to.manager_first_name} {emp.employee_reports_to.manager_last_name}".strip()
+                }
+            )
+
+        assign = Asign.objects.filter(employee__user__company__id=company_id).select_related('employee', 'assigned_to')
         context = {
             'assign': assign,
             'company_id': company_id,
@@ -2933,6 +2979,9 @@ class AssignRemove(View):
             employee__user__company_id=company_id,
             assigned_to__user__company_id=company_id,
         )
+        if assign.employee and assign.employee.employee_reports_to == assign.assigned_to:
+            assign.employee.employee_reports_to = None
+            assign.employee.save(update_fields=['employee_reports_to'])
         assign.delete()
         return redirect(f'/administration/assignlist/{company_id}/{company_staff_id}')
 

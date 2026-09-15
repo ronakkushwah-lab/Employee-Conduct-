@@ -224,7 +224,16 @@ def employee_profile_view(request,company_id, company_staff_id):
         return redirect('/')
     
     profile = Employee.objects.filter(user=company_staff).first()
-    if not profile:
+    if profile:
+        try:
+            from administration.models import Asign
+            assign_entry = Asign.objects.filter(employee=profile).select_related('assigned_to').first()
+            if assign_entry and assign_entry.assigned_to and profile.employee_reports_to_id != assign_entry.assigned_to_id:
+                profile.employee_reports_to = assign_entry.assigned_to
+                profile.save(update_fields=['employee_reports_to'])
+        except Exception:
+            pass
+    else:
         # Only show this message once per session to avoid duplicates
         if not request.session.get('employee_profile_warning_shown', False):
             messages.error(request, 'Employee profile not found. Please contact administrator to complete your profile setup.')
@@ -462,8 +471,16 @@ def EmployeeDashboardView(request, company_id, company_staff_id):
         return redirect('/')
 
     employee = Employee.objects.filter(user=company_staff).first()
-
-    if not employee:
+    if employee:
+        try:
+            from administration.models import Asign
+            assign_entry = Asign.objects.filter(employee=employee).select_related('assigned_to').first()
+            if assign_entry and assign_entry.assigned_to and employee.employee_reports_to_id != assign_entry.assigned_to_id:
+                employee.employee_reports_to = assign_entry.assigned_to
+                employee.save(update_fields=['employee_reports_to'])
+        except Exception:
+            pass
+    else:
         if not request.session.get('employee_profile_warning_shown', False):
             messages.error(request, 'Employee profile not found. Please contact administrator to complete your profile setup.')
             request.session['employee_profile_warning_shown'] = True
