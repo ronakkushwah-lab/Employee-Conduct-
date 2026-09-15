@@ -28,7 +28,8 @@ from django.db.models import Q
 #         return Employees
 
 def EmployeeSearchResultsView(request, company_id, company_staff_id):
-    from company.models import CompanyStaff, Department
+    from account.models import CompanyStaff
+    from employee.models import Department
     logged_in_staff = CompanyStaff.objects.filter(id=company_staff_id).first()
     is_admin = bool(logged_in_staff and (logged_in_staff.is_company_admin or logged_in_staff.role in [CompanyStaff.ROLE_ADMIN, CompanyStaff.ROLE_SUPERADMIN]))
     is_hr = bool(logged_in_staff and (logged_in_staff.is_hr or logged_in_staff.role == CompanyStaff.ROLE_HR))
@@ -40,9 +41,9 @@ def EmployeeSearchResultsView(request, company_id, company_staff_id):
     if 'q' in request.GET:
         q = request.GET['q']
         multiple_q = Q(Q(user__email__icontains=q) | Q(employee_first_name__icontains=q) | Q(employee_last_name__icontains=q) | Q(employee_id__icontains=q))
-        Employees = Employee.objects.filter(multiple_q, user__company_id=company_id)
+        Employees = Employee.objects.filter(multiple_q, user__company_id=company_id).exclude(user__role=CompanyStaff.ROLE_MANAGER).exclude(user__is_manager=True)
     else:
-        Employees = Employee.objects.filter(user__company__id=company_id)
+        Employees = Employee.objects.filter(user__company__id=company_id).exclude(user__role=CompanyStaff.ROLE_MANAGER).exclude(user__is_manager=True)
     context = {
         'Employees': Employees,
         'departments': departments,

@@ -434,7 +434,7 @@ def All_Employee_View(request, company_id, company_staff_id):
             return JsonResponse({'error': str(e)}, status=500)
 
     else:
-        AllEmployee = Employee.objects.filter(user__company__id = company_id)
+        AllEmployee = Employee.objects.filter(user__company__id = company_id).exclude(user__role=CompanyStaff.ROLE_MANAGER).exclude(user__is_manager=True)
         departments = Department.objects.filter(company__id=company_id)
         reports_to = Manager.objects.filter(user__company__id=company_id)
         
@@ -575,14 +575,19 @@ def Promote_Employee_To_Manager_View(request, company_id, company_staff_id):
             # Upgrade CompanyStaff role
             user.role = CompanyStaff.ROLE_MANAGER
             user.is_manager = True
+            user.is_employee = False
             user.save()
 
-            # Update employee record details
+            # Clear any subordinate assignment and reports_to since this user is now a Manager
+            employee.employee_reports_to = None
             employee.employee_designation = manager_designation
             if dept:
                 employee.employee_department = dept
             employee.employee_salary = manager_salary
             employee.save()
+
+            # Remove subordinate Asign record
+            Asign.objects.filter(employee=employee).delete()
 
             # Send promotion notification
             try:
@@ -1118,7 +1123,7 @@ def IndexView(request, company_id, company_staff_id):
     if company_id:
         projects_count = Task.objects.filter(assigned_to__user__company__id=company_id).count()
         clients_count = Client.objects.filter(company_id=company_id).count()
-        employee_count = Employee.objects.filter(user__company__id=company_id).count()
+        employee_count = Employee.objects.filter(user__company__id=company_id).exclude(user__role=CompanyStaff.ROLE_MANAGER).exclude(user__is_manager=True).count()
         lead_count = Lead.objects.filter(company_id=company_id).count()
         context = {
             'projects_count': projects_count,
@@ -1516,7 +1521,7 @@ def TaskCreateView(request,company_id, company_staff_id):
                 return redirect(f'/administration/task/new/{company_id}/{company_staff_id}')
 
         else:
-            return render(request,"administration/add-project.html",{'assigned':Employee.objects.filter(user__company__id=company_id),'company_id':company_id, 'company_staff_id':company_staff_id})
+            return render(request,"administration/add-project.html",{'assigned':Employee.objects.filter(user__company__id=company_id).exclude(user__role=CompanyStaff.ROLE_MANAGER).exclude(user__is_manager=True),'company_id':company_id, 'company_staff_id':company_staff_id})
 
 
 def ManagerProjectCreateView(request, company_id, company_staff_id):
@@ -1983,7 +1988,7 @@ def add_leaves_balance(request, company_id, company_staff_id):
     # GET request - display the page
     if company_id:
         # Get employees for the dropdown
-        employees = Employee.objects.filter(user__company__id=company_id).order_by('employee_first_name')
+        employees = Employee.objects.filter(user__company__id=company_id).exclude(user__role=CompanyStaff.ROLE_MANAGER).exclude(user__is_manager=True).order_by('employee_first_name')
         context = {
             'employees': employees,
             'company_id': company_id,
@@ -2409,7 +2414,7 @@ def All_document_View(request,company_id, company_staff_id):
     # Old Code
     if company_id:
         document_list = Post.objects.filter(user__user__company__id=company_id)
-        employees_list = Employee.objects.filter(user__company__id=company_id).order_by('employee_first_name')
+        employees_list = Employee.objects.filter(user__company__id=company_id).exclude(user__role=CompanyStaff.ROLE_MANAGER).exclude(user__is_manager=True).order_by('employee_first_name')
         return render(request, 'administration/employee-all-documents.html',{
             'document_list': document_list,
             'employees': employees_list,
@@ -2921,7 +2926,7 @@ def assignCreateView(request,company_id, company_staff_id):
             return redirect(f'/administration/assignlist/{company_id}/{company_staff_id}')
 
         else:
-            return render(request,"administration/assign-employee.html",{'assigned':Manager.objects.filter(user__company__id=company_id),'assignedto':Employee.objects.filter(user__company__id=company_id),'company_id':company_id, 'company_staff_id':company_staff_id})
+            return render(request,"administration/assign-employee.html",{'assigned':Manager.objects.filter(user__company__id=company_id),'assignedto':Employee.objects.filter(user__company__id=company_id).exclude(user__role=CompanyStaff.ROLE_MANAGER).exclude(user__is_manager=True),'company_id':company_id, 'company_staff_id':company_staff_id})
 
 
 class assignDetailView(DetailView, LoginRequiredMixin):
@@ -2950,7 +2955,7 @@ def Assign_list(request,company_id, company_staff_id):
         employees_with_manager = Employee.objects.filter(
             user__company_id=company_id,
             employee_reports_to__isnull=False
-        ).select_related('employee_reports_to')
+        ).exclude(user__role=CompanyStaff.ROLE_MANAGER).exclude(user__is_manager=True).select_related('employee_reports_to')
         
         for emp in employees_with_manager:
             Asign.objects.get_or_create(
@@ -2961,7 +2966,7 @@ def Assign_list(request,company_id, company_staff_id):
                 }
             )
 
-        assign = Asign.objects.filter(employee__user__company__id=company_id).select_related('employee', 'assigned_to')
+        assign = Asign.objects.filter(employee__user__company__id=company_id).exclude(employee__user__role=CompanyStaff.ROLE_MANAGER).exclude(employee__user__is_manager=True).select_related('employee', 'assigned_to')
         
         # Build grouped manager teams for manager-first dropdown and accordion view
         managers_list = Manager.objects.filter(user__company_id=company_id).order_by('manager_first_name', 'manager_last_name')
@@ -2970,7 +2975,7 @@ def Assign_list(request,company_id, company_staff_id):
             team_members = Asign.objects.filter(
                 assigned_to=mgr,
                 employee__user__company_id=company_id
-            ).select_related('employee', 'employee__employee_department', 'employee__user').order_by('employee__employee_first_name', 'employee__employee_last_name')
+            ).exclude(employee__user__role=CompanyStaff.ROLE_MANAGER).exclude(employee__user__is_manager=True).select_related('employee', 'employee__employee_department', 'employee__user').order_by('employee__employee_first_name', 'employee__employee_last_name')
             
             manager_teams.append({
                 'manager': mgr,
@@ -3098,7 +3103,7 @@ def all_documents(request, company_id, company_staff_id):
     
     # Fetch employees for the dropdown (filtered by company) - EXACTLY like All_Employee_View line 121
     if company_id:
-        employees_list = Employee.objects.filter(user__company__id=company_id).order_by('employee_first_name')
+        employees_list = Employee.objects.filter(user__company__id=company_id).exclude(user__role=CompanyStaff.ROLE_MANAGER).exclude(user__is_manager=True).order_by('employee_first_name')
     else:
         employees_list = Employee.objects.none()
     
