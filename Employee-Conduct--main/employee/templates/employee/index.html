@@ -1,0 +1,487 @@
+{% load static %}
+{% include "employee/header.html" %}
+{% include "employee/sidebar.html" %}
+{% include "employee/topbar.html" %}
+
+      <div class="page_wrapper">
+        <div class="page-content">
+          {% for message in messages  %}
+              <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                  <strong>Message : </strong> {{ message }}
+          <!--        <button type="button" class="close" data-dismiss="alert" aria-label="Close">-->
+          <!--            <span aria-hidden="true">&times;</span>-->
+          <!--        </button>-->
+              </div>
+                {% endfor %}
+          <div class="row">
+            <div class="col">
+              <div class="card message">
+                <div class="card-body">
+                  <div class="d-flex align-items-center">
+                    <div class="message-content">
+                       <script type="text/javascript">
+                        document.write("<h1 class='wish'>");
+                        var day = new Date();
+                        var hr = day.getHours();
+                        if (hr >= 0 && hr < 12){
+                          document.write("Good Morning!");
+                        }
+                        else if (hr == 12) {
+                          document.write("Good Noon!");
+                        }
+                        else if (hr >= 12 && hr <= 17) {
+                          document.write("Good Afternoon!");
+                        }
+                        else {
+                          document.write("Good Evening!");
+                        }
+                        document.write("</h1>");
+                      </script>
+                      <h4>Welcome to the Employee Dashboard</h4>
+                      <p>Your attendance, leaves, tasks and notifications</p>
+                    </div>
+                    <div class="ms-auto">
+                      <div class="message-img">
+                        <img src="{% static 'asets/images/message-image.png' %}" class="img-fluid">
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Employee Personal Workspace & Attendance Quick Punch Card -->
+          <div class="card radius-10 shadow-sm border-0 mb-4" style="background: #ffffff; border-left: 5px solid #0d6efd !important;">
+            <div class="card-body p-4">
+              <div class="row align-items-center">
+                <!-- Left: Profile & Reporting Manager Info -->
+                <div class="col-lg-5 col-md-12 border-end pe-lg-4 mb-3 mb-lg-0">
+                  <div class="d-flex align-items-center">
+                    <div class="avatar-box me-3">
+                      {% if employee.avatar_base64 or employee.employee_image %}
+                        <img src="{{ employee.avatar_url }}" class="rounded-circle shadow-sm" style="width: 58px; height: 58px; object-fit: cover;" onerror="this.style.display='none';">
+                      {% else %}
+                        <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm" style="width: 58px; height: 58px; background: linear-gradient(135deg, #0d6efd, #6610f2); font-size: 1.25rem;">
+                          {{ employee.employee_first_name|first|upper }}{{ employee.employee_last_name|first|upper }}
+                        </div>
+                      {% endif %}
+                    </div>
+                    <div>
+                      <h5 class="mb-1 fw-bold text-dark">
+                        {{ employee.employee_first_name }} {{ employee.employee_last_name }}
+                        {% if employee.is_hr or employee.user.role == 'hr' or employee.user.is_hr %}
+                          <span class="badge bg-warning text-dark ms-1" style="font-size: 0.72rem;">HR Staff</span>
+                        {% else %}
+                          <span class="badge bg-primary text-white ms-1" style="font-size: 0.72rem;">Employee</span>
+                        {% endif %}
+                      </h5>
+                      <p class="mb-1 text-muted small">
+                        <i class="bx bx-id-card me-1"></i><strong>Emp ID:</strong> {{ employee.employee_id|default:"-" }} &nbsp;|&nbsp;
+                        <i class="bx bx-fingerprint me-1"></i><strong>Bio ID:</strong> {{ employee.biometric_id|default:"-" }}
+                      </p>
+                      <p class="mb-0 small text-primary">
+                        <i class="bx bx-user-check me-1"></i><strong>Reports To (Manager):</strong>
+                        {% if employee.employee_reports_to %}
+                          <span class="fw-semibold">{{ employee.employee_reports_to.manager_first_name }} {{ employee.employee_reports_to.manager_last_name }}</span> ({{ employee.employee_reports_to.manager_email }})
+                        {% else %}
+                          <span class="text-muted">No manager assigned</span>
+                        {% endif %}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Middle: Personal Today's Attendance Info -->
+                <div class="col-lg-4 col-md-7 border-end pe-lg-4 mb-3 mb-md-0">
+                  <div class="row text-center g-2">
+                    <div class="col-4">
+                      <div class="p-2 rounded bg-light">
+                        <span class="text-muted d-block small mb-1">Check In</span>
+                        <strong class="text-dark small">{% if attendance and attendance.check_in %}{{ attendance.check_in|date:"h:i A" }}{% else %}--:--{% endif %}</strong>
+                      </div>
+                    </div>
+                    <div class="col-4">
+                      <div class="p-2 rounded bg-light">
+                        <span class="text-muted d-block small mb-1">Check Out</span>
+                        <strong class="text-dark small">{% if attendance and attendance.check_out %}{{ attendance.check_out|date:"h:i A" }}{% else %}--:--{% endif %}</strong>
+                      </div>
+                    </div>
+                    <div class="col-4">
+                      <div class="p-2 rounded bg-light">
+                        <span class="text-muted d-block small mb-1">Worked</span>
+                        <strong class="text-success small time-spend-today">{{ hours_worked|default:"0h 0m" }}</strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Right: 1-Click Punch & Self-Service Links -->
+                <div class="col-lg-3 col-md-5 ps-lg-4 text-center text-md-end">
+                  {% if is_complete_attendance %}
+                    <span class="badge bg-success py-2 px-3 mb-2 d-inline-block rounded-3"><i class="bx bx-check-double me-1"></i>Punch Completed Today</span>
+                  {% else %}
+                    <button class="btn btn-sm {% if is_check_in == 'Check Out' %}btn-danger{% else %}btn-primary{% endif %} px-3 py-2 rounded-3 shadow-sm fw-semibold mb-2" id="check_in" type="button" onclick="attend(event)" style="cursor:pointer;">
+                      <i class="bx {% if is_check_in == 'Check Out' %}bx-log-out-circle{% else %}bx-log-in-circle{% endif %} me-1"></i>
+                      {{ is_check_in }}
+                    </button>
+                  {% endif %}
+                  {% if attendance.check_in and not is_complete_attendance %}
+                    <span id="check_in_time" style="display:none;">{{ attendance.check_in|date:"c" }}</span>
+                  {% endif %}
+                  <div class="d-flex justify-content-center justify-content-md-end gap-2 mt-1">
+                    <a href="{% url 'attendance' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-outline-secondary btn-xs small py-1 px-2" style="font-size: 0.78rem;" title="View Monthly Attendance Calendar">
+                      <i class="bx bx-calendar me-1"></i>My Attendance
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- My Leave Requests -->
+          <div class="row mt-3">
+            <div class="col-12">
+              <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                  <h6 class="mb-0">My Leave Requests ({{ my_leaves|length }})</h6>
+                  <a href="{% url 'staffleavetable' company_id company_staff_id %}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                  {% if my_leaves %}
+                  <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                      <thead><tr><th>Type</th><th>Start</th><th>End</th><th>Status</th></tr></thead>
+                      <tbody>
+                        {% for leave in my_leaves %}
+                        <tr>
+                          <td>{{ leave.leavetype }}</td>
+                          <td>{{ leave.startdate|date:"d M Y" }}</td>
+                     	  <td>{{ leave.enddate|date:"d M Y" }}</td>
+                          <td>
+                            <span class="badge bg-{% if leave.status == 'approved' %}success{% elif leave.status == 'rejected' or leave.status == 'cancelled' %}danger{% else %}warning{% endif %}">
+                              {{ leave.status }}
+                            </span>
+                          </td>
+                        </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                  {% else %}
+                  <p class="text-muted mb-0">No leave requests yet.</p>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- My Resignation Requests -->
+          <div class="row mt-3">
+            <div class="col-12">
+              <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                  <h6 class="mb-0">My Resignation Requests</h6>
+                  <a href="{% url 'staffresigntable' company_id company_staff_id %}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                  {% if my_resignations %}
+                  <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                      <thead><tr><th>Date</th><th>Reason</th><th>Status</th></tr></thead>
+                      <tbody>
+                        {% for resign in my_resignations %}
+                        <tr>
+                          <td>{{ resign.startdate|date:"d M Y" }}</td>
+                          <td>{{ resign.reason|truncatewords:8|default:"No reason" }}</td>
+                          <td>
+                            <span class="badge bg-{% if resign.status == 'approved' %}success{% elif resign.status == 'rejected' or resign.status == 'cancelled' %}danger{% else %}warning{% endif %}">
+                              {{ resign.status }}
+                            </span>
+                          </td>
+                        </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                  {% else %}
+                  <p class="text-muted mb-0">No resignation requests.</p>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- My Assigned Projects -->
+          <div class="row mt-3">
+            <div class="col-12">
+              <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                  <h6 class="mb-0">My Assigned Projects ({{ my_tasks|length }})</h6>
+                  <a href="{% url 'task-list' company_id company_staff_id %}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                  {% if my_tasks %}
+                  <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Project</th>
+                          <th>Assigned By</th>
+                          <th>Description</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for task in my_tasks %}
+                        <tr>
+                          <td>{{ task.created_date|date:"d M Y" }}</td>
+                          <td><strong>{{ task.title }}</strong></td>
+                          <td>
+                            {% if task.user %}
+                              {{ task.user.manager_first_name }} {{ task.user.manager_last_name }}
+                            {% elif task.assigned_to.employee_reports_to %}
+                              {{ task.assigned_to.employee_reports_to.manager_first_name }} {{ task.assigned_to.employee_reports_to.manager_last_name }}
+                            {% else %}
+                              Admin
+                            {% endif %}
+                          </td>
+                          <td>{{ task.description|truncatewords:10|default:"-" }}</td>
+                        </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                  {% else %}
+                  <p class="text-muted mb-0">No projects assigned yet.</p>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Notifications -->
+          <div class="row mt-3">
+            <div class="col-12">
+              <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                  <h6 class="mb-0">Notifications</h6>
+                  <a href="{% url 'mynotifications' company_id company_staff_id %}" class="btn btn-sm btn-outline-primary">View All</a>
+                </div>
+                <div class="card-body">
+                  {% if my_notifications %}
+                  <ul class="list-group list-group-flush">
+                    {% for notif in my_notifications %}
+                    <li class="list-group-item px-0">{{ notif.notifications }}</li>
+                    {% endfor %}
+                  </ul>
+                  {% else %}
+                  <p class="text-muted mb-0">No notifications.</p>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <form id="hddfields" name="hddfields">
+        {% csrf_token %}
+        <input id="is_check_in" name="is_check_in" type="hidden" value="{{ is_check_in }}">
+        <input id="attendance_id" name="attendance_id" type="hidden" value="{{ attendance.id }}">
+      </form>
+      <footer class="page-footer">
+        <p class="mb-0">Copyright © 2022. All right reserved.</p>
+      </footer>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/simplebar@latest/dist/simplebar.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/metisMenu/3.0.7/metisMenu.min.js"></script>
+    <script src="https://unpkg.com/boxicons@2.1.2/dist/boxicons.js"></script>
+    <script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/js/all.min.js"></script>
+    <script src="{% static 'asets/js/jquery.sparkline.min.js' %}"></script>
+    <script src="{% static 'asets/js/Chart.min.js' %}"></script>
+    <script src="{% static 'asets/js/Chart.extension.js' %}"></script>
+    <script src="{% static 'asets/js/script.js' %}"></script>
+    <script src="{% static 'asets/js/jquery-confirm.min.js' %}"></script>
+    <script>
+        $(document).ready(function() {
+            var checkInElem = document.getElementById("check_in_time");
+            if (checkInElem) {
+                var checkInStr = checkInElem.textContent.trim();
+                if (checkInStr) {
+                    var checkInTime = new Date(checkInStr);
+                    
+                    function updateTimer() {
+                        var now = new Date();
+                        var diffMs = now - checkInTime;
+                        if (diffMs < 0) diffMs = 0;
+                        
+                        var diffSecs = Math.floor(diffMs / 1000);
+                        var hours = Math.floor(diffSecs / 3600);
+                        var minutes = Math.floor((diffSecs % 3600) / 60);
+                        var seconds = diffSecs % 60;
+                        
+                        var formattedTime = hours + "h " + minutes + "m";
+                        $(".time-spend-today").text(formattedTime);
+                    }
+                    
+                    updateTimer();
+                    setInterval(updateTimer, 1000);
+                }
+            }
+        });
+
+        var isAttendanceSubmitting = false;
+
+        function attend(e) {
+            if (e && e.preventDefault) e.preventDefault();
+            if (isAttendanceSubmitting) return;
+
+            var $btn = $("#check_in");
+            var currentText = $btn.text().trim() || "Check In";
+            var actionTitle = currentText;
+
+            function doSubmitAttendance() {
+                isAttendanceSubmitting = true;
+                $btn.prop('disabled', true).text('Processing...');
+
+                var postData = $("#hddfields").serialize();
+                if (!postData) {
+                    var token = $('input[name="csrfmiddlewaretoken"]').val() || $('[name=csrfmiddlewaretoken]').val();
+                    var isCheckInVal = $('#is_check_in').val() || currentText;
+                    var attendanceIdVal = $('#attendance_id').val() || '';
+                    postData = {
+                        'csrfmiddlewaretoken': token,
+                        'is_check_in': isCheckInVal,
+                        'attendance_id': attendanceIdVal
+                    };
+                }
+
+                $.ajax({
+                    url: "{% url 'attendance_post' company_id=company_id company_staff_id=company_staff_id %}",
+                    type: "POST",
+                    data: postData,
+                    dataType: 'json',
+                    success: function (response) {
+                        var status = (typeof response === 'string') ? (JSON.parse(response)).status : (response && response.status);
+                        var msg = (response && response.message) || 'Attendance recorded successfully!';
+
+                        if (status === "SUCCESS") {
+                            if (typeof $.confirm === 'function') {
+                                $.confirm({
+                                    title: 'Success!',
+                                    content: msg,
+                                    buttons: {
+                                        Ok: function () {
+                                            location.reload();
+                                        }
+                                    }
+                                });
+                            } else {
+                                alert(msg);
+                                location.reload();
+                            }
+                        } else {
+                            isAttendanceSubmitting = false;
+                            $btn.prop('disabled', false).text(currentText);
+                            var errMsg = (response && response.error) || 'Could not save attendance.';
+                            if (typeof $.confirm === 'function') {
+                                $.confirm({
+                                    title: 'Error',
+                                    content: errMsg,
+                                    buttons: { Ok: function () {} }
+                                });
+                            } else {
+                                alert('Error: ' + errMsg);
+                            }
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        isAttendanceSubmitting = false;
+                        $btn.prop('disabled', false).text(currentText);
+                        var errMsg = 'Could not save attendance. Please try again.';
+                        try {
+                            var errObj = JSON.parse(xhr.responseText);
+                            if (errObj && errObj.error) errMsg = errObj.error;
+                        } catch(e) {}
+
+                        if (typeof $.confirm === 'function') {
+                            $.confirm({
+                                title: 'Error',
+                                content: errMsg,
+                                buttons: { Ok: function () {} }
+                            });
+                        } else {
+                            alert('Error: ' + errMsg);
+                        }
+                    }
+                });
+            }
+
+            if (typeof $.confirm === 'function') {
+                $.confirm({
+                    title: 'Attendance Confirmation',
+                    content: 'Do you want to proceed with ' + actionTitle + '?',
+                    buttons: {
+                        Ok: function () {
+                            doSubmitAttendance();
+                        },
+                        Cancel: function () {
+                            // Cancelled
+                        }
+                    }
+                });
+            } else {
+                if (window.confirm('Do you want to proceed with ' + actionTitle + '?')) {
+                    doSubmitAttendance();
+                }
+            }
+        }
+
+        $(document).ready(function () {
+            if ($('#attendanceTable').length) {
+                $('#attendanceTable').DataTable({
+                    "ajax": "{% url 'attendance_grid_Data' company_id=company_id company_staff_id=company_staff_id %}",
+                    "processing": true,
+                    "serverSide": true,
+                    "info": true,
+                    "stateSave": true,
+                    "sDom": 'lrtip',
+                    "lengthMenu": [[10, 20, 50], [10, 20, 50]],
+                    "columns": [
+                        {"data": "check_in"},
+                        {"data": "check_out"},
+                        {"data": "working_hours", 'orderable': false},
+                    ]
+                });
+            }
+
+            // Live Biometric Webhook Auto-Refresh
+            (function() {
+                let lastKnownEventId = null;
+                function checkLiveBiometricPunch() {
+                    if (typeof $ === 'undefined') return;
+                    $.ajax({
+                        url: '/api/latest-events/',
+                        type: 'GET',
+                        dataType: 'json',
+                        success: function(response) {
+                            if (response && response.status === 'success') {
+                                if (lastKnownEventId !== null && response.latest_id !== lastKnownEventId) {
+                                    window.location.reload();
+                                } else if (lastKnownEventId === null) {
+                                    lastKnownEventId = response.latest_id;
+                                }
+                            }
+                        }
+                    });
+                }
+                setInterval(checkLiveBiometricPunch, 3000);
+            })();
+        });
+
+    </script>
+  </body>
+</html>

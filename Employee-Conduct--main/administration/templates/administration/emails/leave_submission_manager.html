@@ -1,0 +1,67 @@
+{% extends "administration/emails/base_email.html" %}
+
+{% block content %}
+<h2>Leave Request – Approve or Reject</h2>
+
+<p>Dear {{ manager_name }},</p>
+
+<p>A new leave request has been submitted and is waiting for your action. You need to <strong>Approve</strong> or <strong>Reject</strong> this leave in the HRMS portal.</p>
+
+<div class="info-box">
+    <div class="detail-row">
+        <span class="detail-label">Employee Name:</span>
+        <span class="detail-value">{{ employee_name }}</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Employee ID:</span>
+        <span class="detail-value">{{ employee_id }}</span>
+    </div>
+    {% if employee_email %}
+    <div class="detail-row">
+        <span class="detail-label">Email:</span>
+        <span class="detail-value">{{ employee_email }}</span>
+    </div>
+    {% endif %}
+    {% if employee_phone %}
+    <div class="detail-row">
+        <span class="detail-label">Phone:</span>
+        <span class="detail-value">{{ employee_phone }}</span>
+    </div>
+    {% endif %}
+    <div class="detail-row">
+        <span class="detail-label">Leave Type:</span>
+        <span class="detail-value">{{ leave_type }}</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Start Date:</span>
+        <span class="detail-value">{{ start_date }}</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">End Date:</span>
+        <span class="detail-value">{{ end_date }}</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Total Days:</span>
+        <span class="detail-value">{{ leave_days }} day(s)</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Reason:</span>
+        <span class="detail-value">{{ reason }}</span>
+    </div>
+    {% if description and description != 'N/A' %}
+    <div class="detail-row">
+        <span class="detail-label">Description:</span>
+        <span class="detail-value">{{ description }}</span>
+    </div>
+    {% endif %}
+    <div class="detail-row">
+        <span class="detail-label">Status:</span>
+        <span class="detail-value">{{ status|title }} (Awaiting your action)</span>
+    </div>
+</div>
+
+<p><strong>Action required:</strong> Please log in to the HRMS portal and either <strong>Approve</strong> or <strong>Reject</strong> this leave request so the employee can be notified.</p>
+
+<p>Best regards,<br>
+{{ company_name }} Team</p>
+{% endblock %}

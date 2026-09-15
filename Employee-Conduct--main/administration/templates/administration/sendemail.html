@@ -1,0 +1,53 @@
+{% load static %}
+{% include "administration/header.html" %}
+{% include "administration/sidebar.html" %}
+{% include "administration/topbar.html" %}
+
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12 bg-img py-5 text-center text-light px-0">
+            <h1>Dashboard &gt; Send Email</h1>
+        </div>
+        <div class="col-md-6  p-3 bg-light my-5 shadow shadow-lg mx-auto">
+            {% if status %}
+                <div class="alert {{cls}}">{{status}}</div>
+            {% endif %}
+            <form action="{% url 'sendemail' company_id=company_id company_staff_id=company_staff_id %}" method="post">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="">To</label>
+                    <input type="text" class="form-control" placeholder="To" name="to">
+                </div>
+                <div class="form-group">
+                    <label for="">Subject</label>
+                    <input type="text" class="form-control" placeholder="Subject" name="sub">
+                </div>
+                <div class="form-group">
+                    <label for="">Message</label>
+                    <textarea name="msz"  rows="5" placeholder="Enter Your Mesage" class="form-control"></textarea>
+                </div>
+                <div class="form-group">
+                    <input type="submit" value="Send Email" class="btn btn-outline-primary rounded-pill">
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/simplebar@latest/dist/simplebar.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/metisMenu/3.0.7/metisMenu.min.js"></script>
+    <script src="https://unpkg.com/boxicons@2.1.2/dist/boxicons.js"></script>
+    <script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/js/all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.5.3/jspdf.debug.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.8.0/html2pdf.bundle.js"></script>
+    <script src="{% static 'asets/js/jquery.sparkline.min.js' %}"></script>
+    <script src="{% static 'asets/js/Chart.min.js' %}"></script>
+    <script src="{% static 'asets/js/Chart.extension.js' %}"></script>
+    <script src="{% static 'asets/js/script.js' %}"></script>

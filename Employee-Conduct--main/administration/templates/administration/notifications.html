@@ -1,0 +1,200 @@
+{% load static %}
+{% include "administration/header.html" %}
+{% include "administration/sidebar.html" %}
+{% include "administration/topbar.html" %}
+
+      <div class="page_wrapper">
+        <div class="page-content">
+          <div class="page-breadcrumb d-sm-flex align-items-center mb-3">
+            <div class="breadcrumb-title pe-3">Notifications</div>
+            <div class="ps-3">
+              <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0 p-0">
+                  <li class="breadcrumb-item">
+                    <a href="{% url 'index' company_id=company_id company_staff_id=company_staff_id %}">
+                      <i class="bx bx-home"></i>
+                    </a>
+                  </li>
+                  <li class="breadcrumb-item active" aria-current="page">Notifications</li>
+                </ol>
+              </nav>
+            </div>
+            <div class="ms-auto">
+              <div class="btn-group">
+                <button type="button" class="btn btn-outline-orangeyellow" data-bs-toggle="modal" data-bs-target="#addnotificationModal" id="addnotificationBtn">
+                  <i class="bx bx-plus"></i> Add Notifications
+                </button>
+                   <a href="{% url 'managernotification' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-outline-orangeyellow ms-2">Send Notifications</a>
+                   <a href="{% url 'email_notifications' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-outline-orangeyellow ms-2"><i class="bx bx-envelope"></i> Email Inbox</a>
+                <div class="modal" id="addnotificationModal">
+                  <div class="modal-dialog">
+                    <div class="modal-content">
+                      <div class="modal-header">
+                        <h5 class="modal-title" id="exampleModalLabel">Add Notifications</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                      </div>
+                      <div class="modal-body">
+                        <form method="POST" action="{% url 'createnotifications' company_id=company_id company_staff_id=company_staff_id  %}" >
+                                 {% csrf_token %}
+                           <div class="row mb-2 mt-4">
+                            <div class="col">
+                              <label for="notify" class="form-label">Notification <span class="text-danger">*</span></label>
+                              <textarea class="form-control" name="notify" cols="50" id="notify" rows="6" required></textarea>
+                            </div>
+                          </div>
+                          <div class="mt-4 mb-2 button-right">
+                            <button type="submit" class="btn btn-outline-orangeyellow">Submit</button>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <hr>
+          <div class="row mt-3">
+            <div class="col-12">
+              <div class="card">
+                <div class="card-body">
+                  <div class="table-responsive">
+                    <table class="table table-fluid table-hover" id="myTable">
+                      <thead>
+                        <tr>
+<!--                          <th width="20%">ID</th>-->
+                          <th>Notifications</th>
+                          <th width="20%">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                                 {% for i in notify%}
+                        <tr>
+<!--                          <td>{{notification.id}}</td>-->
+                          <td>{{i.notify}}</td>
+                          <td class="dropdown">
+                            <a class="d-flex align-items-center nav-link dropdown-toggle dropdown-toggle-nocaret" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                              <i class="bx bx-dots-vertical-rounded"></i>
+                            </a>
+                            <ul class="dropdown-menu">
+                              <li>
+                                <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#editnotificationModal" id="editBtn"  onclick="notification_id_fetch('{{i.pk}}')">
+                                  Edit
+                                </button>
+                              </li>
+                              <li>
+                                <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#deleteModal" id="deleteBtn" onClick="getId('{{i.id}}')">
+                                  Delete
+                                </button>                              
+                              </li>
+                            </ul>
+                            <div class="modal" id="editnotificationModal">
+                              <div class="modal-dialog">
+                                <div class="modal-content">
+                                  <div class="modal-header">
+                                    <h5 class="modal-title" id="exampleModalLabel">Edit notification</h5>
+                                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                  </div>
+                                  <div class="modal-body">
+                                    <form method="post" action="{% url 'notification_edit'  company_id=company_id company_staff_id=company_staff_id %}" enctype="multipart/form-data">
+                                        {% csrf_token %}
+                                      <input type="hidden" name="id" id="notification_id_heading">
+                                      <div class="row mb-2">
+                                        <div class="col">
+                                          <label for="notification-name" class="form-label">notification Name <span class="text-danger">*</span></label>
+                                          <input type="text" class="form-control" placeholder="Web Designer" id="notification_name_edit" name="notify" required>
+                                        </div>
+                                      </div>
+                                      <div class="mt-4 mb-2 button-right">
+                                        <button type="submit" class="btn btn-outline-orangeyellow" style="width: 25% !important;">Submit</button>
+                                      </div>
+                                    </form>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <div class="modal" id="deleteModal">
+                              <div class="modal-dialog">
+                                <div class="modal-content">
+                                  <div class="modal-header">
+                                    <h5 class="modal-title" id="exampleModalLabel">Delete notification</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                  </div>
+                                  <div class="modal-body text-center">
+                                    <p>Are you sure want to delete?</p>
+                                     <div class="col-12">
+                                  <a href="javascript:void(0);"  id="delete" class="btn btn-outline-orangeyellow w-100 mb-2">Delete</a>
+                                   </div>
+                                    <button type="button" class="btn btn-outline-orangeyellow w-100" data-bs-dismiss="modal">Cancel</button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <footer class="page-footer">
+          <p class="mb-0">Copyright © 2022. All right reserved.</p>
+        </footer>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/simplebar@latest/dist/simplebar.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/metisMenu/3.0.7/metisMenu.min.js"></script>
+    <script src="https://unpkg.com/boxicons@2.1.2/dist/boxicons.js"></script>
+    <script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/js/all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.5.3/jspdf.debug.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.8.0/html2pdf.bundle.js"></script>
+    <script src="{% static 'asets/js/jquery.sparkline.min.js' %}"></script>
+    <script src="{% static 'asets/js/Chart.min.js' %}"></script>
+    <script src="{% static 'asets/js/Chart.extension.js' %}"></script>
+    <script src="{% static 'asets/js/script.js' %}"></script>
+
+   <script>
+           function notification_id_fetch(id){
+
+        var notification_id_heading = document.getElementById("notification_id_heading");
+        var notification_name_edit = document.getElementById("notification_name_edit");
+        notification_id_heading.value = id;
+
+        $.ajax({
+          url: '{% url "notification_edit"  company_id=company_id company_staff_id=company_staff_id %}',
+          method: "GET",
+          data: {'id': id},
+          dataType: "json",
+          success: function(res){
+            notification_name_edit.value = res['notify']
+
+          },
+          error: function(xhr, status, error){
+            console.log(error);
+            console.log(status);
+            console.log(xhr);
+          }
+        })
+      }
+     
+   </script>
+
+    <script>
+  	function getId(id) {
+		// alert(id)
+		var a =document.getElementById('delete');
+		a.href = "/administration/notification_remove/{{company_id}}/{{company_staff_id}}/"+id;
+	}
+
+   </script>
+    
+

@@ -1,0 +1,283 @@
+{% load static %}
+{% include "administration/header.html" %}
+{% include "administration/sidebar.html" %}
+{% include "administration/topbar.html" %}
+
+      <div class="page_wrapper">
+        <div class="page-content">
+          <div class="page-breadcrumb d-sm-flex align-items-center mb-3">
+            <div class="breadcrumb-title pe-3">Leads</div>
+            <div class="ps-3">
+              <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0 p-0">
+                  <li class="breadcrumb-item">
+                    <a href="{% url 'index' company_id=company_id company_staff_id=company_staff_id %}">
+                      <i class="bx bx-home"></i>
+                    </a>
+                  </li>
+                  <li class="breadcrumb-item active" aria-current="page">Clients</li>
+                </ol>
+              </nav>
+            </div>
+            <div class="ms-auto">
+              <div class="btn-group">
+                <a href="clients.html" class="grid-view btn btn-link active"><i class="bx bx-grid"></i></a>
+                <a href="clients-list.html" class="grid-list btn btn-link"><i class="bx bx-list-ul"></i></a>
+                <button type="button" class="btn btn-outline-orangeyellow" data-bs-toggle="modal" data-bs-target="#clientModal" id="addBtn">
+                  <i class="bx bx-plus"></i> Add Client
+                </button>
+                <div class="modal" id="clientModal">
+                  <div class="modal-dialog w-80">
+                    <div class="modal-content">
+                      <div class="modal-header">
+                        <h5 class="modal-title" id="exampleModalLabel">Add Client</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                      </div>
+                      <div class="modal-body">
+                        <form  method="POST" action="{% url 'clients' company_id=company_id company_staff_id=company_staff_id %}">
+                                              {% csrf_token %}
+                          <div class="row mb-2">
+                            <div class="col-md-6">
+                              <label for="first-name" class="form-label">First Name <span class="text-danger">*</span></label>
+                              <input type="text" class="form-control"  name="client_first_name" id="id_client_first_name" placeholder="Joe" required>
+                            </div>
+                            <div class="col-md-6">
+                              <label for="last-name" class="form-label">Last Name</label>
+                              <input type="text" class="form-control" placeholder="West"  name="client_last_name" id="id_client_last_name" >
+                            </div>
+                          </div>
+                          <div class="row mb-2">
+                            <div class="col-md-6">
+                              <label for="username" class="form-label">Username <span class="text-danger">*</span></label>
+                              <input type="text" class="form-control"  name="client_username"  required id="id_client_username" required>
+                            </div>
+                            <div class="col-md-6">
+                              <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+                              <input type="email" class="form-control"  name="client_email" maxlength="100" required id="id_client_email" placeholder="joewest01@gmail.com">
+                            </div>
+                          </div>
+                          <div class="row mb-2">
+                            <div class="col-md-6">
+                              <label for="employee-id" class="form-label">Client ID <span class="text-danger">*</span></label>
+                              <input type="text" class="form-control"  name="client_id" maxlength="100" required id="id_client_id" placeholder="FT-0001" id="employee-id">
+                            </div>
+                            <div class="col-md-6">
+                              <label for="phone" class="form-label">Phone</label>
+                              <input type="text" class="form-control" name="client_phone" maxlength="100" required id="id_client_phone" placeholder="9876543210" aria-label="phone" >
+                            </div>
+                          </div>
+                          <div class="row mb-2">
+                            <div class="col-md-6">
+                              <label for="technology" class="form-label">Technology</label>
+                              <input type="text" class="form-control" name="technology" placeholder="" id="id_technology">
+                            </div>
+                            <div class="col-md-6">
+                              <label for="description" class="form-label">Description</label>
+                              <input type="text" class="form-control" name="description" placeholder="" id="id_description">
+                            </div>
+                          </div>
+                          <div class="row mb-2">
+                            <div class="col-md-6">
+                              <label for="address" class="form-label">Address</label>
+                              <textarea class="form-control"  name="client_address" maxlength="100" required id="id_client_address" rows="3"></textarea>
+                            </div>
+                          </div>
+                          <div class="mt-4 mb-2 button-right">
+                            <button type="submit" class="btn btn-outline-orangeyellow">Submit</button>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <hr>
+          <div class="fm-search">
+            <div class="mb-0">
+              <div class="input-group input-group-lg">
+                <span class="input-group-text bg-transparent">
+                  <i class="bx bx-search"></i>
+                </span>
+                <input type="text" class="form-control" placeholder="Search here...">
+              </div>
+            </div>
+          </div>
+          <div class="row mt-3">
+            <div class="col-12 col-lg-4">
+              <div class="card shadow-none border radius-15">
+                <div class="card-body">
+                  <div class="align-items-center">
+                    <div class="fm-icon-box radius-15 text-center">
+                      <img src="../images/avatar-2.png" class="img-fluid user-img">
+                    </div>
+                    <div class="info mb-3 text-center">
+                      <h5 class="mt-3 mb-0">Client Name</h5>
+                    </div>
+                    <div class="profile-button text-center">
+                      <button type="button" class="btn bg-gradient-deepblue" data-bs-toggle="modal" data-bs-target="#viewclientModal" id="viewBtn">View</button>
+                      <button type="button" class="btn bg-gradient-quepal" data-bs-toggle="modal" data-bs-target="#editclientModal" id="editBtn">Edit</button>
+                      <button type="button" class="btn bg-gradient-ibiza" data-bs-toggle="modal" data-bs-target="#deleteclientModal" id="deleteBtn">Delete</button>
+                    </div>
+                    <div class="modal" id="viewclientModal">
+                      <div class="modal-dialog w-80">
+                        <div class="modal-content">
+                          <div class="modal-header">
+                            <h5 class="modal-title" id="exampleModalLabel">Client Profile</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                          </div>
+                          <div class="modal-body">
+                            <div class="d-block align-items-center m-auto w-50 text-center">
+                              <div class="fm-icon-box radius-15">
+                                <img src="../images/avatar-2.png" class="img-fluid user-img">
+                                <h5 class="mt-3 mb-0">Client Name</h5>
+                              </div>
+                            </div>
+                            <div class="row">
+                              <div class="col">
+                                <table class="table table-fluid table-bordered table-striped mt-3">
+                                  <tr>
+                                    <th>Client Name</th>
+                                    <td>Abc</td>
+                                  </tr>
+                                    <th>Email</th>
+                                    <td>abc@gmail.com</td>
+                                  </tr>
+                                  <tr>
+                                    <th>Phone</th>
+                                    <td>987654321</td>
+                                  </tr>
+                                  <tr>
+                                    <th>Address</th>
+                                    <td>cwskdc;wmdc;wmd;</td>
+                                  </tr>
+                                  <tr>
+                                    <th>Technology</th>
+                                    <td>lsdnclsd</td>
+                                  </tr>
+                                  <tr>
+                                    <th>Description</th>
+                                    <td>dkvndlknvl lnsvlkdnvl snvlndl</td>
+                                  </tr>
+                                </table>                                
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="modal" id="editclientModal">
+                      <div class="modal-dialog w-80">
+                        <div class="modal-content">
+                          <div class="modal-header">
+                            <h5 class="modal-title" id="exampleModalLabel">Edit Client</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                          </div>
+                          <div class="modal-body">
+                            <form>
+                              <div class="accordion" id="accordionExample">
+                                <div class="accordion-item">
+                                  <h2 class="accordion-header" id="personal">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#information" aria-expanded="false" aria-controls="information">
+                                      Client Information
+                                    </button>
+                                  </h2>
+                                  <div id="information" class="accordion-collapse collapse show" aria-labelledby="personal" data-bs-parent="#accordionExample">
+                                    <div class="accordion-body">
+                                      <div class="row mb-2">
+                                        <div class="col-md-6">
+                                          <label for="first-name" class="form-label">First Name <span class="text-danger">*</span></label>
+                                          <input type="text" class="form-control" id="first-name" required>
+                                        </div>
+                                        <div class="col-md-6">
+                                          <label for="last-name" class="form-label">Last Name</label>
+                                          <input type="text" class="form-control" id="last-name">
+                                        </div>
+                                      </div>
+                                      <div class="row mb-2">
+                                        <div class="col-md-6">
+                                          <label for="username" class="form-label">Username <span class="text-danger">*</span></label>
+                                          <input type="text" class="form-control" id="username" required>
+                                        </div>
+                                        <div class="col-md-6">
+                                          <label for="clieni-id" class="form-label">Client ID <span class="text-danger">*</span></label>
+                                          <input type="text" class="form-control" id="clieni-id" required>
+                                        </div>
+                                      </div>
+                                      <div class="row mb-2">
+                                        <div class="col-md-6">
+                                          <label for="phone" class="form-label">Phone</label>
+                                          <input type="text" class="form-control" id="phone">
+                                        </div>
+                                        <div class="col-md-6">
+                                          <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+                                          <input type="email" class="form-control" id="email" required>
+                                        </div>
+                                      </div>
+                                      <div class="row mb-2">
+                                        <div class="col-md-6">
+                                          <label for="technology" class="form-label">Technology</label>
+                                          <input type="text" class="form-control" id="technology">
+                                        </div>
+                                        <div class="col-md-6">
+                                          <label for="description" class="form-label">Description</label>
+                                          <input type="text" class="form-control" id="description">
+                                        </div>
+                                      </div>                                      
+                                    </div>
+                                  </div>
+                                </div>                                
+                              </div>                              
+                              <div class="mt-4 mb-2 button-right">
+                                <button type="submit" class="btn btn-outline-orangeyellow">Submit</button>
+                              </div>
+                            </form>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="modal" id="deleteclientModal">
+                      <div class="modal-dialog">
+                        <div class="modal-content">
+                          <div class="modal-header">
+                            <h5 class="modal-title" id="exampleModalLabel">Delete Client</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                          </div>
+                          <div class="modal-body text-center">
+                            <p>Are you sure want to delete?</p>
+                            <button type="button" class="btn btn-outline-orangeyellow w-100 mb-2">Delete</button>
+                            <button type="button" class="btn btn-outline-orangeyellow w-100" data-bs-dismiss="modal">Cancel</button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>                  
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <footer class="page-footer">
+          <p class="mb-0">Copyright © 2022. All right reserved.</p>
+        </footer>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/simplebar@latest/dist/simplebar.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/metisMenu/3.0.7/metisMenu.min.js"></script>
+    <script src="https://unpkg.com/boxicons@2.1.2/dist/boxicons.js"></script>
+    <script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/js/all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.5.3/jspdf.debug.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.8.0/html2pdf.bundle.js"></script>
+    <script src="{% static 'asets/js/jquery.sparkline.min.js' %}"></script>
+    <script src="{% static 'asets/js/Chart.min.js' %}"></script>
+    <script src="{% static 'asets/js/Chart.extension.js' %}"></script>
+    <script src="{% static 'asets/js/script.js' %}"></script>
+    
+  </body>
+</html>

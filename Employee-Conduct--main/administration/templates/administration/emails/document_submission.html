@@ -1,0 +1,37 @@
+{% extends "administration/emails/base_email.html" %}
+
+{% block content %}
+<h2>Document Submission Confirmation</h2>
+
+<p>Dear {{ recipient_name }},</p>
+
+<p>This is to confirm that your documents have been successfully submitted to the system.</p>
+
+<div class="info-box">
+    <div class="detail-row">
+        <span class="detail-label">{{ user_type }} Name:</span>
+        <span class="detail-value">{{ user_name }}</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">{{ user_type }} ID:</span>
+        <span class="detail-value">{{ user_id }}</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Submission Date:</span>
+        <span class="detail-value">{{ submission_date }}</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Documents Uploaded:</span>
+        <span class="detail-value">
+            {% for doc in documents_uploaded %}
+                {{ doc }}{% if not forloop.last %}, {% endif %}
+            {% endfor %}
+        </span>
+    </div>
+</div>
+
+<p>Your documents are now on file and will be reviewed by the HR department. If any additional documents are required, you will be notified.</p>
+
+<p>Best regards,<br>
+{{ company_name }} Team</p>
+{% endblock %}

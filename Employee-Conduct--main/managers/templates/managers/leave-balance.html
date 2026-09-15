@@ -1,0 +1,150 @@
+{% load static %}
+{% include "managers/header.html" %}
+{% include "managers/sidebar.html" %}
+{% include "managers/topbar.html" %}
+
+
+      <div class="page_wrapper">
+        <div class="page-content">
+          <div class="page-breadcrumb d-sm-flex align-items-center mb-3">
+            <div class="breadcrumb-title pe-3">Leaves</div>
+            <div class="ps-3">
+              <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0 p-0">
+                  <li class="breadcrumb-item">
+                    <a href="{% url 'dashboard' company_id company_staff_id %}">
+                      <i class="bx bx-home"></i>
+                    </a>
+                  </li>
+                  <li class="breadcrumb-item active" aria-current="page">Leave Balance</li>
+                </ol>
+              </nav>
+            </div>
+          </div>
+          <hr>
+          <!-- Summary Cards -->
+          <div class="row row-cols-1 row-cols-md-3 row-cols-xl-3 g-3 mb-4">
+            <div class="col">
+              <div class="card radius-10 border-start border-0 border-3 border-info shadow-sm">
+                <div class="card-body">
+                  <div class="d-flex align-items-center">
+                    <div>
+                      <p class="mb-0 text-secondary">Total Allocated</p>
+                      <h4 class="my-1 text-info">{{ summary.total_allocated|default:"0" }} <small class="fs-6 text-muted">Days</small></h4>
+                      <p class="mb-0 font-13 text-muted">Total leave days per year</p>
+                    </div>
+                    <div class="widgets-icons-2 rounded-circle bg-light-info text-info ms-auto">
+                      <i class='bx bx-calendar'></i>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="card radius-10 border-start border-0 border-3 border-warning shadow-sm">
+                <div class="card-body">
+                  <div class="d-flex align-items-center">
+                    <div>
+                      <p class="mb-0 text-secondary">Leaves Taken / Pending</p>
+                      <h4 class="my-1 text-warning">{{ summary.used_days|default:"0" }} <small class="fs-6 text-muted">Days</small></h4>
+                      <p class="mb-0 font-13 text-muted">Approved: {{ summary.approved_days|default:"0" }} | Pending: {{ summary.pending_days|default:"0" }}</p>
+                    </div>
+                    <div class="widgets-icons-2 rounded-circle bg-light-warning text-warning ms-auto">
+                      <i class='bx bx-time'></i>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="card radius-10 border-start border-0 border-3 border-success shadow-sm">
+                <div class="card-body">
+                  <div class="d-flex align-items-center">
+                    <div>
+                      <p class="mb-0 text-secondary">Remaining Balance</p>
+                      <h4 class="my-1 text-success">{{ summary.remaining_balance|default:"0" }} <small class="fs-6 text-muted">Days</small></h4>
+                      <p class="mb-0 font-13 text-success">Available for application</p>
+                    </div>
+                    <div class="widgets-icons-2 rounded-circle bg-light-success text-success ms-auto">
+                      <i class='bx bx-check-circle'></i>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row mt-3">
+            <div class="col">
+              <div class="card shadow-none border radius-15">
+                <div class="card-body">                  
+                  <div class="table-responsive">
+                    <table class="table table-fluid table-bordered caption-top align-middle">
+                      <caption>Leave Balance Details</caption>
+                      <thead class="table-light">
+                        <tr>
+                          <th>Assigned Date</th>
+                          <th>Total Allocated Days</th>
+                          <th>Used Days</th>
+                          <th>Remaining Balance</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {% for object in balance %}
+                        <tr>
+                          <td>{{ object.created|date:"d M Y" }}</td>
+                          <td><span class="badge bg-primary fs-6">{{ object.balancedays }}</span></td>
+                          <td><span class="badge bg-warning text-dark fs-6">{{ object.used_days }}</span></td>
+                          <td><span class="badge bg-success fs-6">{{ object.remaining_days }}</span></td>
+                          <td>
+                            {% if object.remaining_days > 0 %}
+                            <span class="badge bg-success">Available</span>
+                            {% else %}
+                            <span class="badge bg-danger">Exhausted</span>
+                            {% endif %}
+                          </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                          <td>-</td>
+                          <td><span class="badge bg-primary fs-6">{{ summary.total_allocated }}</span></td>
+                          <td><span class="badge bg-warning text-dark fs-6">{{ summary.used_days }}</span></td>
+                          <td><span class="badge bg-success fs-6">{{ summary.remaining_balance }}</span></td>
+                          <td>
+                            {% if summary.remaining_balance > 0 %}
+                            <span class="badge bg-success">Available (Default)</span>
+                            {% else %}
+                            <span class="badge bg-danger">Exhausted</span>
+                            {% endif %}
+                          </td>
+                        </tr>
+                        {% endfor %}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <footer class="page-footer">
+          <p class="mb-0">Copyright © 2022. All right reserved.</p>
+        </footer>
+      </div>
+    </div>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/simplebar@latest/dist/simplebar.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/metisMenu/3.0.7/metisMenu.min.js"></script>
+    <script src="https://unpkg.com/boxicons@2.1.2/dist/boxicons.js"></script>
+    <script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/js/all.min.js"></script>
+    <script src="{% static 'asets/js/jquery.sparkline.min.js' %}"></script>
+    <script src="{% static 'asets/js/Chart.min.js' %}"></script>
+    <script src="{% static 'asets/js/Chart.extension.js' %}"></script>
+    <script src="{% static 'asets/js/script.js' %}"></script>
+
+  </body>
+</html>

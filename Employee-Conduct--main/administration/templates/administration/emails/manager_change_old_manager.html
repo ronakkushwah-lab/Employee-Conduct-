@@ -1,0 +1,31 @@
+{% extends "administration/emails/base_email.html" %}
+
+{% block content %}
+<h2>Employee Manager Assignment Changed</h2>
+
+<p>Dear {{ recipient_name }},</p>
+
+<p>This is to inform you that an employee who was previously reporting to you has been reassigned to a different manager.</p>
+
+<div class="info-box">
+    <div class="detail-row">
+        <span class="detail-label">Employee Name:</span>
+        <span class="detail-value">{{ employee_name }}</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Employee ID:</span>
+        <span class="detail-value">{{ employee_id }}</span>
+    </div>
+    {% if new_manager_name and new_manager_name != 'N/A' %}
+    <div class="detail-row">
+        <span class="detail-label">New Manager:</span>
+        <span class="detail-value">{{ new_manager_name }}</span>
+    </div>
+    {% endif %}
+</div>
+
+<p>Thank you for your management of this employee. If you have any questions, please contact the HR department.</p>
+
+<p>Best regards,<br>
+{{ company_name }} Team</p>
+{% endblock %}

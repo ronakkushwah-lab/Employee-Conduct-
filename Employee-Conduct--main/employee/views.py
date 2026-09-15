@@ -1,0 +1,2208 @@
+import json
+import calendar
+import base64
+import os
+import threading
+from django.contrib.auth import authenticate, login
+from django.contrib.auth.hashers import check_password, make_password
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.http.response import HttpResponseRedirect
+from django.contrib.auth import update_session_auth_hash
+from django.shortcuts import redirect, render, get_object_or_404
+from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views import generic
+from django.views.generic import View
+from django.contrib.auth.hashers import  make_password
+from administration.models import Task, notification, holiday, MTask
+from leave.forms import LeaveCreationForm
+from leave.models import Leave, BalanceLeaves
+from manager_leave.models import BalanceLeave
+from managers.models import Manager, EmployeeNotification
+from payroll.models import Salary
+from regularization.forms import RegularizationCreationForm
+from regularization.models import Regularization
+from resign.forms import ResignCreationForm
+from resign.models import Resign
+from account.models import CompanyStaff
+from .helpers.enum import attendance_type
+from .helpers.helper import getgriddatapaginated, strfdelta, ajax_response, show_message_once
+from .models import Employee, Attendance, Entries, format_duration
+from django.db import IntegrityError, transaction
+from django.core.exceptions import ValidationError
+from django.core.files.base import ContentFile
+from django.contrib import messages
+from django.views.generic import TemplateView, CreateView, ListView
+from .models import Employee, Department, Designation
+from .forms import DepartmentForm, DesignationForm, EntryCreationForm
+from django.urls import reverse_lazy, reverse
+from datetime import datetime, timedelta
+from django.utils import timezone
+from django.http import JsonResponse
+from django.shortcuts import render, get_object_or_404
+from django.http import HttpResponse
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.contrib.auth.models import User
+from django.views.generic import (
+    ListView,
+    DetailView,
+    CreateView,
+    UpdateView,
+    DeleteView
+)
+from .models import Post
+from django.contrib.staticfiles.views import serve
+from django.db.models import Q
+from django.contrib.auth import get_user_model
+from django.utils.decorators import method_decorator
+from django.views.decorators.http import require_POST
+
+
+User = get_user_model()
+
+MAX_UPLOAD_SIZE = 10 * 1024 * 1024
+DOCUMENT_EXTENSIONS = {'.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.webp', '.txt'}
+DOCUMENT_CONTENT_TYPES = {
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'text/plain',
+    'application/octet-stream',
+    'application/x-zip-compressed',
+    'application/zip',
+}
+IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp'}
+IMAGE_CONTENT_TYPES = {'image/jpeg', 'image/png', 'image/webp'}
+
+
+def _employee_account(company_id, company_staff_id):
+    staff = get_object_or_404(
+        CompanyStaff, id=company_staff_id, company_id=company_id
+    )
+    return staff, Employee.objects.filter(user=staff).first()
+
+
+def _validate_upload(upload, extensions, content_types, label='File'):
+    if not upload or not getattr(upload, 'name', '') or getattr(upload, 'size', 0) == 0:
+        return
+    extension = os.path.splitext(upload.name or '')[1].lower()
+    if extension not in extensions:
+        allowed = ", ".join(sorted(extensions))
+        raise ValidationError(f'{label} type ({extension or "unknown"}) is not supported. Allowed formats: {allowed}')
+    if upload.size > MAX_UPLOAD_SIZE:
+        raise ValidationError(f'{label} must be 10 MB or smaller.')
+    content_type = getattr(upload, 'content_type', '')
+    if content_type and content_type not in content_types:
+        # Don't strictly reject if extension is valid and content type is generic
+        if content_type not in {'application/octet-stream', 'binary/octet-stream', 'application/x-zip-compressed', 'application/zip'}:
+            raise ValidationError(f'{label} content type is not allowed.')
+
+
+def _validate_profile_image(upload):
+    _validate_upload(upload, IMAGE_EXTENSIONS, IMAGE_CONTENT_TYPES, 'Image')
+    try:
+        from PIL import Image
+        image = Image.open(upload)
+        image.verify()
+        upload.seek(0)
+    except Exception as exc:
+        raise ValidationError('The uploaded profile image is invalid.') from exc
+
+
+def _attendance_month_context(attendance_queryset, request):
+    today = timezone.localdate()
+    try:
+        selected_year = int(request.GET.get('year') or today.year)
+        selected_month = int(request.GET.get('month') or today.month)
+        if selected_month < 1 or selected_month > 12:
+            raise ValueError
+    except (TypeError, ValueError):
+        selected_year = today.year
+        selected_month = today.month
+
+    month_start_date = datetime(selected_year, selected_month, 1).date()
+    _, days_in_month = calendar.monthrange(selected_year, selected_month)
+    month_end_date = datetime(selected_year, selected_month, days_in_month).date()
+    month_start = timezone.make_aware(datetime.combine(month_start_date, datetime.min.time()), timezone.get_current_timezone())
+    month_end = timezone.make_aware(datetime.combine(month_end_date + timedelta(days=1), datetime.min.time()), timezone.get_current_timezone())
+
+    month_records = list(
+        attendance_queryset.filter(check_in__gte=month_start, check_in__lt=month_end).order_by('check_in')
+    )
+
+    records_by_day = {}
+    table_rows = []
+    present_days = set()
+    for record in month_records:
+        local_check_in = timezone.localtime(record.check_in) if timezone.is_aware(record.check_in) else record.check_in
+        local_check_out = timezone.localtime(record.check_out) if record.check_out and timezone.is_aware(record.check_out) else record.check_out
+        date_key = local_check_in.date()
+        present_days.add(date_key)
+        records_by_day.setdefault(date_key, record)
+        working_hours = ''
+        if record.check_in and record.check_out:
+            working_hours = strfdelta(record.check_out - record.check_in, "{hours}:{minutes}")
+        table_rows.append({
+            'date': local_check_in.strftime('%d %b %Y'),
+            'day': local_check_in.strftime('%A'),
+            'status': 'Present',
+            'status_class': 'present',
+            'check_in': local_check_in.strftime('%I:%M %p'),
+            'check_out': local_check_out.strftime('%I:%M %p') if local_check_out else '-',
+            'working_hours': working_hours or '-',
+            'source': getattr(record, 'source', '') or 'manual',
+        })
+
+    calendar_days = []
+    first_weekday = month_start_date.weekday()
+    sunday_offset = (first_weekday + 1) % 7
+    for _ in range(sunday_offset):
+        calendar_days.append(None)
+
+    for day_num in range(1, days_in_month + 1):
+        current_date = datetime(selected_year, selected_month, day_num).date()
+        if current_date in present_days:
+            status = 'present'
+            label = 'Present'
+        else:
+            status = 'not-marked'
+            label = 'Not Marked'
+        calendar_days.append({
+            'day': day_num,
+            'date': current_date,
+            'status': status,
+            'label': label,
+            'is_today': current_date == today,
+            'record': records_by_day.get(current_date),
+        })
+
+    while len(calendar_days) % 7 != 0:
+        calendar_days.append(None)
+
+    calendar_weeks = [
+        calendar_days[index:index + 7]
+        for index in range(0, len(calendar_days), 7)
+    ]
+    previous_month = selected_month - 1
+    previous_year = selected_year
+    if previous_month == 0:
+        previous_month = 12
+        previous_year -= 1
+    next_month = selected_month + 1
+    next_year = selected_year
+    if next_month == 13:
+        next_month = 1
+        next_year += 1
+
+    marked_days = len(present_days)
+    return {
+        'attendance_month_name': calendar.month_name[selected_month],
+        'attendance_month': selected_month,
+        'attendance_year': selected_year,
+        'attendance_calendar_weeks': calendar_weeks,
+        'attendance_table_rows': table_rows,
+        'attendance_summary': {
+            'present': marked_days,
+            'absent': 0,
+            'late': 0,
+            'not_marked': days_in_month - marked_days,
+            'total_days': days_in_month,
+        },
+        'attendance_previous': {'month': previous_month, 'year': previous_year},
+        'attendance_next': {'month': next_month, 'year': next_year},
+        'attendance_weekdays': ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'],
+    }
+
+
+def employee_profile_view(request,company_id, company_staff_id):
+    try:
+        company_staff = CompanyStaff.objects.get(id=company_staff_id, company_id=company_id)
+    except CompanyStaff.DoesNotExist:
+        messages.error(request, 'Company staff not found.')
+        return redirect('/')
+    
+    profile = Employee.objects.filter(user=company_staff).first()
+    if not profile:
+        # Only show this message once per session to avoid duplicates
+        if not request.session.get('employee_profile_warning_shown', False):
+            messages.error(request, 'Employee profile not found. Please contact administrator to complete your profile setup.')
+            request.session['employee_profile_warning_shown'] = True
+        return render(request, 'employee/my-profile.html', {
+            'profile': None,
+            'company_id': company_id, 
+            'company_staff_id': company_staff_id
+        })
+    
+    if company_id:
+        if request.method == "POST":
+            try:
+                editable_fields = {
+                    'employee_phone', 'employee_birth_date', 'employee_gender',
+                    'employee_address', 'employee_pin_code', 'employee_state',
+                    'employee_country', 'employee_tel', 'employee_nationality',
+                    'employee_marital_status', 'employee_father', 'employee_mother',
+                    'employee_emergency_primary_name',
+                    'employee_emergency_primary_relationship',
+                    'employee_emergency_primary_phone1',
+                    'employee_emergency_primary_phone2',
+                    'employee_education_institution', 'employee_education_subject',
+                    'employee_education_starting_date',
+                    'employee_education_complete_date', 'employee_education_degree',
+                    'employee_education_grade', 'employee_experience_company_name',
+                    'employee_experience_company_location',
+                    'employee_experience_company_job_position',
+                    'employee_experience_company_period_from',
+                    'employee_experience_company_period_to',
+                }
+                data = dict(request.POST.copy())
+                for field, value in data.items():
+                    if field in editable_fields:
+                        if hasattr(profile, field) and value:
+                            # Format phone numbers to +91 XXXXX XXXXX format
+                            if field in ['employee_phone', 'employee_emergency_primary_phone1']:
+                                phone_value = value[0].strip()
+                                # Remove all non-digit characters except +
+                                digits = ''.join(filter(str.isdigit, phone_value.replace('+91', '')))
+                                # Ensure exactly 10 digits
+                                if len(digits) == 10:
+                                    formatted_phone = f"+91 {digits[:5]} {digits[5:]}"
+                                    setattr(profile, field, formatted_phone)
+                                else:
+                                    # If not 10 digits, keep original but will be validated by frontend
+                                    setattr(profile, field, phone_value)
+                            else:
+                                setattr(profile, field, value[0])
+
+                # Handle cropped image (base64) or regular file upload
+                cropped_image_data = request.POST.get('cropped-image-input', '')
+                if cropped_image_data and cropped_image_data.startswith('data:image'):
+                    from django.utils.text import slugify
+                    import uuid
+                    
+                    try:
+                        # Store base64 directly in database for permanent persistence (e.g. on Neon)
+                        profile.avatar_base64 = cropped_image_data
+                        
+                        # Remove data URL prefix
+                        format, imgstr = cropped_image_data.split(';base64,', 1)
+                        ext = format.split('/')[-1]
+                        if ext not in {'jpeg', 'jpg', 'png'}:
+                            raise ValidationError('Only JPEG and PNG profile images are allowed.')
+                        decoded = base64.b64decode(imgstr, validate=True)
+                        if len(decoded) > MAX_UPLOAD_SIZE:
+                            raise ValidationError('Image must be 10 MB or smaller.')
+                        
+                        # Decode base64 image
+                        image_file = ContentFile(decoded, name=f"{slugify(profile.employee_first_name)}_{uuid.uuid4().hex[:8]}.{ext}")
+                        _validate_profile_image(image_file)
+                        profile.employee_image = image_file
+                    except Exception as e:
+                        messages.error(request, f'Error processing cropped image: {str(e)}')
+                elif 'employee_image' in request.FILES:
+                    uploaded_image = request.FILES['employee_image']
+                    _validate_profile_image(uploaded_image)
+                    profile.employee_image = uploaded_image
+                    try:
+                        import mimetypes
+                        uploaded_image.seek(0)
+                        content = uploaded_image.read()
+                        uploaded_image.seek(0)
+                        content_type = mimetypes.guess_type(uploaded_image.name)[0] or 'image/jpeg'
+                        profile.avatar_base64 = f"data:{content_type};base64,{base64.b64encode(content).decode('utf-8')}"
+                    except Exception:
+                        pass
+
+                profile.save()
+                messages.success(request, 'Profile updated successfully!')
+                # Redirect after POST to prevent form resubmission on refresh
+                return redirect('employee_profile', company_id=company_id, company_staff_id=company_staff_id)
+            except Exception as e:
+                messages.error(request, f'Error updating profile: {str(e)}')
+                # Redirect even on error to prevent form resubmission
+                return redirect('employee_profile', company_id=company_id, company_staff_id=company_staff_id)
+        
+        # Fetch assigned projects (from Admin Task and Manager MTask)
+        emp_ids = list(Employee.objects.filter(
+            Q(user=company_staff) | 
+            Q(employee_email__iexact=company_staff.email) | 
+            (Q(employee_email__iexact=profile.employee_email) if profile else Q())
+        ).filter(user__company_id=company_id).values_list('id', flat=True))
+
+        admin_tasks = Task.objects.filter(Q(assigned_to__id__in=emp_ids) | Q(assigned_to__user=company_staff))
+        if company_id:
+            admin_tasks = admin_tasks.filter(company_id=company_id)
+        manager_tasks = MTask.objects.filter(
+            Q(assigned_to__id__in=emp_ids) | Q(assigned_to__user=company_staff),
+            user__user__company_id=company_id,
+        )
+        tasks = list(admin_tasks) + list(manager_tasks)
+        tasks.sort(key=lambda x: x.created_date, reverse=True)
+
+        post = Post.objects.filter(user=profile).first() if profile else None
+        return render(request, 'employee/my-profile.html', {
+            'profile': profile,
+            'tasks': tasks,
+            'post': post,
+            'company_id': company_id, 
+            'company_staff_id': company_staff_id
+        })
+    
+    post = Post.objects.filter(user=profile).first() if profile else None
+    return render(request, 'employee/my-profile.html', {
+        'profile': profile,
+        'tasks': [],
+        'post': post,
+        'company_id': company_id, 
+        'company_staff_id': company_staff_id
+    })
+
+
+def upload_profile_image(request, company_id, company_staff_id):
+    """Quick profile image upload endpoint for topbar"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    try:
+        company_staff = CompanyStaff.objects.get(id=company_staff_id, company_id=company_id)
+    except CompanyStaff.DoesNotExist:
+        return JsonResponse({'error': 'Company staff not found'}, status=404)
+    
+    profile = Employee.objects.filter(user=company_staff).first()
+    if not profile:
+        return JsonResponse({'error': 'Employee profile not found'}, status=404)
+    
+    if 'employee_image' not in request.FILES:
+        return JsonResponse({'error': 'No image file provided'}, status=400)
+    
+    try:
+        uploaded_image = request.FILES['employee_image']
+        _validate_profile_image(uploaded_image)
+        profile.employee_image = uploaded_image
+        try:
+            import mimetypes
+            uploaded_image.seek(0)
+            content = uploaded_image.read()
+            uploaded_image.seek(0)
+            content_type = mimetypes.guess_type(uploaded_image.name)[0] or 'image/jpeg'
+            profile.avatar_base64 = f"data:{content_type};base64,{base64.b64encode(content).decode('utf-8')}"
+        except Exception:
+            pass
+        profile.save()
+        return JsonResponse({
+            'success': True,
+            'message': 'Profile updated successfully.',
+            'image_url': profile.employee_image.url if profile.employee_image else None
+        })
+    except ValidationError as e:
+        return JsonResponse({'error': e.message}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': f'Error uploading image: {str(e)}'}, status=500)
+
+
+def remove_profile_image(request, company_id, company_staff_id):
+    """Employee profile photo hataane ke liye – Remove Profile button."""
+    if request.method != 'POST':
+        messages.error(request, 'Invalid request.')
+        return redirect('employee_profile', company_id=company_id, company_staff_id=company_staff_id)
+    try:
+        company_staff = CompanyStaff.objects.get(id=company_staff_id, company_id=company_id)
+    except CompanyStaff.DoesNotExist:
+        messages.error(request, 'Company staff not found.')
+        return redirect('/')
+    profile = Employee.objects.filter(user=company_staff).first()
+    if not profile:
+        messages.error(request, 'Employee profile not found.')
+        return redirect('employee_profile', company_id=company_id, company_staff_id=company_staff_id)
+    try:
+        if profile.employee_image:
+            try:
+                profile.employee_image.delete(save=False)
+            except Exception:
+                pass
+        profile.employee_image = ''
+        profile.avatar_base64 = ''
+        profile.save(update_fields=['employee_image', 'avatar_base64'])
+        messages.success(request, 'Profile photo removed successfully.')
+    except Exception as e:
+        try:
+            profile.employee_image = ''
+            profile.avatar_base64 = ''
+            profile.save()
+            messages.success(request, 'Profile photo removed successfully.')
+        except Exception as e2:
+            messages.error(request, f'Could not remove profile photo: {str(e2)}')
+    return redirect('employee_profile', company_id=company_id, company_staff_id=company_staff_id)
+
+
+class EmployeeUpdateView(UpdateView):
+    model = Employee
+    template_name = 'employee/my-profile.html'
+    fields = [
+        'employee_phone', 'employee_birth_date', 'employee_gender',
+        'employee_address', 'employee_pin_code', 'employee_state',
+        'employee_country', 'employee_nationality', 'employee_marital_status',
+    ]
+    context_object_name = 'employee_update'
+
+    def get_queryset(self):
+        return Employee.objects.filter(user_id=self.request.session.get('company_staff_id'))
+
+
+def EmployeeDashboardView(request, company_id, company_staff_id):
+    ctx = {}
+    today = timezone.now().date()
+    tomorrow = today + timedelta(1)
+
+    try:
+        company_staff = CompanyStaff.objects.get(id=company_staff_id, company_id=company_id)
+    except CompanyStaff.DoesNotExist:
+        messages.error(request, 'Company staff not found.')
+        return redirect('/')
+
+    employee = Employee.objects.filter(user=company_staff).first()
+
+    if not employee:
+        if not request.session.get('employee_profile_warning_shown', False):
+            messages.error(request, 'Employee profile not found. Please contact administrator to complete your profile setup.')
+            request.session['employee_profile_warning_shown'] = True
+        ctx['attendance'] = None
+        ctx['company_id'] = company_id
+        ctx['company_staff_id'] = company_staff_id
+        ctx['is_check_in'] = attendance_type.check_in.value
+        ctx['hours_num'] = '0:0:0'
+        ctx['my_leaves'] = []
+        ctx['my_tasks'] = []
+        ctx['my_notifications'] = []
+        return render(request, "employee/index.html", ctx)
+
+    att = Attendance.objects.filter(
+        employee=employee,
+        check_in__date=timezone.localdate()
+    ).order_by('-id').first()
+    ctx['attendance'] = att
+    ctx['company_id'] = company_id
+    ctx['company_staff_id'] = company_staff_id
+    ctx['employee'] = employee
+    if att:
+        try:
+            if att.check_out and att.check_in:
+                time_diff = att.check_out - att.check_in
+                ctx['hours_num'] = strfdelta(time_diff, "{hours}:{minutes}:{seconds}")
+                diff_sec = int(time_diff.total_seconds())
+                ctx['hours_worked'] = f"{diff_sec // 3600}h {(diff_sec % 3600) // 60}m"
+            else:
+                ctx['hours_num'] = '0:0:0'
+                ctx['hours_worked'] = '0h 0m'
+        except Exception:
+            ctx['hours_num'] = '0:0:0'
+            ctx['hours_worked'] = '0h 0m'
+        ctx['is_check_in'] = attendance_type.check_out.value
+        ctx['is_complete_attendance'] = bool(att.check_in and att.check_out)
+    else:
+        ctx['hours_num'] = '0:0:0'
+        ctx['hours_worked'] = '0h 0m'
+        ctx['is_check_in'] = attendance_type.check_in.value
+        ctx['is_complete_attendance'] = False
+
+    # My Leave Requests (show only latest 2 on dashboard)
+    my_leaves = Leave.objects.filter(user=employee).order_by('-created')[:2]
+    ctx['my_leaves'] = my_leaves
+
+    # My Resignation Requests (show only latest 2 on dashboard)
+    my_resignations = Resign.objects.filter(user=employee).order_by('-created')[:2]
+    ctx['my_resignations'] = my_resignations
+
+    # My Notifications
+    my_notifications = EmployeeNotification.objects.filter(user=employee).order_by('-id')[:8]
+    ctx['my_notifications'] = my_notifications
+
+    # My Projects (Tasks from Admin and Manager)
+    emp_ids = list(Employee.objects.filter(
+        Q(user=company_staff) | 
+        Q(employee_email__iexact=company_staff.email) | 
+        (Q(employee_email__iexact=employee.employee_email) if employee else Q())
+    ).filter(user__company_id=company_id).values_list('id', flat=True))
+
+    admin_tasks = Task.objects.filter(Q(assigned_to__id__in=emp_ids) | Q(assigned_to__user=company_staff))
+    if company_id:
+        admin_tasks = admin_tasks.filter(company_id=company_id)
+    manager_tasks = MTask.objects.filter(
+        Q(assigned_to__id__in=emp_ids) | Q(assigned_to__user=company_staff),
+        user__user__company_id=company_id,
+    )
+    my_tasks = list(admin_tasks) + list(manager_tasks)
+    my_tasks.sort(key=lambda x: x.created_date, reverse=True)
+    ctx['my_tasks'] = my_tasks[:5]
+
+    return render(request, "employee/index.html", ctx)
+
+
+@ensure_csrf_cookie
+def leave_creation(request,company_id, company_staff_id):
+    if company_id:
+        try:
+            company_staff = CompanyStaff.objects.get(id=company_staff_id, company_id=company_id)
+            employee = Employee.objects.filter(user=company_staff).first()
+        except CompanyStaff.DoesNotExist:
+            company_staff = None
+            employee = None
+
+        balance_summary = BalanceLeaves.get_balance_summary(employee) if employee else {
+            'total_allocated': 0, 'used_days': 0, 'approved_days': 0, 'pending_days': 0, 'remaining_balance': 0
+        }
+
+        if request.method == 'POST':
+            form = LeaveCreationForm(data=request.POST)
+            if form.is_valid():
+                try:
+                    instance = form.save(commit=False)
+                    instance.user = employee
+                    
+                    # Validate remaining leave balance
+                    days_requested = instance.leave_days or 0
+                    if days_requested <= 0:
+                        messages.error(request, 'End date must be on or after start date.',
+                                       extra_tags='alert alert-warning alert-dismissible show')
+                        return redirect(f'/employee/leave/{company_id}/{company_staff_id}')
+
+                    if days_requested > balance_summary['remaining_balance']:
+                        messages.error(request, f"Insufficient leave balance! You have {balance_summary['remaining_balance']} day(s) remaining, but requested {days_requested} day(s).",
+                                       extra_tags='alert alert-danger alert-dismissible show')
+                        return redirect(f'/employee/leave/{company_id}/{company_staff_id}')
+
+                    instance.save()
+                    
+                    # Send email notification
+                    if instance.user:
+                        try:
+                            from administration.email_notifications import send_leave_submission_notification
+                            send_leave_submission_notification(instance)
+                        except Exception as e:
+                            print(f"Error sending leave submission notification: {str(e)}")
+                    
+                    messages.success(request, 'Leave Request Sent, wait for response',
+                                     extra_tags='alert alert-success alert-dismissible show')
+                    return redirect(f'/employee/leaves/view/table/{company_id}/{company_staff_id}')
+                except CompanyStaff.DoesNotExist:
+                    messages.error(request, 'Company staff not found.')
+                    return redirect(f'/employee/leave/{company_id}/{company_staff_id}')
+                except Exception as e:
+                    messages.error(request, f'Error creating leave request: {str(e)}')
+                    return redirect(f'/employee/leave/{company_id}/{company_staff_id}')
+            messages.error(request, 'failed to Request a Leave, please check entry dates',
+                           extra_tags='alert alert-warning alert-dismissible show')
+        return redirect(f'/employee/leave/{company_id}/{company_staff_id}')
+
+    dataset = dict()
+    form = LeaveCreationForm()
+    dataset['form'] = form
+    dataset['title'] = 'Apply for Leave'
+    dataset['company_id'] = company_id
+    dataset['company_staff_id'] = company_staff_id
+    dataset['managers'] = Manager.objects.filter(user__company__id=company_id)
+    dataset['balance_summary'] = balance_summary
+    return render(request, 'employee/apply-leaves.html', dataset)
+
+
+def view_my_leave_table(request,company_id, company_staff_id):
+    if company_id:
+        try:
+            company_staff = CompanyStaff.objects.get(id=company_staff_id, company_id=company_id)
+        except CompanyStaff.DoesNotExist:
+            messages.error(request, 'Company staff not found.')
+            return redirect('/')
+        
+        employee = Employee.objects.filter(user=company_staff).first()
+        if not employee:
+            messages.error(request, 'Employee profile not found.')
+            dataset = dict()
+            dataset['leave_list'] = Leave.objects.none()
+            dataset['title'] = 'Leaves List'
+            dataset['company_id'] = company_id
+            dataset['company_staff_id'] = company_staff_id
+            return render(request, 'employee/leave-status.html', dataset)
+        
+        leaves = Leave.objects.filter(user=employee)
+        dataset = dict()
+        dataset['leave_list'] = leaves
+        dataset['title'] = 'Leaves List'
+        dataset['company_id'] = company_id
+        dataset['company_staff_id'] = company_staff_id
+    else:
+        return redirect('/')
+    return render(request, 'employee/leave-status.html', dataset)
+
+
+@method_decorator(require_POST, name='dispatch')
+class LeaveRemove(View):
+    def post(self, request, company_id, company_staff_id, id):
+        try:
+            _, employee = _employee_account(company_id, company_staff_id)
+            leave = Leave.objects.get(id=id, user=employee)
+            leave.delete()
+            messages.success(request, 'Leave deleted successfully.')
+        except Leave.DoesNotExist:
+            messages.error(request, 'Leave not found.')
+        except Exception as e:
+            messages.error(request, f'Error deleting leave: {str(e)}')
+        return redirect('staffleavetable', company_id=company_id, company_staff_id=company_staff_id)
+
+
+def attendance(request,company_id, company_staff_id):
+    ctx = {}
+    today = timezone.now().date()
+    tomorrow = today + timedelta(1)
+
+    try:
+        company_staff = CompanyStaff.objects.get(id=company_staff_id, company_id=company_id)
+    except CompanyStaff.DoesNotExist:
+        messages.error(request, 'Company staff not found.')
+        return redirect('/')
+    
+    employee = Employee.objects.filter(user=company_staff).first()
+    if not employee:
+        messages.error(request, 'Employee profile not found.')
+        ctx['attendance'] = None
+        ctx['company_id'] = company_id
+        ctx['company_staff_id'] = company_staff_id
+        ctx['is_check_in'] = attendance_type.check_in.value
+        ctx.update(_attendance_month_context(Attendance.objects.none(), request))
+        return render(request, 'employee/attendance-info.html', ctx)
+    
+    att = Attendance.objects.filter(
+        employee=employee,
+        check_in__date=timezone.localdate()
+    ).order_by('-id').first()
+    ctx['attendance'] = att
+    ctx['company_id'] = company_id
+    ctx['company_staff_id'] = company_staff_id
+    if att:
+        try:
+            if att.check_out and att.check_in:
+                time_diff = att.check_out - att.check_in
+                ctx['hours_num'] = strfdelta(time_diff, "{hours}:{minutes}:{seconds}")
+            else:
+                ctx['hours_num'] = ''
+        except Exception:
+            ctx['hours_num'] = ''
+        ctx['is_check_in'] = attendance_type.check_out.value
+        ctx['is_complete_attendance'] = True if att.check_in and att.check_out else False
+    else:
+        ctx['is_check_in'] = attendance_type.check_in.value
+    ctx.update(_attendance_month_context(Attendance.objects.filter(employee=employee), request))
+    return render(request, 'employee/attendance-info.html', ctx)
+
+
+def regularization_required_attendance(request,company_id, company_staff_id):
+    try:
+        company_staff = CompanyStaff.objects.get(id=company_staff_id, company_id=company_id)
+    except CompanyStaff.DoesNotExist:
+        messages.error(request, 'Company staff not found.')
+        return redirect('/')
+    
+    employee = Employee.objects.filter(user=company_staff).first()
+    assigned_manager = [employee.employee_reports_to] if (employee and employee.employee_reports_to) else []
+    if not employee:
+        messages.error(request, 'Employee profile not found.')
+        return render(request,'employee/regularization.html',context={
+            'atts': Attendance.objects.none(), 
+            'rassigne': [],
+            'company_id':company_id, 
+            'company_staff_id':company_staff_id
+        })
+    
+    atts = Attendance.objects.filter(employee=employee)
+    if atts:
+        for att in atts:
+            if att.regularization_required == False:
+                atts = atts.exclude(id=att.id)
+    return render(request,'employee/regularization.html',context={
+        'atts':atts, 
+        'rassigne': assigned_manager,
+        'company_id':company_id, 
+        'company_staff_id':company_staff_id
+    })
+
+
+@require_POST
+def attendance_post(request, company_id, company_staff_id):
+    if not company_id:
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.POST.get('ajax') == '1':
+            return JsonResponse({'status': "FAILED", 'error': 'Invalid company_id'}, status=400)
+        messages.error(request, 'Invalid company_id')
+        return redirect('/')
+
+    is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.POST.get('ajax') == '1' or 'application/json' in request.headers.get('accept', '')
+
+    try:
+        is_check_in_raw = str(request.POST.get('is_check_in', '')).strip().lower()
+        is_check_in = is_check_in_raw in ['1', 'true', 'check in', 'check_in', 'checkin']
+        
+        attendance_id = request.POST.get('attendance_id', '').strip()
+        
+        try:
+            company_staff = CompanyStaff.objects.get(id=company_staff_id, company_id=company_id)
+        except CompanyStaff.DoesNotExist:
+            if is_ajax:
+                return JsonResponse({'status': "FAILED", 'error': 'Company staff not found'}, status=404)
+            messages.error(request, 'Company staff not found')
+            return redirect('/')
+        
+        employee = Employee.objects.filter(user=company_staff).first()
+        if not employee:
+            # Fallback to manager profile if user is a manager
+            from managers.models import Manager, ManagerAttendance
+            manager = Manager.objects.filter(user=company_staff).first()
+            if manager:
+                now = timezone.now()
+                today_date = now.date()
+                att_mgr = None
+                if attendance_id and attendance_id.isdigit():
+                    att_mgr = ManagerAttendance.objects.filter(id=int(attendance_id), manager=manager).first()
+                if is_check_in:
+                    if not att_mgr:
+                        att_mgr = ManagerAttendance.objects.filter(
+                            manager=manager,
+                            check_in__date=today_date,
+                            check_out__isnull=True
+                        ).order_by('-id').first()
+                    if not att_mgr:
+                        att_mgr = ManagerAttendance(manager=manager, check_in=now)
+                    else:
+                        if not att_mgr.check_in:
+                            att_mgr.check_in = now
+                    att_mgr.save()
+                    msg = 'Checked in successfully!'
+                else:
+                    if not att_mgr:
+                        att_mgr = ManagerAttendance.objects.filter(
+                            manager=manager,
+                            check_in__date=today_date
+                        ).order_by('-id').first()
+                    if not att_mgr:
+                        att_mgr = ManagerAttendance(manager=manager, check_in=now, check_out=now)
+                    else:
+                        if not att_mgr.check_in:
+                            att_mgr.check_in = now
+                        att_mgr.check_out = now
+                    att_mgr.save()
+                    msg = 'Checked out successfully!'
+                if is_ajax:
+                    return JsonResponse({'status': 'SUCCESS', 'message': msg}, status=200)
+                messages.success(request, msg)
+                return redirect('dashboard', company_id=company_id, company_staff_id=company_staff_id)
+
+            if is_ajax:
+                return JsonResponse({'status': "FAILED", 'error': 'No employee or manager profile found for this staff account. Please ensure an employee or manager profile is created.'}, status=404)
+            messages.error(request, 'Employee profile not found')
+            return redirect('/')
+            
+        now = timezone.now()
+        today_date = now.date()
+        
+        attendance_obj = None
+        if attendance_id and attendance_id.isdigit():
+            attendance_obj = Attendance.objects.filter(id=int(attendance_id), employee=employee).first()
+            
+        if is_check_in:
+            if not attendance_obj:
+                attendance_obj = Attendance.objects.filter(
+                    employee=employee,
+                    check_in__date=today_date,
+                    check_out__isnull=True
+                ).order_by('-id').first()
+                
+            if not attendance_obj:
+                attendance_obj = Attendance(employee=employee, check_in=now)
+            else:
+                if not attendance_obj.check_in:
+                    attendance_obj.check_in = now
+            attendance_obj.source = attendance_obj.source or 'manual'
+            attendance_obj.save()
+            action = 'check_in'
+            msg = 'Checked in successfully!'
+        else:
+            if not attendance_obj:
+                attendance_obj = Attendance.objects.filter(
+                    employee=employee,
+                    check_in__date=today_date
+                ).order_by('-id').first()
+                
+            if not attendance_obj:
+                error = 'Please check in before checking out.'
+                if is_ajax:
+                    return JsonResponse({'status': 'FAILED', 'error': error}, status=400)
+                messages.error(request, error)
+                return redirect('employee_dashboard', company_id=company_id, company_staff_id=company_staff_id)
+            else:
+                if not attendance_obj.check_in:
+                    attendance_obj.check_in = now
+                attendance_obj.check_out = now
+                
+            attendance_obj.source = attendance_obj.source or 'manual'
+            attendance_obj.save()
+            action = 'check_out'
+            msg = 'Checked out successfully!'
+
+        # Return success immediately; send email in background
+        def _send_notification_later():
+            try:
+                from administration.email_notifications import send_attendance_notification
+                send_attendance_notification(attendance_obj, action=action)
+            except Exception as e:
+                print(f"Error sending attendance notification: {str(e)}")
+        transaction.on_commit(
+            lambda: threading.Thread(target=_send_notification_later, daemon=True).start()
+        )
+
+        if is_ajax:
+            return JsonResponse({'status': 'SUCCESS', 'message': msg}, status=200)
+        messages.success(request, msg)
+        referer = request.META.get('HTTP_REFERER')
+        if referer:
+            return redirect(referer)
+        if getattr(company_staff, 'role', '') == 'hr' or getattr(company_staff, 'is_hr', False):
+            return redirect('hr_dashboard', company_id=company_id, company_staff_id=company_staff_id)
+        return redirect('employee_dashboard', company_id=company_id, company_staff_id=company_staff_id)
+
+    except KeyError as e:
+        error_msg = f'Missing required field: {str(e)}'
+        if is_ajax:
+            return JsonResponse({'status': "FAILED", 'error': error_msg}, status=400)
+        messages.error(request, error_msg)
+        return redirect('/')
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        try:
+            logger.exception("Error in attendance_post")
+        except:
+            pass
+        if is_ajax:
+            return JsonResponse({'status': "FAILED", 'error': str(e)}, status=500)
+        messages.error(request, f'An error occurred: {str(e)}')
+        referer = request.META.get('HTTP_REFERER')
+        if referer:
+            return redirect(referer)
+        return redirect('/')
+
+
+def attendance_grid_data(request,company_id, company_staff_id):
+    if not company_id:
+        return JsonResponse({'error': 'Company ID is required'}, status=400)
+    
+    try:
+        company_staff = CompanyStaff.objects.get(id=company_staff_id, company_id=company_id)
+    except CompanyStaff.DoesNotExist:
+        return JsonResponse({'error': 'Company staff not found'}, status=404)
+    
+    employee = Employee.objects.filter(user=company_staff).first()
+    if not employee:
+        return JsonResponse({'error': 'Employee profile not found'}, status=404)
+    
+    try:
+        grid_columns = ('check_in', 'check_out')
+        attendance_list = Attendance.objects.filter(employee=employee).order_by('-check_in')
+        
+        # Handle DataTables parameters with defaults
+        length = min(max(int(request.GET.get('length', 10)), 1), 100)
+        start = max(int(request.GET.get('start', 0)), 0)
+        draw = int(request.GET.get('draw', 1))
+        
+        # Handle optional order parameter
+        order_column = request.GET.get('order[0][column]', '0')
+        order_dir = request.GET.get('order[0][dir]', 'desc')
+        try:
+            sort_column = grid_columns[int(order_column)]
+        except (ValueError, IndexError):
+            sort_column = 'check_in'  # Default to check_in
+        
+        # Apply sorting
+        if order_dir == 'desc':
+            sort_column = '-' + sort_column
+        attendance_list = attendance_list.order_by(sort_column)
+        
+        # Get total count
+        total_records = attendance_list.count()
+        
+        # Apply pagination
+        end = start + length
+        paginated_data = attendance_list[start:end]
+        
+        # Build context
+        ctx = {
+            'draw': draw,
+            'recordsTotal': total_records,
+            'recordsFiltered': total_records,
+            'data': paginated_data
+        }
+        json_data = []
+        for item in ctx['data']:
+            dict = {}
+            # Format time in local timezone (Asia/Kolkata)
+            from django.utils import timezone as tz
+            try:
+                if item.check_in:
+                    try:
+                        if tz.is_aware(item.check_in):
+                            local_check_in = tz.localtime(item.check_in)
+                        else:
+                            local_check_in = item.check_in
+                        dict['check_in'] = local_check_in.strftime("%b %d, %Y, %I:%M %p")
+                    except Exception:
+                        dict['check_in'] = str(item.check_in)
+                else:
+                    dict['check_in'] = ''
+                
+                if item.check_out:
+                    try:
+                        if tz.is_aware(item.check_out):
+                            local_check_out = tz.localtime(item.check_out)
+                        else:
+                            local_check_out = item.check_out
+                        dict['check_out'] = local_check_out.strftime("%b %d, %Y, %I:%M %p")
+                    except Exception:
+                        dict['check_out'] = str(item.check_out)
+                    try:
+                        if item.check_in and item.check_out:
+                            time_diff = item.check_out - item.check_in
+                            if time_diff.total_seconds() >= 0:
+                                dict['working_hours'] = strfdelta(time_diff, "{hours}:{minutes}")
+                            else:
+                                dict['working_hours'] = '0:0'
+                        else:
+                            dict['working_hours'] = ''
+                    except Exception as e:
+                        dict['working_hours'] = ''
+                else:
+                    dict['check_out'] = ''
+                    dict['working_hours'] = ''
+            except Exception as format_error:
+                # Fallback to simple format if formatting fails
+                try:
+                    dict['check_in'] = str(item.check_in) if item.check_in else ''
+                    dict['check_out'] = str(item.check_out) if item.check_out else ''
+                    if item.check_out and item.check_in:
+                        dict['working_hours'] = strfdelta((item.check_out - item.check_in), "{hours}:{minutes}")
+                    else:
+                        dict['working_hours'] = ''
+                except Exception:
+                    dict['check_in'] = ''
+                    dict['check_out'] = ''
+                    dict['working_hours'] = ''
+            json_data.append(dict)
+        ctx['data'] = json_data
+        return ajax_response(ctx)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        try:
+            error_msg = str(e)
+            logger.error("Error in attendance_grid_data: %s", error_msg, exc_info=True)
+        except:
+            logger.error("Error in attendance_grid_data", exc_info=True)
+        return JsonResponse({'error': 'An error occurred while loading attendance data'}, status=500)
+
+
+def taskList(request,company_id, company_staff_id):
+    context ={}
+    try:
+        company_staff = CompanyStaff.objects.get(id=company_staff_id, company_id=company_id)
+    except CompanyStaff.DoesNotExist:
+        messages.error(request, 'Company staff not found.')
+        return redirect('/')
+    
+    employee = Employee.objects.filter(user=company_staff).first()
+    if not employee:
+        employee = Employee.objects.filter(
+            employee_email__iexact=company_staff.email,
+            user__company_id=company_id,
+        ).first()
+
+    emp_ids = list(Employee.objects.filter(
+        Q(user=company_staff) | 
+        Q(employee_email__iexact=company_staff.email) | 
+        (Q(employee_email__iexact=employee.employee_email) if employee else Q())
+    ).filter(user__company_id=company_id).values_list('id', flat=True))
+
+    admin_tasks = Task.objects.filter(Q(assigned_to__id__in=emp_ids) | Q(assigned_to__user=company_staff))
+    if company_id:
+        admin_tasks = admin_tasks.filter(company_id=company_id)
+    manager_tasks = MTask.objects.filter(
+        Q(assigned_to__id__in=emp_ids) | Q(assigned_to__user=company_staff),
+        user__user__company_id=company_id,
+    )
+    
+    # Combine both and sort by created_date descending
+    tasks = list(admin_tasks) + list(manager_tasks)
+    tasks.sort(key=lambda x: x.created_date, reverse=True)
+    
+    context['tasks'] = tasks
+    context['employee'] = employee
+    context['company_id'] = company_id
+    context['company_staff_id'] = company_staff_id
+    return render(request, 'employee/my-project.html', context)
+
+
+def SalaryListView(request,company_id, company_staff_id):
+    context ={}
+    try:
+        company_staff = CompanyStaff.objects.get(id=company_staff_id, company_id=company_id)
+    except CompanyStaff.DoesNotExist:
+        messages.error(request, 'Company staff not found.')
+        return redirect('/')
+    
+    employee = Employee.objects.filter(user=company_staff).first()
+    if not employee:
+        messages.error(request, 'Employee profile not found.')
+        context['salary'] = Salary.objects.none()
+        context['company_id'] = company_id
+        context['company_staff_id'] = company_staff_id
+        return render(request, 'employee/salary.html', context)
+
+    queryset = Salary.objects.filter(employee=employee)
+    context['salary'] = queryset
+    context['company_id'] = company_id
+    context['company_staff_id'] = company_staff_id
+    return render(request, 'employee/salary.html', context)
+
+
+def notifications(request,company_id, company_staff_id):
+    if company_id:
+        try:
+            user = CompanyStaff.objects.get(id=company_staff_id, company_id=company_id)
+        except CompanyStaff.DoesNotExist:
+            messages.error(request, 'Company staff not found.')
+            return redirect('/')
+        
+        # Get general company notifications
+        company_notifications = notification.objects.filter(company__id=company_id).order_by('-id')
+        
+        # Get employee-specific notifications
+        employee = Employee.objects.filter(user=user).first()
+        employee_notifications = []
+        unread_count = 0
+        
+        if employee:
+            from managers.models import EmployeeNotification
+            employee_notifications = EmployeeNotification.objects.filter(user=employee).order_by('-id')
+            unread_count = EmployeeNotification.objects.filter(user=employee, is_read=False).count()
+            
+            # Update session if no unread notifications
+            if unread_count == 0:
+                user.new_notification = False
+                user.save()
+                request.session["new_notification"] = user.new_notification
+            else:
+                user.new_notification = True
+                user.save()
+                request.session["new_notification"] = user.new_notification
+        
+        context = {
+            'company_notifications': company_notifications,
+            'employee_notifications': employee_notifications,
+            'unread_count': unread_count,
+            'total_notifications': company_notifications.count() + len(employee_notifications),
+            'company_id': company_id,
+            'company_staff_id': company_staff_id,
+        }
+        return render(request, 'employee/notifications.html', context)
+
+
+@require_POST
+def delete_employee_notification(request, company_id, company_staff_id, notification_id):
+    """
+    Employee can remove their own notification from the list.
+    Only allows POST to avoid accidental deletes.
+    """
+    try:
+        user = CompanyStaff.objects.get(id=company_staff_id, company_id=company_id)
+    except CompanyStaff.DoesNotExist:
+        messages.error(request, 'Company staff not found.')
+        return redirect('/')
+
+    employee = Employee.objects.filter(user=user).first()
+    if not employee:
+        messages.error(request, 'Employee profile not found.')
+        return redirect('notification', company_id=company_id, company_staff_id=company_staff_id)
+
+    # Only delete notification belonging to this employee
+    notif = get_object_or_404(EmployeeNotification, id=notification_id, user=employee)
+    notif.delete()
+
+    # Update new_notification flag based on remaining unread notifications
+    unread_count = EmployeeNotification.objects.filter(user=employee, is_read=False).count()
+    user.new_notification = unread_count > 0
+    user.save()
+    request.session["new_notification"] = user.new_notification
+
+    messages.success(request, "Notification removed.")
+    return redirect('mynotifications', company_id=company_id, company_staff_id=company_staff_id)
+
+
+def resign_creation(request):
+    if request.method == 'POST':
+        form = ResignCreationForm(data=request.POST)
+        if form.is_valid():
+            instance = form.save(commit=False)
+            user = request.user
+            instance.user = user
+            instance.save()
+
+            # print(instance.defaultdays)
+            messages.success(request, 'Resignation Request Sent,wait for response',
+                             extra_tags='alert alert-success alert-dismissible show')
+            return redirect('/employee/resign/view/table/')
+
+        messages.error(request, 'failed to Request a Resignation,please check entry dates',
+                       extra_tags='alert alert-warning alert-dismissible show')
+        return redirect('/employee/resign/')
+
+    dataset = dict()
+    form = ResignCreationForm()
+    dataset['form'] = form
+    dataset['title'] = 'Apply for Resignation'
+    return render(request, 'employee/apply-resignation.html', dataset)
+
+
+def view_my_resign_table(request,company_id, company_staff_id):
+    if company_id:
+        try:
+            company_staff = CompanyStaff.objects.get(id=company_staff_id, company_id=company_id)
+        except CompanyStaff.DoesNotExist:
+            messages.error(request, 'Company staff not found.')
+            return redirect('/')
+        
+        employee = Employee.objects.filter(user=company_staff).first()
+        if not employee:
+            messages.error(request, 'Employee profile not found.')
+            dataset = dict()
+            dataset['resign_list'] = Resign.objects.none()
+            dataset['employee'] = None
+            dataset['title'] = 'Resign List'
+            dataset['company_id'] = company_id
+            dataset['company_staff_id'] = company_staff_id
+            return render(request, 'employee/resignation-status.html', dataset)
+        
+        resign = Resign.objects.filter(user=employee)
+        dataset = dict()
+        dataset['resign_list'] = resign
+        dataset['employee'] = employee
+        dataset['title'] = 'Resign List'
+        dataset['company_id'] = company_id
+        dataset['company_staff_id'] = company_staff_id
+    else:
+        return redirect('/')
+    return render(request, 'employee/resignation-status.html', dataset)
+
+
+@method_decorator(require_POST, name='dispatch')
+class ResignRemove(View):
+    def post(self, request, company_id, company_staff_id, id):
+        try:
+            _, employee = _employee_account(company_id, company_staff_id)
+            resign = Resign.objects.get(id=id, user=employee)
+            resign.delete()
+            messages.success(request, 'Resignation deleted successfully.')
+        except Resign.DoesNotExist:
+            messages.error(request, 'Resignation not found.')
+        except Exception as e:
+            messages.error(request, f'Error deleting resignation: {str(e)}')
+        return redirect('staffresigntable', company_id=company_id, company_staff_id=company_staff_id)
+
+
+def holidays(request,company_id, company_staff_id):
+    if company_id:
+        holyday = holiday.objects.filter(company_id=company_id)
+        context = {
+            'holyday': holyday,
+            'company_id': company_id,
+            'company_staff_id': company_staff_id,
+
+        }
+        return render(request, 'employee/holiday.html', context)
+
+
+def getfile(request):
+    return serve(request, 'File')
+
+
+class UserPostListView(ListView):
+    model = Post
+    template_name = 'employee/user_posts.html'  # <app>/<model>_<viewtype>.html
+    context_object_name = 'posts'
+    paginate_by = 2
+
+    def get_queryset(self):
+        return Post.objects.filter(user__user_id=self.request.session.get('company_staff_id'))
+
+
+class PostDetailView(DetailView):
+    model = Post
+    template_name = 'employee/post_detail.html'
+
+    def get_queryset(self):
+        return Post.objects.filter(user__user_id=self.request.session.get('company_staff_id'))
+
+
+class PostCreateView(CreateView):
+    model = Post
+    template_name = 'employee/post_form.html'
+    fields = ['experience_letter', 'offer_letter', 'education_certificate', 'skill_certificate', ]
+
+    def form_valid(self, form):
+        employee = get_object_or_404(
+            Employee, user_id=self.request.session.get('company_staff_id')
+        )
+        try:
+            for upload in self.request.FILES.values():
+                _validate_upload(upload, DOCUMENT_EXTENSIONS, DOCUMENT_CONTENT_TYPES, 'Document')
+        except ValidationError as exc:
+            form.add_error(None, exc.message)
+            return self.form_invalid(form)
+        form.instance.user = employee
+        return super().form_valid(form)
+
+
+class PostUpdateView(UpdateView):
+    model = Post
+    template_name = 'employee/post_form.html'
+    fields = ['experience_letter', 'offer_letter', 'education_certificate', 'skill_certificate']
+
+    def get_queryset(self):
+        return Post.objects.filter(user__user_id=self.request.session.get('company_staff_id'))
+
+    def form_valid(self, form):
+        try:
+            for upload in self.request.FILES.values():
+                _validate_upload(upload, DOCUMENT_EXTENSIONS, DOCUMENT_CONTENT_TYPES, 'Document')
+        except ValidationError as exc:
+            form.add_error(None, exc.message)
+            return self.form_invalid(form)
+        return super().form_valid(form)
+
+    def test_func(self):
+        post = self.get_object()
+        if self.request.user == post.user.employee:
+            return True
+        return False
+
+
+class PostDeleteView(DeleteView):
+    model = Post
+    success_url = '/employee/post/new/'
+    template_name = 'employee/post_confirm_delete.html'
+
+    def get_queryset(self):
+        return Post.objects.filter(user__user_id=self.request.session.get('company_staff_id'))
+
+    def test_func(self):
+        post = self.get_object()
+        if self.request.user == post.user.employee:
+            return True
+        return False
+
+
+def BalanceLeaveView(request,company_id, company_staff_id):
+    context ={}
+    try:
+        company_staff = CompanyStaff.objects.get(id=company_staff_id, company_id=company_id)
+    except CompanyStaff.DoesNotExist:
+        messages.error(request, 'Company staff not found.')
+        return redirect('/')
+    
+    employee = Employee.objects.filter(user=company_staff).first()
+    if not employee:
+        messages.error(request, 'Employee profile not found.')
+        context['balance'] = BalanceLeaves.objects.none()
+        context['summary'] = {'total_allocated': 0, 'used_days': 0, 'approved_days': 0, 'pending_days': 0, 'remaining_balance': 0}
+        context['company_id'] = company_id
+        context['company_staff_id'] = company_staff_id
+        return render(request, 'employee/leave-balance.html', context)
+
+    queryset = BalanceLeaves.objects.filter(user=employee)
+    summary = BalanceLeaves.get_balance_summary(employee)
+    context['balance'] = queryset
+    context['summary'] = summary
+    context['company_id'] = company_id
+    context['company_staff_id'] = company_staff_id
+    return render(request, 'employee/leave-balance.html', context)
+
+
+def regularization(request):
+    if request.method == 'POST':
+        form = RegularizationCreationForm(data=request.POST)
+        if form.is_valid():
+            instance = form.save(commit=False)
+            user = request.user.employee
+            instance.user = user
+            instance.save()
+
+            # print(instance.defaultdays)
+            messages.success(request, 'Apply for regularization Request Sent,wait for response',
+                             extra_tags='alert alert-success alert-dismissible show')
+            return redirect('/employee/regularization/view/table/')
+
+        messages.error(request, 'failed to Request a Regularizations,please check entry dates',
+                       extra_tags='alert alert-warning alert-dismissible show')
+        return redirect('/employee/regularization/')
+
+    dataset = dict()
+    form = RegularizationCreationForm()
+    dataset['form'] = form
+    dataset['title'] = 'Apply for Regularization'
+    return render(request, 'employee/regularization.html', dataset)
+
+
+def regularization_table(request,company_id, company_staff_id):
+    context ={}
+    try:
+        company_staff = CompanyStaff.objects.get(id=company_staff_id, company_id=company_id)
+    except CompanyStaff.DoesNotExist:
+        messages.error(request, 'Company staff not found.')
+        return redirect('/')
+    
+    employee = Employee.objects.filter(user=company_staff).first()
+    if not employee:
+        messages.error(request, 'Employee profile not found.')
+        context['regularization'] = Regularization.objects.none()
+        context['company_id'] = company_id
+        context['company_staff_id'] = company_staff_id
+        return render(request, 'employee/attendance-status.html', context)
+
+    queryset = Regularization.objects.filter(user=employee)
+    context['regularization'] = queryset
+    context['company_id'] = company_id
+    context['company_staff_id'] = company_staff_id
+    return render(request, 'employee/attendance-status.html', context)
+
+
+def EntriesCreateView(request):
+    staff_id = request.session.get('company_staff_id')
+    staff = get_object_or_404(CompanyStaff, id=staff_id)
+    return create_entry(request, staff.company_id, staff.id)
+
+
+def EntryDetailView(request,company_id, company_staff_id):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode('utf-8'))
+            entry_obj_id = data.get('id', None)
+            if not entry_obj_id:
+                return JsonResponse({'error': 'Entry ID is required'}, status=400)
+            _, employee = _employee_account(company_id, company_staff_id)
+            entry_obj = Entries.objects.get(pk=entry_obj_id, user=employee)
+            return JsonResponse(entry_obj.to_json())
+        except Entries.DoesNotExist:
+            return JsonResponse({'error': 'Entry not found'}, status=404)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON data'}, status=400)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+    if company_id:
+        try:
+            company_staff = CompanyStaff.objects.get(id=company_staff_id, company_id=company_id)
+        except CompanyStaff.DoesNotExist:
+            messages.error(request, 'Company staff not found.')
+            return redirect('/')
+        
+        employee = Employee.objects.filter(user=company_staff).first()
+        if not employee:
+            messages.error(request, 'Employee profile not found. Please contact administrator to complete your profile setup.')
+            dataset = dict()
+            dataset['project_list'] = []
+            dataset['total_time'] = timedelta(seconds=0)
+            dataset['title'] = 'Entry List'
+            dataset['company_id'] = company_id
+            dataset['company_staff_id'] = company_staff_id
+            return render(request, 'employee/view-timesheet.html', dataset)
+        
+        user = employee
+        entry = Entries.objects.filter(user=user)
+        total_time = sum((obj.total_duration for obj in entry), timedelta())
+
+        from collections import defaultdict
+        grouped_entries = defaultdict(list)
+        for obj in entry:
+            grouped_entries[obj.project].append(obj)
+
+        project_list = []
+        for proj in sorted(grouped_entries.keys(), key=lambda x: str(x)):
+            entries = grouped_entries[proj]
+            proj_total = sum((obj.total_duration for obj in entries), timedelta())
+            project_list.append({
+                'name': proj,
+                'entries': entries,
+                'total_time': format_duration(proj_total)
+            })
+
+        dataset = dict()
+        dataset['project_list'] = project_list
+        dataset['total_time'] = format_duration(total_time)
+        dataset['title'] = 'Entry List'
+        dataset['company_id'] = company_id
+        dataset['company_staff_id'] = company_staff_id
+    else:
+        return redirect('/')
+    return render(request, 'employee/view-timesheet.html', dataset)
+
+
+@method_decorator(require_POST, name='dispatch')
+class EntryRemove(View):
+    def post(self, request,company_id, company_staff_id, id):
+        if company_id:
+            try:
+                _, employee = _employee_account(company_id, company_staff_id)
+                entry = Entries.objects.get(id=id, user=employee)
+                entry.delete()
+                messages.success(request, 'Entry deleted successfully.')
+            except Entries.DoesNotExist:
+                messages.error(request, 'Entry not found.')
+            except Exception as e:
+                messages.error(request, f'Error deleting entry: {str(e)}')
+            return redirect(f'/employee/entries-detail/{company_id}/{company_staff_id}')
+
+
+class documents(generic.CreateView):
+    model = Entries
+    fields = ('title', 'start_time', 'end_time', 'project', 'task', 'blocker_name', 'attachment', 'assigned_to')
+    context_object_name = "entri_list"
+    template_name = "employee/create-timesheet.html"
+    success_url = ('/employee/entries-detail/')
+
+
+def create_entry(request, company_id, company_staff_id):
+    company_staff = CompanyStaff.objects.get(id=company_staff_id, company_id=company_id)
+    emp = Employee.objects.get(user=company_staff)
+
+    # 1. Admin-assigned projects
+    admin_tasks = Task.objects.filter(
+        assigned_to=emp,
+        company_id=company_id
+    )
+
+    # 2. Manager-assigned projects
+    manager_tasks = MTask.objects.filter(
+        assigned_to=emp
+    )
+    if company_id:
+        manager_tasks = manager_tasks.filter(user__user__company_id=company_id)
+
+    # Combine both into a list for the dropdown
+    assigned_projects = []
+    for t in admin_tasks:
+        assigned_projects.append({
+            'id': f"admin_{t.id}",
+            'raw_id': t.id,
+            'title': t.title,
+            'source': 'Admin',
+            'display_title': f"{t.title} (Admin)",
+        })
+    for mt in manager_tasks:
+        mgr_name = f"{mt.user.manager_first_name} {mt.user.manager_last_name}".strip() if mt.user else "Manager"
+        assigned_projects.append({
+            'id': f"manager_{mt.id}",
+            'raw_id': mt.id,
+            'title': mt.title,
+            'source': 'Manager',
+            'display_title': f"{mt.title} (Manager: {mgr_name})",
+        })
+
+    assigned_manager = [emp.employee_reports_to] if (emp and emp.employee_reports_to) else []
+    context = {
+        'assigned': assigned_manager,
+        'assigned_projects': assigned_projects,
+        'company_id': company_id,
+        'company_staff_id': company_staff_id
+    }
+
+    if company_id:
+        if request.method == "POST":
+            try:
+                start_time = request.POST.get("start_time")
+                end_time = request.POST.get("end_time")
+                project_id = request.POST.get("project")
+                task = request.POST.get("task")
+                blocker_name = request.POST.get("blocker_name")
+                attachment = request.FILES.get("attachment")
+                assign_id = request.POST.get("manager_id") or (str(emp.employee_reports_to.id) if emp and emp.employee_reports_to else None)
+
+                if not all([start_time, end_time, project_id, task, assign_id]):
+                    messages.error(request, 'All required fields must be filled.')
+                    return render(request, 'employee/create-timesheet.html', context)
+
+                # Look up project title from either Task (Admin) or MTask (Manager)
+                project_title = None
+                if str(project_id).startswith("admin_"):
+                    raw_tid = str(project_id).replace("admin_", "")
+                    p_obj = Task.objects.filter(id=raw_tid, assigned_to=emp, company_id=company_id).first()
+                    if p_obj:
+                        project_title = p_obj.title
+                elif str(project_id).startswith("manager_"):
+                    raw_mtid = str(project_id).replace("manager_", "")
+                    p_obj = MTask.objects.filter(
+                        id=raw_mtid, assigned_to=emp,
+                        user__user__company_id=company_id,
+                    ).first()
+                    if p_obj:
+                        project_title = p_obj.title
+                else:
+                    # Fallback if raw numeric ID was sent
+                    p_obj = Task.objects.filter(id=project_id, assigned_to=emp, company_id=company_id).first()
+                    if not p_obj:
+                        p_obj = MTask.objects.filter(
+                            id=project_id, assigned_to=emp,
+                            user__user__company_id=company_id,
+                        ).first()
+                    if p_obj:
+                        project_title = p_obj.title
+
+                if not project_title:
+                    messages.error(request, 'Selected project is not assigned to you.')
+                    return render(request, 'employee/create-timesheet.html', context)
+
+                try:
+                    assigned_to = Manager.objects.get(id=assign_id, user__company_id=company_id)
+                    if assigned_to.id != emp.employee_reports_to_id:
+                        raise Manager.DoesNotExist
+                except Manager.DoesNotExist:
+                    messages.error(request, 'Selected manager not found.')
+                    return render(request, 'employee/create-timesheet.html', context)
+
+                if attachment:
+                    _validate_upload(
+                        attachment, DOCUMENT_EXTENSIONS,
+                        DOCUMENT_CONTENT_TYPES, 'Attachment'
+                    )
+
+                entry = Entries(
+                    user=emp,
+                    start_time=start_time,
+                    end_time=end_time,
+                    project=project_title,
+                    task=task,
+                    blocker_name=blocker_name,
+                    attachment=attachment,
+                    assigned_to=assigned_to
+                )
+                entry.full_clean()
+                entry.save()
+
+                messages.success(request, 'Timesheet entry created successfully!')
+                return redirect(f'/employee/entries-detail/{company_id}/{company_staff_id}')
+
+            except Exception as e:
+                messages.error(request, f'Error creating entry: {str(e)}')
+                return render(request, 'employee/create-timesheet.html', context)
+
+        else:
+            return render(request, 'employee/create-timesheet.html', context)
+
+@transaction.atomic
+@ensure_csrf_cookie
+def create_leave(request,company_id, company_staff_id):
+    employee = None
+    balance_summary = {'total_allocated': 0, 'used_days': 0, 'approved_days': 0, 'pending_days': 0, 'remaining_balance': 0}
+    try:
+        company_staff = CompanyStaff.objects.get(id=company_staff_id, company_id=company_id)
+        employee = Employee.objects.filter(user=company_staff).first()
+        if employee:
+            balance_summary = BalanceLeaves.get_balance_summary(employee)
+    except CompanyStaff.DoesNotExist:
+        pass
+
+    managers = [employee.employee_reports_to] if (employee and employee.employee_reports_to) else []
+    ctx = {
+        'leavetypes': Leave._meta.get_field('leavetype').choices,
+        'company_id': company_id,
+        'company_staff_id': company_staff_id,
+        'managers': managers,
+        'balance_summary': balance_summary,
+    }
+    if company_id:
+        if request.method == "POST":
+            try:
+                startdate = request.POST.get("startdate")
+                enddate = request.POST.get("enddate")
+                leavetype = request.POST.get("leavetype")
+                reason = request.POST.get("reason")
+                description = request.POST.get("description", "")
+                manager_id = request.POST.get("manager_id") or (str(employee.employee_reports_to.id) if employee and employee.employee_reports_to else None)
+                
+                if not all([startdate, enddate, leavetype, reason, manager_id]):
+                    messages.error(request, 'All required fields must be filled.')
+                    return render(request, "employee/apply-leaves.html", ctx)
+                
+                if not employee:
+                    messages.error(request, 'Employee profile not found.')
+                    return render(request, "employee/apply-leaves.html", ctx)
+
+                # Parse dates and calculate requested days
+                from datetime import datetime as dt
+                try:
+                    start_dt = dt.strptime(startdate, "%Y-%m-%d").date()
+                    end_dt = dt.strptime(enddate, "%Y-%m-%d").date()
+                except ValueError:
+                    messages.error(request, 'Invalid date format.')
+                    return render(request, "employee/apply-leaves.html", ctx)
+
+                if start_dt > end_dt:
+                    messages.error(request, 'End date must be on or after start date.')
+                    return render(request, "employee/apply-leaves.html", ctx)
+
+                if start_dt < timezone.localdate():
+                    messages.error(request, 'Leave cannot start in the past.')
+                    return render(request, "employee/apply-leaves.html", ctx)
+
+                days_requested = (end_dt - start_dt).days + 1
+                employee = Employee.objects.select_for_update().get(pk=employee.pk)
+                balance_summary = BalanceLeaves.get_balance_summary(employee)
+                if days_requested > balance_summary['remaining_balance']:
+                    messages.error(
+                        request,
+                        f"Insufficient leave balance! You have {balance_summary['remaining_balance']} day(s) remaining, but requested {days_requested} day(s)."
+                    )
+                    return render(request, "employee/apply-leaves.html", ctx)
+
+                overlaps = Leave.objects.filter(
+                    user=employee,
+                    startdate__lte=end_dt,
+                    enddate__gte=start_dt,
+                ).exclude(status__in=['rejected', 'cancelled', 'canceled'])
+                if overlaps.exists():
+                    messages.warning(request, 'A leave request already overlaps these dates.')
+                    return render(request, "employee/apply-leaves.html", ctx)
+
+                # Prevent duplicate submission if same pending leave exists
+                existing_pending = Leave.objects.filter(
+                    user=employee,
+                    startdate=startdate,
+                    enddate=enddate,
+                    leavetype=leavetype,
+                    status__in=['pending', 'pending_manager', 'pending_hr']
+                ).first()
+                if existing_pending:
+                    messages.warning(request, 'A pending leave request for these dates already exists.')
+                    return redirect(f'/employee/create_leave/{company_id}/{company_staff_id}')
+
+                # Dropdown se jo manager select hua (jiska email dropdown me dikh raha hai), usi par notification jayega
+                manager_obj = None
+                if manager_id:
+                    manager_obj = Manager.objects.filter(id=manager_id, user__company__id=company_id).first()
+                    if not manager_obj or manager_obj.id != employee.employee_reports_to_id:
+                        messages.error(request, 'Only your assigned reporting manager can receive this request.')
+                        return render(request, "employee/apply-leaves.html", ctx)
+
+                has_manager = bool(manager_obj or (employee and employee.employee_reports_to))
+                initial_status = 'pending_manager' if has_manager else 'pending_hr'
+                manager_approved = not has_manager
+
+                leave = Leave.objects.create(
+                    user=employee,
+                    manager=manager_obj or getattr(employee, 'employee_reports_to', None),
+                    startdate=startdate,
+                    enddate=enddate,
+                    leavetype=leavetype,
+                    reason=reason,
+                    description=description,
+                    status=initial_status,
+                    manager_approved=manager_approved
+                )
+                
+                # Send email notifications in background thread to prevent HTTP 502 / timeout
+                def _send_leave_emails_background(leave_id, mgr_id, emp_name):
+                    try:
+                        from leave.models import Leave as LModel
+                        from managers.models import Manager as MModel
+                        from administration.email_notifications import send_leave_submission_notification, send_simple_email_to_manager
+
+                        leave_rec = LModel.objects.filter(id=leave_id).first()
+                        mgr_rec = MModel.objects.filter(id=mgr_id).first() if mgr_id else None
+
+                        if leave_rec:
+                            try:
+                                send_leave_submission_notification(leave_rec, manager=mgr_rec)
+                            except Exception as e:
+                                print("LEAVE_NOTIFICATION_EMAIL_ERROR:", str(e), flush=True)
+
+                        if mgr_rec:
+                            mgr_email = (getattr(mgr_rec, 'manager_email', None) or '').strip()
+                            if not mgr_email and getattr(mgr_rec, 'user', None):
+                                mgr_email = (getattr(mgr_rec.user, 'email', None) or '').strip()
+                            if mgr_email:
+                                try:
+                                    send_simple_email_to_manager(
+                                        mgr_email,
+                                        f"Leave applied by {emp_name} – Approve or Reject",
+                                        f"Employee {emp_name} has applied for leave. Please log in to HRMS portal to approve or reject."
+                                    )
+                                except Exception as e:
+                                    print("LEAVE_MANAGER_EMAIL_ERROR:", str(e), flush=True)
+                    except Exception as err:
+                        print("BACKGROUND_LEAVE_EMAIL_ERROR:", str(err), flush=True)
+
+                transaction.on_commit(lambda: threading.Thread(
+                    target=_send_leave_emails_background,
+                    args=(leave.id, manager_obj.id if manager_obj else None, f"{employee.employee_first_name} {employee.employee_last_name}"),
+                    daemon=True
+                ).start())
+                
+                messages.success(request, 'Leave request created successfully!')
+                return redirect(f'/employee/create_leave/{company_id}/{company_staff_id}')
+            except Exception as e:
+                messages.error(request, f'Error creating leave request: {str(e)}')
+                return render(request, "employee/apply-leaves.html", ctx)
+
+        else:
+            return render(request, "employee/apply-leaves.html", ctx)
+
+
+def create_resign(request,company_id, company_staff_id):
+    if company_id:
+        try:
+            company_staff = CompanyStaff.objects.get(id=company_staff_id, company_id=company_id)
+        except CompanyStaff.DoesNotExist:
+            messages.error(request, 'Company staff not found.')
+            return redirect('/')
+
+        emp = Employee.objects.filter(user=company_staff).first()
+        assigned_manager = [emp.employee_reports_to] if (emp and emp.employee_reports_to) else []
+
+        if request.method == "POST":
+            try:
+                startdate = request.POST.get("startdate")
+                reason = request.POST.get("reason")
+                assign = request.POST.get("manager_id") or (str(emp.employee_reports_to.id) if emp and emp.employee_reports_to else None)
+
+                if not all([startdate, reason, assign]):
+                    messages.error(request, 'All required fields must be filled.')
+                    return render(request,"employee/apply-resignation.html",{
+                        'rassigned': assigned_manager,
+                        'company_id':company_id, 
+                        'company_staff_id':company_staff_id
+                    })
+
+                try:
+                    resignation_date = datetime.strptime(startdate, '%Y-%m-%d').date()
+                except (TypeError, ValueError):
+                    messages.error(request, 'Invalid resignation date.')
+                    return render(request,"employee/apply-resignation.html",{
+                        'rassigned': assigned_manager,
+                        'company_id':company_id,
+                        'company_staff_id':company_staff_id
+                    })
+                if resignation_date < timezone.localdate():
+                    messages.error(request, 'Resignation date cannot be in the past.')
+                    return render(request,"employee/apply-resignation.html",{
+                        'rassigned': assigned_manager,
+                        'company_id':company_id,
+                        'company_staff_id':company_staff_id
+                    })
+                
+                try:
+                    assigned_too = Manager.objects.get(id=assign, user__company_id=company_id)
+                    if assigned_too.id != emp.employee_reports_to_id:
+                        raise Manager.DoesNotExist
+                except Manager.DoesNotExist:
+                    messages.error(request, 'Selected manager not found.')
+                    return render(request,"employee/apply-resignation.html",{
+                        'rassigned': assigned_manager,
+                        'company_id':company_id, 
+                        'company_staff_id':company_staff_id
+                    })
+                
+                if not emp:
+                    messages.error(request, 'Employee profile not found.')
+                    return render(request,"employee/apply-resignation.html",{
+                        'rassigned': assigned_manager,
+                        'company_id':company_id, 
+                        'company_staff_id':company_staff_id
+                    })
+
+                # Prevent duplicate pending resignation
+                existing_resign = Resign.objects.filter(user=emp, status='pending').first()
+                if existing_resign:
+                    messages.warning(request, 'A pending resignation request already exists.')
+                    return redirect(f'/employee/create_resign/{company_id}/{company_staff_id}')
+
+                resign = Resign.objects.create(
+                    user=emp, startdate=resignation_date,
+                    reason=reason, assigned_too=assigned_too,
+                )
+                
+                # Send manager email in background thread
+                manager_email = (getattr(assigned_too, 'manager_email', None) or '').strip()
+                if not manager_email and getattr(assigned_too, 'user', None):
+                    manager_email = (getattr(assigned_too.user, 'email', None) or '').strip()
+                if manager_email:
+                    def _send_resign_email_background(to_email, employee_fullname):
+                        try:
+                            from administration.email_notifications import send_simple_email_to_manager
+                            send_simple_email_to_manager(
+                                to_email,
+                                f"Resignation applied by {employee_fullname}",
+                                f"Employee {employee_fullname} has submitted resignation. Please log in to HRMS portal to view and process."
+                            )
+                        except Exception as e:
+                            print("RESIGN_MANAGER_EMAIL_ERROR:", str(e), flush=True)
+
+                    transaction.on_commit(lambda: threading.Thread(
+                        target=_send_resign_email_background,
+                        args=(manager_email, f"{emp.employee_first_name} {emp.employee_last_name}"),
+                        daemon=True
+                    ).start())
+
+                messages.success(request, 'Resignation request created successfully!')
+                return redirect(f'/employee/create_resign/{company_id}/{company_staff_id}')
+            except Exception as e:
+                messages.error(request, f'Error creating resignation request: {str(e)}')
+                return render(request,"employee/apply-resignation.html",{
+                    'rassigned': assigned_manager,
+                    'company_id':company_id, 
+                    'company_staff_id':company_staff_id
+                })
+
+        else:
+            return render(request,"employee/apply-resignation.html",{
+                'rassigned': assigned_manager,
+                'company_id':company_id, 
+                'company_staff_id':company_staff_id
+            })
+
+
+def create_regularization(request,company_id, company_staff_id):
+    if company_id:
+        try:
+            company_staff = CompanyStaff.objects.get(id=company_staff_id, company_id=company_id)
+        except CompanyStaff.DoesNotExist:
+            messages.error(request, 'Company staff not found.')
+            return redirect('/')
+
+        emp = Employee.objects.filter(user=company_staff).first()
+        assigned_manager = [emp.employee_reports_to] if (emp and emp.employee_reports_to) else []
+
+        if request.method == "POST":
+            try:
+                from django.utils.dateparse import parse_datetime
+                check_in = request.POST.get("check_in")
+                check_out = request.POST.get("check_out")
+                reason = request.POST.get("reason")
+                assign_i = request.POST.get("manager_id") or (str(emp.employee_reports_to.id) if emp and emp.employee_reports_to else None)
+
+                if not all([check_in, check_out, reason, assign_i]):
+                    messages.error(request, 'All required fields must be filled.')
+                    return render(request,"employee/regularization.html",{
+                        'rassigne': assigned_manager,
+                        'company_id':company_id, 
+                        'company_staff_id':company_staff_id
+                    })
+                
+                try:
+                    assigned_t = Manager.objects.get(id=assign_i, user__company_id=company_id)
+                    if assigned_t.id != emp.employee_reports_to_id:
+                        raise Manager.DoesNotExist
+                except Manager.DoesNotExist:
+                    messages.error(request, 'Selected manager not found.')
+                    return render(request,"employee/regularization.html",{
+                        'rassigne': assigned_manager,
+                        'company_id':company_id, 
+                        'company_staff_id':company_staff_id
+                    })
+                
+                if not emp:
+                    messages.error(request, 'Employee profile not found.')
+                    return render(request,"employee/regularization.html",{
+                        'rassigne': assigned_manager,
+                        'company_id':company_id, 
+                        'company_staff_id':company_staff_id
+                    })
+
+                # `datetime-local` sends ISO string without timezone => parse and make aware.
+                check_in_dt = parse_datetime(check_in) if check_in else None
+                check_out_dt = parse_datetime(check_out) if check_out else None
+                if check_in_dt and timezone.is_naive(check_in_dt):
+                    check_in_dt = timezone.make_aware(check_in_dt, timezone.get_current_timezone())
+                if check_out_dt and timezone.is_naive(check_out_dt):
+                    check_out_dt = timezone.make_aware(check_out_dt, timezone.get_current_timezone())
+
+                if not check_in_dt or not check_out_dt:
+                    messages.error(request, 'Invalid check-in or check-out date and time.')
+                    return render(request,"employee/regularization.html",{
+                        'rassigne': assigned_manager,
+                        'company_id':company_id,
+                        'company_staff_id':company_staff_id
+                    })
+                if check_in_dt >= check_out_dt:
+                    messages.error(request, 'Check-out must be after check-in.')
+                    return render(request,"employee/regularization.html",{
+                        'rassigne': assigned_manager,
+                        'company_id':company_id,
+                        'company_staff_id':company_staff_id
+                    })
+
+                if check_out_dt > timezone.now():
+                    messages.error(request, 'Regularization times cannot be in the future.')
+                    return render(request,"employee/regularization.html",{
+                        'rassigne': assigned_manager,
+                        'company_id':company_id,
+                        'company_staff_id':company_staff_id
+                    })
+
+                Regularization.objects.create(
+                    user=emp,
+                    check_in=check_in_dt if check_in_dt else check_in,
+                    check_out=check_out_dt if check_out_dt else check_out,
+                    reason=reason,
+                    r_assigned_to=assigned_t
+                )
+                messages.success(request, 'Regularization request created successfully!')
+                return redirect(f'/employee/regularization_required/{company_id}/{company_staff_id}')
+            except Exception as e:
+                messages.error(request, f'Error creating regularization request: {str(e)}')
+                return render(request,"employee/regularization.html",{
+                    'rassigne': assigned_manager,
+                    'company_id':company_id, 
+                    'company_staff_id':company_staff_id
+                })
+
+        else:
+            return render(request,"employee/regularization.html",{
+                'rassigne': assigned_manager,
+                'company_id':company_id, 
+                'company_staff_id':company_staff_id
+            })
+
+
+def create_ducuments(request,company_id, company_staff_id):
+    if company_id:
+        if request.method == "POST":
+            try:
+                experience_letter = request.FILES.get("experience_letter")
+                offer_letter = request.FILES.get("offer_letter")
+                education_certificate = request.FILES.get("education_certificate")
+                skill_certificate = request.FILES.get("skill_certificate")
+                
+                if not any([experience_letter, offer_letter, education_certificate, skill_certificate]):
+                    messages.error(request, 'Please select at least one document to upload.')
+                    return redirect(f'/employee/employee_profile/{company_id}/{company_staff_id}')
+
+                for upload in request.FILES.values():
+                    if upload and getattr(upload, 'name', '') and getattr(upload, 'size', 0) > 0:
+                        _validate_upload(
+                            upload, DOCUMENT_EXTENSIONS,
+                            DOCUMENT_CONTENT_TYPES, 'Document'
+                        )
+                
+                try:
+                    company_staff = CompanyStaff.objects.get(id=company_staff_id, company_id=company_id)
+                except CompanyStaff.DoesNotExist:
+                    messages.error(request, 'Company staff not found.')
+                    return redirect('/')
+                
+                emp = Employee.objects.filter(user=company_staff).first()
+                if not emp:
+                    messages.error(request, 'Employee profile not found.')
+                    return redirect(f'/employee/employee_profile/{company_id}/{company_staff_id}')
+                
+                # Smart Document Merge: update existing record if available, else create new
+                document = Post.objects.filter(user=emp).first()
+                if document:
+                    if experience_letter:
+                        document.experience_letter = experience_letter
+                    if offer_letter:
+                        document.offer_letter = offer_letter
+                    if education_certificate:
+                        document.education_certificate = education_certificate
+                    if skill_certificate:
+                        document.skill_certificate = skill_certificate
+                    document.save()
+                else:
+                    document = Post.objects.create(
+                        user=emp,
+                        experience_letter=experience_letter,
+                        offer_letter=offer_letter,
+                        education_certificate=education_certificate,
+                        skill_certificate=skill_certificate
+                    )
+                
+                # Send email notification asynchronously in background thread to avoid 502 gateway timeouts
+                def _send_async_doc_notification(doc_id):
+                    try:
+                        from administration.email_notifications import send_document_submission_notification
+                        target_doc = Post.objects.filter(id=doc_id).first()
+                        if target_doc:
+                            send_document_submission_notification(target_doc, user_type='employee')
+                    except Exception as exc:
+                        print(f"Async document notification error: {exc}", flush=True)
+
+                import threading
+                threading.Thread(target=_send_async_doc_notification, args=(document.id,), daemon=True).start()
+                
+                messages.success(request, 'Documents uploaded successfully!')
+                return redirect(f'/employee/employee_profile/{company_id}/{company_staff_id}')
+            except ValidationError as ve:
+                err_msg = ' '.join(ve.messages) if hasattr(ve, 'messages') else str(ve)
+                messages.error(request, f'Upload error: {err_msg}')
+                return redirect(f'/employee/employee_profile/{company_id}/{company_staff_id}')
+            except Exception as e:
+                messages.error(request, f'Error uploading documents: {str(e)}')
+                return redirect(f'/employee/employee_profile/{company_id}/{company_staff_id}')
+
+        else:
+            return redirect(f'/employee/employee_profile/{company_id}/{company_staff_id}')
+
+
+def All_document_View(request,company_id, company_staff_id):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body.decode('utf-8'))
+            document_obj_id = data.get('id', None)
+            if not document_obj_id:
+                return JsonResponse({'error': 'Document ID is required'}, status=400)
+            _, employee = _employee_account(company_id, company_staff_id)
+            document_obj = Post.objects.get(pk=document_obj_id, user=employee)
+            return JsonResponse(document_obj.to_json())
+        except Post.DoesNotExist:
+            return JsonResponse({'error': 'Document not found'}, status=404)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON data'}, status=400)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+    if company_id:
+        try:
+            company_staff = CompanyStaff.objects.get(id=company_staff_id, company_id=company_id)
+        except CompanyStaff.DoesNotExist:
+            messages.error(request, 'Company staff not found.')
+            return redirect('/')
+        
+        employee = Employee.objects.filter(user=company_staff).first()
+        if not employee:
+            messages.error(request, 'Employee profile not found.')
+            return render(request, 'employee/view_documents.html', {
+                'document_list': Post.objects.none(),
+                'active_documents': {'experience_letter': None, 'offer_letter': None, 'education_certificate': None, 'skill_certificate': None},
+                'uploaded_count': 0,
+                'company_id':company_id, 
+                'company_staff_id':company_staff_id
+            })
+        
+        # Consolidate multiple records if any exist from legacy uploads
+        posts = list(Post.objects.filter(user=employee).order_by('-date_posted', '-id'))
+        if len(posts) > 1:
+            primary_post = posts[0]
+            changed = False
+            for p in posts[1:]:
+                if not primary_post.experience_letter and p.experience_letter:
+                    primary_post.experience_letter = p.experience_letter
+                    changed = True
+                if not primary_post.offer_letter and p.offer_letter:
+                    primary_post.offer_letter = p.offer_letter
+                    changed = True
+                if not primary_post.education_certificate and p.education_certificate:
+                    primary_post.education_certificate = p.education_certificate
+                    changed = True
+                if not primary_post.skill_certificate and p.skill_certificate:
+                    primary_post.skill_certificate = p.skill_certificate
+                    changed = True
+            if changed:
+                primary_post.save()
+            # Remove redundant empty duplicate rows
+            for p in posts[1:]:
+                if not any([p.experience_letter, p.offer_letter, p.education_certificate, p.skill_certificate]):
+                    p.delete()
+            posts = list(Post.objects.filter(user=employee).order_by('-date_posted', '-id'))
+
+        primary_post = posts[0] if posts else None
+        active_documents = {
+            'experience_letter': getattr(primary_post, 'experience_letter', None) if primary_post else None,
+            'offer_letter': getattr(primary_post, 'offer_letter', None) if primary_post else None,
+            'education_certificate': getattr(primary_post, 'education_certificate', None) if primary_post else None,
+            'skill_certificate': getattr(primary_post, 'skill_certificate', None) if primary_post else None,
+        }
+        uploaded_count = sum(1 for v in active_documents.values() if v)
+
+        return render(request, 'employee/view_documents.html', {
+            'primary_post': primary_post,
+            'active_documents': active_documents,
+            'uploaded_count': uploaded_count,
+            'document_list': posts,
+            'employee': employee,
+            'company_id':company_id, 
+            'company_staff_id':company_staff_id
+        })
+
+
+def ChangePassword(request,company_id, company_staff_id):
+    if company_id:
+        if request.method == "POST":
+            try:
+                password = request.POST.get("password")
+                new_pas = request.POST.get("npwd")
+                confirm_pas = request.POST.get("cpwd", "")
+
+                if not all([password, new_pas]):
+                    messages.error(request, 'All password fields are required.')
+                    return render(request,"employee/change_password.html",{
+                        'company_id':company_id, 
+                        'company_staff_id':company_staff_id
+                    })
+                
+                if new_pas != confirm_pas:
+                    messages.error(request, 'New password and confirm password do not match.')
+                    return render(request,"employee/change_password.html",{
+                        'company_id':company_id, 
+                        'company_staff_id':company_staff_id
+                    })
+
+                try:
+                    user = CompanyStaff.objects.get(id=company_staff_id, company_id=company_id)
+                except CompanyStaff.DoesNotExist:
+                    messages.error(request, 'User not found.')
+                    return redirect('/')
+                
+                check = check_password(password, user.password)
+                if check == True:
+                    user.password = make_password(new_pas)
+                    user.save()
+                    messages.success(request, 'Password changed Successfully')
+                    return redirect('/')
+                else:
+                    messages.error(request, 'Current password is incorrect.')
+            except Exception as e:
+                messages.error(request, f'Error changing password: {str(e)}')
+
+        return render(request,"employee/change_password.html",{
+            'company_id':company_id, 
+            'company_staff_id':company_staff_id
+        })
+
+
+def MyNotification(request,company_id, company_staff_id):
+    context ={}
+    try:
+        company_staff = CompanyStaff.objects.get(id=company_staff_id, company_id=company_id)
+    except CompanyStaff.DoesNotExist:
+        messages.error(request, 'Company staff not found.')
+        return redirect('/')
+    
+    employee = Employee.objects.filter(user=company_staff).first()
+    if not employee:
+        messages.error(request, 'Employee profile not found.')
+        context['notification'] = EmployeeNotification.objects.none()
+        context['company_id'] = company_id
+        context['company_staff_id'] = company_staff_id
+        return render(request, 'employee/mynotification.html', context)
+
+    queryset = EmployeeNotification.objects.filter(user=employee)
+    context['notification'] = queryset
+    context['company_id'] = company_id
+    context['company_staff_id'] = company_staff_id
+    queryset.filter(is_read=False).update(is_read=True)
+    company_staff.new_notification = False
+    company_staff.save()
+    request.session["new_notification"] = company_staff.new_notification
+    return render(request, 'employee/mynotification.html', context)

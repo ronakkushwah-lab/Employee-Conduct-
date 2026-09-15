@@ -1,0 +1,78 @@
+{% include "administration/header.html" %}
+{% include "administration/sidebar.html" %}
+{% include "administration/topbar.html" %}
+{% load static %}
+
+<article class="media content-section shadow ">
+
+    <div class="media-body" style="margin-top:50px;">
+      <div class="">
+        <div class="d-flex justify-content-between">
+
+        <small class="text-muted  text-align-right">{{ object.date_upload }}</small>
+        </div>
+        <hr>
+
+      <p class="article-content">{{ object.content }}</p>
+      </div>
+      <div><div class="media-body" style="margin-left:260px;margin-top:50px;">
+           <table class="table table-fluid table-bordered table-hover">
+          <tbody>
+           {% for object in  document_list %}
+           <tr>
+<!--               <h2>{{ object.user }}</h2>-->
+        </tr>
+         <tr>
+             <th>Experience Letter</th>
+           <td>  <a href="{{ object.experience_letter.url }}"  download ><img src="{{ object.experience_letter.url }}" alt="" class="img-fluid "></a>
+            <a href="{{ object.experience_letter.url }}"  download class="text-dark"><h5>{{ object.experience_letter }}</h5></a></td>
+        </tr>
+          <tr>
+          <th>Offer Letter</th>
+            <td> <a href="{{ object.offer_letter.url }}"  download ><img src="{{ object.offer_letter.url }}" alt="" class="img-fluid "></a>
+            <a href="{{ object.offer_letter.url }}"  download class="text-dark"><h5>{{ object.offer_letter }}</h5></a></td>
+          </tr>
+        <tr>
+          <th>Education Certificate</th>
+             <td> <a href="{{ object.education_certificate.url }}"  download ><img src="{{ object.education_certificate.url }}" alt="" class="img-fluid "></a>
+            <a href="{{ object.education_certificate.url }}"  download class="text-dark"><h5>{{ object.education_certificate }}</h5></a></td>
+        </tr>
+        <tr>
+             <th>Skill Certificate</th>
+             <td> <a href="{{ object.skill_certificate.url }}"  download ><img src="{{ object.skill_certificate.url }}" alt="" class="img-fluid "></a>
+            <a href="{{ object.skill_certificate.url }}"  download class="text-dark"><h5>{{ object.skill_certificate }}</h5></a></td>
+        </tr>
+            {% endfor %}
+    </tbody>
+           </table>
+      </div>
+      </div>
+
+    </div>
+  </article>
+
+        <footer class="page-footer">
+          <p class="mb-0">Copyright © 2022. All right reserved.</p>
+        </footer>
+
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/simplebar@latest/dist/simplebar.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/metisMenu/3.0.7/metisMenu.min.js"></script>
+    <script src="https://unpkg.com/boxicons@2.1.2/dist/boxicons.js"></script>
+    <script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/js/all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.5.3/jspdf.debug.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.8.0/html2pdf.bundle.js"></script>
+    <script src="{% static 'asets/js/jquery.sparkline.min.js' %}"></script>
+    <script src="{% static 'asets/js/Chart.min.js' %}"></script>
+    <script src="{% static 'asets/js/Chart.extension.js' %}"></script>
+    <script src="{% static 'asets/js/script.js' %}"></script>
+
+
+
+
+  </body>
+</html>

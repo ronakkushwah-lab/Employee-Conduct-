@@ -1,0 +1,35 @@
+{% extends "administration/emails/base_email.html" %}
+
+{% block content %}
+<h2>Employee Document Submission Notification</h2>
+
+<p>Dear {{ recipient_name }},</p>
+
+<p>This is to notify you that one of your team members has submitted documents to the system.</p>
+
+<div class="info-box">
+    <div class="detail-row">
+        <span class="detail-label">Employee Name:</span>
+        <span class="detail-value">{{ user_name }}</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Employee ID:</span>
+        <span class="detail-value">{{ user_id }}</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Submission Date:</span>
+        <span class="detail-value">{{ submission_date }}</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Documents Uploaded:</span>
+        <span class="detail-value">
+            {% for doc in documents_uploaded %}
+                {{ doc }}{% if not forloop.last %}, {% endif %}
+            {% endfor %}
+        </span>
+    </div>
+</div>
+
+<p>Best regards,<br>
+{{ company_name }} Team</p>
+{% endblock %}

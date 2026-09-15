@@ -1,0 +1,49 @@
+{% extends "administration/emails/base_email.html" %}
+
+{% block content %}
+<h2>Action Required: Leave Awaiting Final HR Approval</h2>
+
+<p>Dear HR Team,</p>
+
+<p>A leave request has been <strong>approved by reporting manager {{ manager_name }}</strong> and is now pending final HR approval.</p>
+
+<div class="info-box">
+    <div class="detail-row">
+        <span class="detail-label">Employee Name:</span>
+        <span class="detail-value">{{ employee_name }} ({{ employee_id }})</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Approved By Manager:</span>
+        <span class="detail-value">{{ manager_name }}</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Leave Type:</span>
+        <span class="detail-value">{{ leave_type }}</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Start Date:</span>
+        <span class="detail-value">{{ start_date }}</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">End Date:</span>
+        <span class="detail-value">{{ end_date }}</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Total Days:</span>
+        <span class="detail-value">{{ leave_days }} day(s)</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Reason:</span>
+        <span class="detail-value">{{ reason }}</span>
+    </div>
+    <div class="detail-row">
+        <span class="detail-label">Current Status:</span>
+        <span class="detail-value">Manager Approved – Pending HR Approval</span>
+    </div>
+</div>
+
+<p>Please log in to the HRMS Administration portal to grant final approval or reject this request.</p>
+
+<p>Best regards,<br>
+{{ company_name }} System</p>
+{% endblock %}

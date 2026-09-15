@@ -1,0 +1,416 @@
+{% load static %}
+{% include "administration/header.html" %}
+{% include "administration/sidebar.html" %}
+{% include "administration/topbar.html" %}
+{% load administration_filter %}
+
+
+
+      <div class="page_wrapper">
+        <div class="page-content">
+          <div class="page-breadcrumb d-sm-flex align-items-center mb-3">
+            <div class="breadcrumb-title pe-3">Leads</div>
+            <div class="ps-3">
+              <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0 p-0">
+                  <li class="breadcrumb-item">
+                    <a href="{% url 'index' company_id=company_id company_staff_id=company_staff_id %}">
+                      <i class="bx bx-home"></i>
+                    </a>
+                  </li>
+                  <li class="breadcrumb-item active" aria-current="page">Clients</li>
+                </ol>
+              </nav>
+            </div>
+            <div class="ms-auto">
+              <div class="btn-group">
+<!--                <a href="clients.htm" class="grid-view btn btn-link"><i class="bx bx-grid"></i></a>-->
+<!--                <a href="clients-list.html" class="grid-list btn btn-link active"><i class="bx bx-list-ul"></i></a>-->
+                <button type="button" class="btn btn-outline-orangeyellow" data-bs-toggle="modal" data-bs-target="#clientModal" id="addemployeeBtn">
+                  <i class="bx bx-plus"></i> Add Client
+                </button>
+                <div class="modal" id="clientModal">
+                  <div class="modal-dialog w-80">
+                    <div class="modal-content">
+                      <div class="modal-header">
+                        <h5 class="modal-title" id="exampleModalLabel">Add Client</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                      </div>
+                      <div class="modal-body">
+                        <form  method="POST" action="{% url 'clients' company_id=company_id company_staff_id=company_staff_id %}">
+                                              {% csrf_token %}
+                          <div class="row mb-2">
+                            <div class="col-md-6">
+                              <label for="first-name" class="form-label">First Name <span class="text-danger">*</span></label>
+                              <input type="text" class="form-control"  name="client_first_name" id="id_client_first_name" placeholder="Joe" required>
+                            </div>
+                            <div class="col-md-6">
+                              <label for="last-name" class="form-label">Last Name</label>
+                              <input type="text" class="form-control" placeholder="West"  name="client_last_name" id="id_client_last_name" >
+                            </div>
+                          </div>
+                          <div class="row mb-2">
+                            <div class="col-md-6">
+                              <label for="username" class="form-label">Username <span class="text-danger">*</span></label>
+                              <input type="text" class="form-control"  name="client_username"  required id="id_client_username" required>
+                            </div>
+                            <div class="col-md-6">
+                              <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+                              <input type="email" class="form-control"  name="client_email" maxlength="100" required id="id_client_email" placeholder="joewest01@gmail.com">
+                            </div>
+                          </div>
+                          <div class="row mb-2">
+                            <div class="col-md-6">
+                              <label for="employee-id" class="form-label">Client ID <span class="text-danger">*</span></label>
+                              <input type="text" class="form-control"  name="client_id" maxlength="100" required id="id_client_id" >
+                            </div>
+                            <div class="col-md-6">
+                              <label for="phone" class="form-label">Phone</label>
+                              <input type="text" class="form-control" name="client_phone" maxlength="100" required id="id_client_phone" placeholder="9876543210" aria-label="phone" >
+                            </div>
+                          </div>
+                          <div class="row mb-2">
+                            <div class="col-md-6">
+                              <label for="technology" class="form-label">Technology</label>
+                              <input type="text" class="form-control" name="technology" placeholder="" id="id_technology">
+                            </div>
+                            <div class="col-md-6">
+                              <label for="description" class="form-label">Description</label>
+                              <input type="text" class="form-control" name="description" placeholder="" id="id_description">
+                            </div>
+                          </div>
+                          <div class="row mb-2">
+                            <div class="col-md-6">
+                              <label for="address" class="form-label">Address</label>
+                              <textarea class="form-control"  name="client_address" maxlength="100" required id="id_client_address" rows="3"></textarea>
+                            </div>
+                          </div>
+                          <div class="mt-4 mb-2 button-right">
+                            <button type="submit" class="btn btn-outline-orangeyellow">Submit</button>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <hr>
+          <div class="row mt-3">
+            <div class="col-12">
+              <div class="card">
+                <div class="card-body">
+                  <div class="table-responsive">
+                    <table class="table table-fluid table-hover" id="myTable">
+                      <thead>
+                        <tr>
+                          <th>Client ID</th>
+                          <th>Name</th>                        
+                          <th>Email</th>
+                          <th>Mobile</th>
+<!--                          <th>Status</th>-->
+                          <th>Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                                   {% for client in client_list  %}
+                        <tr>
+                          <td>{{client.id}}</td>
+                          <td>{{client.client_first_name}}&nbsp;{{client.client_last_name}}</td>
+                          <td>{{client.client_email}}</td>
+                          <td>{{client.client_phone}}</td>
+<!--                          <td>Active</td>-->
+                          <td class="dropdown">
+                            <a class="d-flex align-items-center nav-link dropdown-toggle dropdown-toggle-nocaret" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                              <i class="bx bx-dots-vertical-rounded"></i>
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                              <li>
+                                <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#viewclientModal" onclick="client_details_fetch('{{client.pk}}')" id="viewBtn">View</button>
+                              </li>
+                              <li>
+                                <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#editclientModal" id="editBtn" onclick="client_id_fetch('{{client.pk}}')">Edit</button>
+                              </li>
+                              <li>
+                                <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#deleteModal" id="deleteBtn" onClick="getId('{{client.id}}')">Delete</button>
+                              </li>
+                            </ul>
+                            <div class="modal" id="viewclientModal">
+                              <div class="modal-dialog w-80">
+                                <div class="modal-content">
+                                  <div class="modal-header">
+                                    <h5 class="modal-title" id="exampleModalLabel">Client Profile</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                  </div>
+                                  <div class="modal-body">
+                                    <div class="d-block align-items-center m-auto w-50 text-center">
+                                      <div class="fm-icon-box radius-15">
+<!--                                        <img src="../images/avatar-2.png" class="img-fluid user-img">-->
+<!--                                        <h5 class="mt-3 mb-0">Client Name</h5>-->
+                                      </div>
+                                    </div>
+                                    <div class="row">
+                                      <div class="col">
+                                        <table class="table table-fluid table-bordered table-striped mt-3">
+                                          <tr>
+                                            <th>Client Name</th>
+                                            <td id="client_detailed_info_heading"></td>
+                                          </tr>
+                                            <tr>
+                                          <th>Email</th>
+                                            <td id="client_email_heading"></td>
+                                          </tr>
+                                          <tr>
+                                            <th>Phone</th>
+                                           <td id="client_phone_heading"></td>
+                                          </tr>
+                                          <tr>
+                                            <th>Address</th>
+                                         <td id="client_address_heading"></td>
+                                          </tr>
+                                          <tr>
+                                            <th>Technology</th>
+                                           <td id="client_technology_heading"></td>
+                                          </tr>
+                                          <tr>
+                                            <th>Description</th>
+                                        <td id="client_description_heading"></td>
+                                          </tr>
+                                        </table>                                
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <div class="modal" id="editclientModal">
+                              <div class="modal-dialog w-80">
+                                <div class="modal-content">
+                                  <div class="modal-header">
+                                    <h5 class="modal-title" id="exampleModalLabel">Edit Client</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                  </div>
+                                  <div class="modal-body">
+                                    <form method="post" action="{% url 'editClient' company_id=company_id company_staff_id=company_staff_id %}" enctype="multipart/form-data">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="id" id="client_id_heading">
+                                      <div class="accordion" id="accordionExample">
+                                        <div class="accordion-item">
+<!--                                          <h2 class="accordion-header" id="personal">-->
+<!--                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#information" aria-expanded="false" aria-controls="information">-->
+<!--                                              Client Information-->
+<!--                                            </button>-->
+<!--                                          </h2>-->
+                                          <div id="information" class="accordion-collapse collapse show" aria-labelledby="personal" data-bs-parent="#accordionExample">
+                                            <div class="accordion-body">
+                                              <div class="row mb-2">
+                                                <div class="col-md-6">
+                                                  <label for="first-name" class="form-label">First Name <span class="text-danger">*</span></label>
+                                                  <input type="text" class="form-control"  id="client_first_name_edit"  name="client_first_name">
+                                                </div>
+                                                <div class="col-md-6">
+                                                  <label for="last-name" class="form-label">Last Name</label>
+                                                  <input type="text" class="form-control" id="client_last_name_edit" name="client_last_name">
+                                                </div>
+                                              </div>
+                                              <div class="row mb-2">
+                                                <div class="col-md-6">
+                                                  <label for="username" class="form-label">Username <span class="text-danger">*</span></label>
+                                                  <input type="text" class="form-control"  id="client_username_edit" name="client_username">
+                                                </div>
+                                                <div class="col-md-6">
+                                                  <label for="clieni-id" class="form-label">Client ID <span class="text-danger">*</span></label>
+                                                  <input type="text" class="form-control"  id="client_id_headings" name="client_id">
+                                                </div>
+                                              </div>
+                                              <div class="row mb-2">
+                                                <div class="col-md-6">
+                                                  <label for="phone" class="form-label">Phone</label>
+                                                  <input type="text" class="form-control" id="client_phone_edit" name="client_phone">
+                                                </div>
+                                                <div class="col-md-6">
+                                                  <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
+                                                  <input type="email" class="form-control" id="client_email_edit" name="client_email">
+                                                </div>
+                                              </div>
+                                              <div class="row mb-2">
+                                                <div class="col-md-6">
+                                                  <label for="technology" class="form-label">Technology</label>
+                                                  <input type="text" class="form-control"  id="client_technology_edit" name="technology">
+                                                </div>
+                                                <div class="col-md-6">
+                                                  <label for="description" class="form-label">Description</label>
+                                                  <input type="text" class="form-control"  id="description_edit" name="description">
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div class="mt-4 mb-2 button-right">
+                                        <button type="submit" class="btn btn-outline-orangeyellow">Submit</button>
+                                      </div>
+                                    </form>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <div class="modal" id="deleteModal">
+                              <div class="modal-dialog">
+                                <div class="modal-content">
+                                  <div class="modal-header">
+                                    <h5 class="modal-title" id="exampleModalLabel">Delete Client</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                  </div>
+                                  <div class="modal-body text-center">                                  
+                                    <p>Are you sure want to delete?</p>
+                                        <div class="col-12">
+                                  <a href="javascript:void(0);"  id="delete" class="btn btn-outline-orangeyellow w-100 mb-2">Delete</a>
+                                   </div>
+                                    <button type="button" class="btn btn-outline-orangeyellow w-100" data-bs-dismiss="modal">Cancel</button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                                      {% endfor %}
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <footer class="page-footer">
+          <p class="mb-0">Copyright © 2022. All right reserved.</p>
+        </footer>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/simplebar@latest/dist/simplebar.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/metisMenu/3.0.7/metisMenu.min.js"></script>
+    <script src="https://unpkg.com/boxicons@2.1.2/dist/boxicons.js"></script>
+    <script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/js/all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.5.3/jspdf.debug.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.8.0/html2pdf.bundle.js"></script>
+    <script src="{% static 'asets/js/jquery.sparkline.min.js' %}"></script>
+    <script src="{% static 'asets/js/Chart.min.js' %}"></script>
+    <script src="{% static 'asets/js/Chart.extension.js' %}"></script>
+    <script src="{% static 'asets/js/script.js' %}"></script>
+
+    <script>
+      function client_details_fetch(id){
+
+
+        // Ajax POST Request
+        var client_detailed_info_heading = document.getElementById("client_detailed_info_heading");
+
+        var client_phone_heading = document.getElementById("client_phone_heading");
+
+        var client_email_heading = document.getElementById("client_email_heading");
+        var client_address_heading = document.getElementById("client_address_heading");
+        var client_technology_heading = document.getElementById("client_technology_heading");
+        var client_description_heading = document.getElementById("client_description_heading");
+       
+        $.ajax({
+                  url: '{% url "client_list" company_id=company_id company_staff_id=company_staff_id %}',
+                  method: "POST",
+                  processData: false,
+                  contentType: 'application/json',
+                  mimeType: "multipart/form-data",
+                  headers: {'X-CSRFToken': "{{csrf_token}}", "Content-Type":"application/json"},
+                  data: JSON.stringify({'id': id}),
+                  dataType: "json",
+                  success: function(res){
+
+                  client_full_name = res['client_first_name'] + ' ' + res['client_last_name'];
+                  client_phone = res['client_phone'];
+                  client_email = res['client_email'];
+                  client_address = res['client_address'];
+                  description = res['description'];
+                  technology = res['technology'];
+     
+
+
+                  client_detailed_info_heading.textContent = client_full_name;
+                  client_phone_heading.textContent = client_phone;
+                  client_email_heading.textContent = client_email;
+                  client_address_heading.textContent = client_address;
+                  client_technology_heading.textContent = technology;
+                  client_description_heading.textContent = description;
+      
+          
+
+                },
+                error: function(xhr, status, error){
+                  console.log(error);
+                  console.log(status);
+                  console.log(xhr);
+                }
+        })
+      }
+
+       function client_id_fetch(id){
+        var client_id_heading = document.getElementById("client_id_heading");
+        var client_first_name_edit = document.getElementById("client_first_name_edit");
+        var client_last_name_edit = document.getElementById("client_last_name_edit");
+        var client_username_edit = document.getElementById("client_username_edit");
+        var client_id_headings = document.getElementById("client_id_headings");
+        var client_phone_edit  = document.getElementById("client_phone_edit");
+        var client_email_edit = document.getElementById("client_email_edit");
+
+        var client_technology_edit  = document.getElementById("client_technology_edit");
+        var description_edit  = document.getElementById("description_edit");
+
+
+
+        client_id_heading.value = id;
+
+        $.ajax({
+          url: '{% url "editClient" company_id=company_id company_staff_id=company_staff_id %}',
+          method: "GET",
+          data: {'id': id},
+          dataType: "json",
+          success: function(res){
+            client_first_name_edit.value = res['client_first_name']
+            client_last_name_edit.value = res['client_last_name']
+            client_phone_edit.value = res['client_phone']
+
+            client_username_edit.value = res['client_username']
+            client_email_edit.value = res['client_email']
+            client_technology_edit.value = res['technology']
+            description_edit.value = res['description']
+            client_id_headings.value = res['client_id']
+
+
+
+
+
+
+          },
+          error: function(xhr, status, error){
+            console.log(error);
+            console.log(status);
+            console.log(xhr);
+          }
+        })
+      }
+
+
+          </script>
+
+                    <script>
+  	function getId(id) {
+		// alert(id)
+		var a =document.getElementById('delete');
+		a.href = "/administration/clients_remove/{{company_id}}/{{company_staff_id}}/"+id;
+	}
+
+   </script>

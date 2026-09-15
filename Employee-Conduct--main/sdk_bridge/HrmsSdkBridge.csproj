@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\sdk\SDK20180628-1\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\sbxpc\SBXPCDLL.cs" Link="SBXPCDLL.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\sdk\SDK20180628-1\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\bin\x86\Release\SBXPCDLL64.dll" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\sdk\SDK20180628-1\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\bin\x86\Release\SBPCCOMM64.dll" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\sdk\SDK20180628-1\20180622_SDK\SDK\Sample_M50\C#_SBXPCDLL_Sample\SBXPCDLLSampleCSharp\bin\x86\Release\GEN_FONT64.dll" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

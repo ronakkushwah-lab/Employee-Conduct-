@@ -1,0 +1,23 @@
+# services:
+#   web:
+#     build:
+#       context: .
+#       dockerfile: Dockerfile
+#     command: gunicorn --bind 0.0.0.0:8080 backend.wsgi -w 5
+#     ports:
+#       - "8000:8000"
+#     volumes:
+#       - .:/app
+
+
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: gunicorn --bind 0.0.0.0:8000 -w 5 dstt.wsgi:application
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app

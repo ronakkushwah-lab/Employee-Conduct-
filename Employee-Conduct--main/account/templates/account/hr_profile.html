@@ -1,0 +1,627 @@
+{% load static %}
+{% include "administration/header.html" %}
+{% include "administration/sidebar.html" %}
+{% include "administration/topbar.html" %}
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+<style>
+  .img-container {
+    max-width: 100%;
+    max-height: 480px;
+    overflow: hidden;
+  }
+  .avatar-upload-wrapper {
+    position: relative;
+    width: 140px;
+    height: 140px;
+    margin: 0 auto;
+    border-radius: 50%;
+    border: 4px solid #ff6b35;
+    padding: 3px;
+    background: #fff;
+    box-shadow: 0 4px 14px rgba(255, 107, 53, 0.25);
+  }
+  .avatar-upload-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+  }
+  .avatar-edit-icon {
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    background: #ff6b35;
+    color: #fff;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    transition: all 0.2s ease;
+  }
+  .avatar-edit-icon:hover {
+    background: #e05520;
+    transform: scale(1.08);
+  }
+  .info-label {
+    font-size: 13px;
+    color: #6c757d;
+    text-transform: uppercase;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    margin-bottom: 2px;
+  }
+  .info-value {
+    font-size: 15px;
+    color: #212529;
+    font-weight: 500;
+    margin-bottom: 16px;
+  }
+</style>
+
+<div class="page_wrapper">
+  <div class="page-content">
+
+    <!-- Breadcrumb Header -->
+    <div class="page-breadcrumb d-sm-flex align-items-center mb-3">
+      <div class="breadcrumb-title pe-3">My Profile</div>
+      <div class="ps-3">
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb mb-0 p-0">
+            <li class="breadcrumb-item">
+              <a href="{% url 'hr_dashboard' company_id=company_id company_staff_id=company_staff_id %}">
+                <i class="bx bx-home"></i>
+              </a>
+            </li>
+            <li class="breadcrumb-item">
+              <a href="{% url 'hr_dashboard' company_id=company_id company_staff_id=company_staff_id %}">HR Portal</a>
+            </li>
+            <li class="breadcrumb-item active" aria-current="page">HR Profile</li>
+          </ol>
+        </nav>
+      </div>
+      <div class="ms-auto d-flex gap-2">
+        <button type="button" class="btn btn-outline-orangeyellow btn-sm" data-bs-toggle="modal" data-bs-target="#updateHrProfileModal">
+          <i class="bx bx-edit-alt me-1"></i> Edit Profile
+        </button>
+        <a href="{% url 'all_document_Views' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-outline-secondary btn-sm">
+          <i class="bx bx-folder-open me-1"></i> My Documents
+        </a>
+      </div>
+    </div>
+    <hr>
+
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        <strong>Message:</strong> {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+    {% endfor %}
+
+    <div class="row">
+      <!-- Left Column: Profile Card & Quick Info -->
+      <div class="col-12 col-lg-4">
+        <div class="card shadow-sm border-0 mb-4">
+          <div class="card-body p-4 text-center">
+            
+            <!-- Avatar with Camera Trigger -->
+            <div class="avatar-upload-wrapper mb-3">
+              <img src="{{ hr_employee.avatar_url }}" id="hr-profile-avatar" alt="HR Avatar" onerror="this.onerror=null; this.src='{% if hr_employee.employee_gender|lower == 'female' %}{% static 'asets/images/dummy-woman.png' %}{% else %}{% static 'asets/images/dummy-man.png' %}{% endif %}';">
+              <div class="avatar-edit-icon" onclick="document.getElementById('hr-profile-file-input').click()" title="Change Profile Picture">
+                <i class="bx bx-camera font-18"></i>
+              </div>
+            </div>
+
+            <!-- Hidden file input for avatar -->
+            <input type="file" id="hr-profile-file-input" accept="image/*" style="display: none;">
+
+            <h5 class="mb-1 fw-bold text-dark">{{ hr_employee.employee_first_name }} {{ hr_employee.employee_last_name }}</h5>
+            <p class="text-muted mb-2 font-14">{{ hr_employee.employee_designation|default:"HR Administrator" }}</p>
+            <span class="badge rounded-pill bg-primary px-3 py-1 font-12 mb-3">
+              <i class="bx bx-shield-quarter me-1"></i> Human Resources Lead
+            </span>
+
+            <div class="d-flex justify-content-center gap-2 mb-3">
+              <span class="badge bg-light text-dark border px-2 py-1 font-12">
+                ID: {{ hr_employee.employee_id|default:"EIC/HR" }}
+              </span>
+              <span class="badge bg-light text-dark border px-2 py-1 font-12">
+                Biometric ID: {{ hr_employee.biometric_id|default:company_staff_id }}
+              </span>
+            </div>
+
+            <hr>
+
+            <div class="text-start">
+              <div class="d-flex align-items-center mb-3">
+                <div class="avatar-xs bg-light-primary text-primary rounded p-2 me-3" style="width: 34px; height: 34px; background: #e8f0fe; display: flex; align-items: center; justify-content: center;">
+                  <i class="bx bx-envelope font-18 text-primary"></i>
+                </div>
+                <div class="text-truncate">
+                  <small class="text-muted d-block font-11">Work Email</small>
+                  <span class="font-14 text-dark fw-bold">{{ hr_employee.employee_email|default:staff.email }}</span>
+                </div>
+              </div>
+
+              <div class="d-flex align-items-center mb-3">
+                <div class="avatar-xs bg-light-success text-success rounded p-2 me-3" style="width: 34px; height: 34px; background: #e6f4ea; display: flex; align-items: center; justify-content: center;">
+                  <i class="bx bx-phone font-18 text-success"></i>
+                </div>
+                <div>
+                  <small class="text-muted d-block font-11">Phone Number</small>
+                  <span class="font-14 text-dark fw-bold">{{ hr_employee.employee_phone|default:"Not specified" }}</span>
+                </div>
+              </div>
+
+              <div class="d-flex align-items-center mb-3">
+                <div class="avatar-xs bg-light-info text-info rounded p-2 me-3" style="width: 34px; height: 34px; background: #e1f5fe; display: flex; align-items: center; justify-content: center;">
+                  <i class="bx bx-building font-18 text-info"></i>
+                </div>
+                <div>
+                  <small class="text-muted d-block font-11">Department</small>
+                  <span class="font-14 text-dark fw-bold">{{ hr_employee.employee_department.department_name|default:"Human Resources" }}</span>
+                </div>
+              </div>
+
+              <div class="d-flex align-items-center">
+                <div class="avatar-xs bg-light-warning text-warning rounded p-2 me-3" style="width: 34px; height: 34px; background: #fef7e0; display: flex; align-items: center; justify-content: center;">
+                  <i class="bx bx-calendar font-18 text-warning"></i>
+                </div>
+                <div>
+                  <small class="text-muted d-block font-11">Joining Date</small>
+                  <span class="font-14 text-dark fw-bold">{{ hr_employee.employee_joining_date|date:"d M Y"|default:"Active" }}</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Quick Actions Card -->
+        <div class="card shadow-sm border-0 mb-4">
+          <div class="card-header bg-transparent border-bottom py-3">
+            <h6 class="mb-0 fw-bold text-dark"><i class="bx bx-cog me-2 text-primary"></i>Account & Security</h6>
+          </div>
+          <div class="card-body p-3">
+            <div class="list-group list-group-flush">
+              <a href="{% url 'mchange_password' company_id=company_id company_staff_id=company_staff_id %}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between px-2 py-3 border-0 rounded">
+                <div class="d-flex align-items-center">
+                  <i class="bx bx-key font-20 text-warning me-3"></i>
+                  <span>Change Account Password</span>
+                </div>
+                <i class="bx bx-chevron-right text-muted"></i>
+              </a>
+              <a href="{% url 'all_document_Views' company_id=company_id company_staff_id=company_staff_id %}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between px-2 py-3 border-0 rounded">
+                <div class="d-flex align-items-center">
+                  <i class="bx bx-file font-20 text-primary me-3"></i>
+                  <span>Official Documents Repository</span>
+                </div>
+                <i class="bx bx-chevron-right text-muted"></i>
+              </a>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Column: Personal & Organizational Details -->
+      <div class="col-12 col-lg-8">
+        
+        <!-- Personal Details Card -->
+        <div class="card shadow-sm border-0 mb-4">
+          <div class="card-header bg-transparent border-bottom py-3 d-flex align-items-center justify-content-between">
+            <h6 class="mb-0 fw-bold text-dark"><i class="bx bx-user me-2 text-primary"></i>Personal Information</h6>
+            <button type="button" class="btn btn-sm btn-outline-orangeyellow" data-bs-toggle="modal" data-bs-target="#updateHrProfileModal">
+              <i class="bx bx-edit"></i> Edit
+            </button>
+          </div>
+          <div class="card-body p-4">
+            <div class="row">
+              <div class="col-md-6">
+                <div class="info-label">Full Name</div>
+                <div class="info-value">{{ hr_employee.employee_first_name }} {{ hr_employee.employee_last_name }}</div>
+              </div>
+              <div class="col-md-6">
+                <div class="info-label">Gender</div>
+                <div class="info-value">{{ hr_employee.employee_gender|capfirst|default:"Not specified" }}</div>
+              </div>
+              <div class="col-md-6">
+                <div class="info-label">Date of Birth</div>
+                <div class="info-value">{{ hr_employee.employee_birth_date|default:"Not specified" }}</div>
+              </div>
+              <div class="col-md-6">
+                <div class="info-label">Marital Status</div>
+                <div class="info-value">{{ hr_employee.employee_marital_status|capfirst|default:"Not specified" }}</div>
+              </div>
+              <div class="col-12">
+                <div class="info-label">Residential Address</div>
+                <div class="info-value">
+                  {% if hr_employee.employee_address %}
+                    {{ hr_employee.employee_address }}{% if hr_employee.employee_state %}, {{ hr_employee.employee_state }}{% endif %}{% if hr_employee.employee_pin_code %} - {{ hr_employee.employee_pin_code }}{% endif %}{% if hr_employee.employee_country %}, {{ hr_employee.employee_country }}{% endif %}
+                  {% else %}
+                    Not specified
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Emergency Contacts Card -->
+        <div class="card shadow-sm border-0 mb-4">
+          <div class="card-header bg-transparent border-bottom py-3">
+            <h6 class="mb-0 fw-bold text-dark"><i class="bx bx-phone-call me-2 text-danger"></i>Emergency Contacts</h6>
+          </div>
+          <div class="card-body p-4">
+            <div class="row">
+              <div class="col-md-4">
+                <div class="info-label">Contact Person</div>
+                <div class="info-value">{{ hr_employee.employee_emergency_primary_name|default:"Not specified" }}</div>
+              </div>
+              <div class="col-md-4">
+                <div class="info-label">Relationship</div>
+                <div class="info-value">{{ hr_employee.employee_emergency_primary_relationship|default:"Not specified" }}</div>
+              </div>
+              <div class="col-md-4">
+                <div class="info-label">Emergency Phone</div>
+                <div class="info-value">{{ hr_employee.employee_emergency_primary_phone1|default:"Not specified" }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Organizational Scope Card -->
+        <div class="card shadow-sm border-0 mb-4">
+          <div class="card-header bg-transparent border-bottom py-3">
+            <h6 class="mb-0 fw-bold text-dark"><i class="bx bx-briefcase-alt-2 me-2 text-success"></i>Organizational Role & Governance</h6>
+          </div>
+          <div class="card-body p-4">
+            <div class="row">
+              <div class="col-md-6">
+                <div class="info-label">Assigned Company</div>
+                <div class="info-value">{{ company.company_name|default:"Eagle in Cloud" }}</div>
+              </div>
+              <div class="col-md-6">
+                <div class="info-label">Administrative Role</div>
+                <div class="info-value"><span class="badge bg-primary">HR Administrator</span></div>
+              </div>
+              <div class="col-md-6">
+                <div class="info-label">Department</div>
+                <div class="info-value">{{ hr_employee.employee_department.department_name|default:"Human Resources" }}</div>
+              </div>
+              <div class="col-md-6">
+                <div class="info-label">Reporting Line / Manager</div>
+                <div class="info-value">
+                  {% if hr_employee.employee_reports_to %}
+                    {{ hr_employee.employee_reports_to.manager_first_name }} {{ hr_employee.employee_reports_to.manager_last_name }} (Manager)
+                  {% else %}
+                    Executive Management
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Documents Summary Card -->
+        <div class="card shadow-sm border-0 mb-4">
+          <div class="card-header bg-transparent border-bottom py-3 d-flex align-items-center justify-content-between">
+            <h6 class="mb-0 fw-bold text-dark"><i class="bx bx-file-blank me-2 text-primary"></i>My Career Documents</h6>
+            <a href="{% url 'all_document_Views' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-sm btn-outline-primary">
+              View All Documents
+            </a>
+          </div>
+          <div class="card-body p-4">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <div class="p-3 border rounded d-flex align-items-center justify-content-between">
+                  <div>
+                    <h6 class="mb-1 font-14 fw-bold">Experience Letter</h6>
+                    <small class="text-muted">Previous Employment</small>
+                  </div>
+                  {% if post and post.experience_letter %}
+                    <a href="{{ post.experience_letter.url }}" download class="btn btn-sm btn-outline-primary"><i class="bx bx-download"></i></a>
+                  {% else %}
+                    <span class="badge bg-light text-muted border">Not Uploaded</span>
+                  {% endif %}
+                </div>
+              </div>
+
+              <div class="col-md-6">
+                <div class="p-3 border rounded d-flex align-items-center justify-content-between">
+                  <div>
+                    <h6 class="mb-1 font-14 fw-bold">Offer Letter</h6>
+                    <small class="text-muted">Appointment Letter</small>
+                  </div>
+                  {% if post and post.offer_letter %}
+                    <a href="{{ post.offer_letter.url }}" download class="btn btn-sm btn-outline-primary"><i class="bx bx-download"></i></a>
+                  {% else %}
+                    <span class="badge bg-light text-muted border">Not Uploaded</span>
+                  {% endif %}
+                </div>
+              </div>
+
+              <div class="col-md-6">
+                <div class="p-3 border rounded d-flex align-items-center justify-content-between">
+                  <div>
+                    <h6 class="mb-1 font-14 fw-bold">Education Certificate</h6>
+                    <small class="text-muted">Degree / Academic Records</small>
+                  </div>
+                  {% if post and post.education_certificate %}
+                    <a href="{{ post.education_certificate.url }}" download class="btn btn-sm btn-outline-primary"><i class="bx bx-download"></i></a>
+                  {% else %}
+                    <span class="badge bg-light text-muted border">Not Uploaded</span>
+                  {% endif %}
+                </div>
+              </div>
+
+              <div class="col-md-6">
+                <div class="p-3 border rounded d-flex align-items-center justify-content-between">
+                  <div>
+                    <h6 class="mb-1 font-14 fw-bold">Skill Certificate</h6>
+                    <small class="text-muted">Credentials & Courses</small>
+                  </div>
+                  {% if post and post.skill_certificate %}
+                    <a href="{{ post.skill_certificate.url }}" download class="btn btn-sm btn-outline-primary"><i class="bx bx-download"></i></a>
+                  {% else %}
+                    <span class="badge bg-light text-muted border">Not Uploaded</span>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <footer class="page-footer">
+      <p class="mb-0">Copyright © 2022. All right reserved.</p>
+    </footer>
+  </div>
+</div>
+
+<!-- Modal: Update HR Profile -->
+<div class="modal fade" id="updateHrProfileModal" tabindex="-1" aria-labelledby="updateHrProfileModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold" id="updateHrProfileModalLabel"><i class="bx bx-user-pin text-primary me-2"></i>Update Personal Details</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="POST" action="{% url 'hr_profile' company_id=company_id company_staff_id=company_staff_id %}" enctype="multipart/form-data" id="hr-profile-form">
+        {% csrf_token %}
+        <input type="hidden" name="cropped-image-input" id="hr-cropped-image-input">
+        
+        <div class="modal-body p-4">
+          <h6 class="fw-bold text-muted mb-3">Basic Information</h6>
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label class="form-label font-13">First Name</label>
+              <input type="text" class="form-control" name="employee_first_name" value="{{ hr_employee.employee_first_name }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label font-13">Last Name</label>
+              <input type="text" class="form-control" name="employee_last_name" value="{{ hr_employee.employee_last_name }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label font-13">Phone Number</label>
+              <input type="text" class="form-control phone-input" name="employee_phone" value="{{ hr_employee.employee_phone }}" placeholder="+91 XXXXX XXXXX">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label font-13">Date of Birth</label>
+              <input type="text" class="form-control" name="employee_birth_date" value="{{ hr_employee.employee_birth_date }}" placeholder="YYYY-MM-DD">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label font-13">Gender</label>
+              <select class="form-select" name="employee_gender">
+                <option value="male" {% if hr_employee.employee_gender|lower == 'male' %}selected{% endif %}>Male</option>
+                <option value="female" {% if hr_employee.employee_gender|lower == 'female' %}selected{% endif %}>Female</option>
+                <option value="other" {% if hr_employee.employee_gender|lower == 'other' %}selected{% endif %}>Other</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label font-13">Marital Status</label>
+              <select class="form-select" name="employee_marital_status">
+                <option value="single" {% if hr_employee.employee_marital_status|lower == 'single' %}selected{% endif %}>Single</option>
+                <option value="married" {% if hr_employee.employee_marital_status|lower == 'married' %}selected{% endif %}>Married</option>
+                <option value="divorced" {% if hr_employee.employee_marital_status|lower == 'divorced' %}selected{% endif %}>Divorced</option>
+              </select>
+            </div>
+          </div>
+
+          <h6 class="fw-bold text-muted mb-3">Residential Address</h6>
+          <div class="row g-3 mb-4">
+            <div class="col-12">
+              <label class="form-label font-13">Street Address</label>
+              <input type="text" class="form-control" name="employee_address" value="{{ hr_employee.employee_address }}">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label font-13">Pin Code</label>
+              <input type="text" class="form-control" name="employee_pin_code" value="{{ hr_employee.employee_pin_code }}">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label font-13">State</label>
+              <input type="text" class="form-control" name="employee_state" value="{{ hr_employee.employee_state }}">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label font-13">Country</label>
+              <input type="text" class="form-control" name="employee_country" value="{{ hr_employee.employee_country|default:'India' }}">
+            </div>
+          </div>
+
+          <h6 class="fw-bold text-muted mb-3">Emergency Contact</h6>
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label font-13">Contact Name</label>
+              <input type="text" class="form-control" name="employee_emergency_primary_name" value="{{ hr_employee.employee_emergency_primary_name }}">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label font-13">Relationship</label>
+              <input type="text" class="form-control" name="employee_emergency_primary_relationship" value="{{ hr_employee.employee_emergency_primary_relationship }}" placeholder="e.g. Spouse, Parent, Sibling">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label font-13">Emergency Phone</label>
+              <input type="text" class="form-control phone-input" name="employee_emergency_primary_phone1" value="{{ hr_employee.employee_emergency_primary_phone1 }}" placeholder="+91 XXXXX XXXXX">
+            </div>
+          </div>
+
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-outline-orangeyellow">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Crop Image -->
+<div class="modal fade" id="hrCropImageModal" tabindex="-1" aria-labelledby="hrCropImageModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title fw-bold" id="hrCropImageModalLabel"><i class="bx bx-crop text-primary me-2"></i>Crop Profile Picture</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="img-container">
+          <img id="hr-crop-image" src="" alt="Crop Image" style="max-width: 100%;">
+        </div>
+      </div>
+      <div class="modal-footer bg-light">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-outline-orangeyellow" id="hr-crop-save-btn">Save & Apply</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/simplebar@latest/dist/simplebar.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/metisMenu/3.0.7/metisMenu.min.js"></script>
+<script src="https://unpkg.com/boxicons@2.1.2/dist/boxicons.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+<script src="{% static 'asets/js/script.js' %}"></script>
+
+<script>
+  // Phone Formatting helper (+91 XXXXX XXXXX)
+  function formatPhone(input) {
+    let value = input.value.replace(/[^\d+]/g, '');
+    if (!value.startsWith('+91')) {
+      value = '+91' + value.replace(/^\+91/, '');
+    }
+    let digits = value.replace('+91', '').replace(/\D/g, '');
+    if (digits.length > 10) {
+      digits = digits.substring(0, 10);
+    }
+    if (digits.length > 0) {
+      if (digits.length <= 5) {
+        value = '+91 ' + digits;
+      } else {
+        value = '+91 ' + digits.substring(0, 5) + ' ' + digits.substring(5, 10);
+      }
+    } else {
+      value = '+91 ';
+    }
+    input.value = value;
+  }
+
+  document.addEventListener('DOMContentLoaded', function() {
+    const phoneInputs = document.querySelectorAll('.phone-input');
+    phoneInputs.forEach(function(input) {
+      input.addEventListener('input', function() { formatPhone(this); });
+      input.addEventListener('blur', function() { formatPhone(this); });
+      if (input.value) { formatPhone(input); }
+    });
+
+    // Avatar Cropper.js Integration
+    let cropper = null;
+    const fileInput = document.getElementById('hr-profile-file-input');
+    const cropModal = new bootstrap.Modal(document.getElementById('hrCropImageModal'));
+    const cropImage = document.getElementById('hr-crop-image');
+    const saveBtn = document.getElementById('hr-crop-save-btn');
+    const avatarImg = document.getElementById('hr-profile-avatar');
+    const hiddenBase64Input = document.getElementById('hr-cropped-image-input');
+
+    if (fileInput) {
+      fileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (!file.type.startsWith('image/')) {
+          alert('Please choose an image file.');
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          cropImage.src = evt.target.result;
+          cropModal.show();
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    const cropModalEl = document.getElementById('hrCropImageModal');
+    if (cropModalEl) {
+      cropModalEl.addEventListener('shown.bs.modal', function() {
+        if (cropper) cropper.destroy();
+        cropper = new Cropper(cropImage, {
+          aspectRatio: 1,
+          viewMode: 1,
+          autoCropArea: 1,
+          responsive: true,
+        });
+      });
+
+      cropModalEl.addEventListener('hidden.bs.modal', function() {
+        if (cropper) {
+          cropper.destroy();
+          cropper = null;
+        }
+        if (fileInput) fileInput.value = '';
+      });
+    }
+
+    if (saveBtn) {
+      saveBtn.addEventListener('click', function() {
+        if (!cropper) return;
+        const canvas = cropper.getCroppedCanvas({
+          width: 400,
+          height: 400,
+          imageSmoothingQuality: 'high',
+        });
+        const base64Data = canvas.toDataURL('image/jpeg', 0.9);
+        
+        // Update avatar image instantly in DOM
+        if (avatarImg) avatarImg.src = base64Data;
+        if (hiddenBase64Input) hiddenBase64Input.value = base64Data;
+
+        // Auto-save via AJAX endpoint
+        const formData = new FormData();
+        formData.append('cropped-image-input', base64Data);
+        formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+        fetch('{% url "hr_profile" company_id=company_id company_staff_id=company_staff_id %}', {
+          method: 'POST',
+          body: formData
+        }).then(function(res) {
+          cropModal.hide();
+          window.location.reload();
+        }).catch(function(err) {
+          console.error(err);
+          cropModal.hide();
+        });
+      });
+    }
+  });
+</script>
+
+</body>
+</html>
