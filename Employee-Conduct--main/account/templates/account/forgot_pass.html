@@ -2,7 +2,7 @@
 {% block head %}
 <style>
     .spinner{
-        height:100px;width:100px;border: 10px solid gray;border-bottom:10px solid  blue;
+        height:60px;width:60px;border: 6px solid #e9ecef;border-bottom:6px solid #007bff;
         animation:ani 1s linear infinite;border-radius: 50%;margin:auto
     }
     @keyframes ani{
@@ -15,94 +15,62 @@
     <div class="container">
         <div class="row">
             <div class="col-md-6 mx-auto">
-                <div class="my-5 p-5" style="box-shadow:0px 0px 10px black;">
-                    <h2>Reset Your Password</h2> <hr>
+                <div class="my-5 p-4 p-md-5 bg-white rounded shadow-sm border">
+                    <h3 class="font-weight-bold text-dark mb-1">Reset Your Password</h3>
+                    <p class="text-muted small mb-4">Enter your registered email address below to receive a password reset link.</p>
+                    <hr>
                     <div id="result"></div>
-                    <form action="" method="post">
+                    <form id="resetRequestForm">
                         {% csrf_token %}
-                        <div class="form-group">
-                            <label>Enter Your Email</label>
-                            <input type="text" class="form-control" id="reset_password_email" name="email" placeholder="Enter email Here...">
+                        <div class="form-group mb-3">
+                            <label class="font-weight-bold text-secondary">Registered Email Address</label>
+                            <input type="email" class="form-control" id="reset_password_email" name="email" placeholder="e.g. user@company.com" required>
                         </div>
-                        <button type="button" class="btn btn-warning" onclick="getpass()" id="continue">Click to Continue</button>
-                        <div class="mt-2" style="display:none" id="spin">
+                        <button type="button" class="btn btn-primary btn-block py-2 font-weight-bold" onclick="getpass()" id="continue">
+                            <i class="fa fa-paper-plane mr-2"></i> Send Password Reset Link
+                        </button>
+                        <div class="mt-3 text-center" style="display:none" id="spin">
                             <div class="spinner"></div>
+                            <p class="text-muted small mt-2">Processing request...</p>
                         </div>
-                    
-                        <div class="form-group" style="display:none" id="afterotp">
-                            <label>Enter OTP</label>
-                            <input type="number" class="form-control" id="uotp" placeholder="Enter OTP Here...">
-                            
-                            <button onclick="matchotp()" type="button" class="btn btn-info mt-3">Verify OTP</button>
-                        </div>
-
-                        <div style="display:none" id="changepass">
-                            <div class="form-group">
-                                <label>Enter New Password</label>
-                                <input type="password" name="password" class="form-control" placeholder="Enter New Password...">
-                            </div>
-                            <div class="form-group">
-                                <input type="submit" value="CHANGE MY PASSWORD" class="btn btn-success">
-                            </div>
-                        </div>
-                    <input type="hidden"  id="realotp">
                     </form>
+                    <div class="text-center mt-4">
+                        <a href="/" class="text-muted small"><i class="fa fa-arrow-left mr-1"></i> Back to Sign In</a>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
     <script>
         function getpass(){
+            let email=$("#reset_password_email").val().trim();
+            if(!email){
+                $("#result").html("<p class='alert alert-danger'>Please enter a valid email address.</p>");
+                return;
+            }
             $("#spin").show();
-            let email=$("#reset_password_email").val();
-               $.ajax({
+            $("#continue").hide();
+            $("#result").html("");
+
+            $.ajax({
                 url:"{% url 'reset_password' %}",
                 type:"get",
                 data:{'email':email},
                 success:function(data){
                     $("#spin").hide();
-                    if(data.status=="failed"){
-                        $("#result").html("<p class='alert alert-danger'>No user registred with this username</p>");
-                    }
-                    else if(data.status=="error"){
-                        $("#result").html("<p class='alert alert-danger'>Could not send email to "+data.email+" Something went wrong!!!</p>");
-                    }
-                    else if(data.status=="sent"){
-                        let resetHtml = "<p class='alert alert-success'>Password reset request processed for <strong>"+data.email+"</strong></p>";
-                        if(data.reset_link){
-                            resetHtml += "<div class='my-3 p-3 text-center border rounded bg-light'>"+
-                                "<p class='mb-2 text-dark font-weight-bold'>⚡ 1-Click Password Reset Link:</p>"+
-                                "<a href='"+data.reset_link+"' class='btn btn-primary btn-block text-white font-weight-bold py-2'><i class='fa fa-key mr-2'></i>Reset My Password Now</a>"+
-                                "</div>";
-                        }
-                        resetHtml += "<p class='text-muted small mb-2'>Alternatively, enter the 4-digit OTP below if received via email.</p>";
-                        $("#result").html(resetHtml);
-                        $("#continue").hide();
-                        $("#afterotp").slideDown(1000);
-                        $("#realotp").val(data.rotp);
-                    }
+                    $("#result").html(
+                        "<div class='alert alert-success py-3'>"+
+                        "<h6 class='font-weight-bold mb-1'><i class='fa fa-check-circle mr-2'></i>Reset Link Dispatched</h6>"+
+                        "<p class='mb-0 small'>If an account exists for <strong>"+email+"</strong>, a password reset link has been sent to your email inbox. Please check your inbox and spam folder.</p>"+
+                        "</div>"
+                    );
+                },
+                error:function(){
+                    $("#spin").hide();
+                    $("#continue").show();
+                    $("#result").html("<p class='alert alert-danger'>Something went wrong. Please try again later.</p>");
                 }
-            })
-        }
-
-        function matchotp(){
-            uotp = $("#uotp").val();
-            rotp = $("#realotp").val();
-
-            if(uotp==rotp){
-                $("#afterotp").hide()
-                $("#changepass").fadeIn(1000);
-                $("#result").html("<p class='alert alert-success'>Validation Success!!!</p>");
-            }else{
-                $("#result").html("<p class='alert alert-danger'>Incorrect OTP</p>");
-            }
+            });
         }
     </script>
-
-    {% if status %}
-    <script>
-        alert("{{status}}");
-        window.location="/"
-    </script>
-    {% endif %}
 {% endblock %}

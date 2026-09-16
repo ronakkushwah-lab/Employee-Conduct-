@@ -499,7 +499,6 @@ def reset_password(request):
         return JsonResponse({"status": "failed"})
     try:
         user = get_object_or_404(CompanyStaff, email=email_address)
-        otp = random.randint(1000, 9999)
         
         uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
         token = staff_token_generator.make_token(user)
@@ -509,10 +508,10 @@ def reset_password(request):
         msz = (
             f"Dear {user.email},\n\n"
             f"You requested a password reset for your HRMS account.\n\n"
-            f"Your OTP code is: {otp}\n\n"
-            f"Or click the 1-click link below to reset your password instantly:\n"
+            f"Click the link below to reset your password:\n"
             f"{reset_link}\n\n"
-            f"If you did not request this, please ignore this email.\n\n"
+            f"This link is valid for one-time use only.\n"
+            f"If you did not request this password reset, please ignore this email.\n\n"
             f"Thanks & Regards,\nHRMS Portal"
         )
         from_email = (getattr(settings, 'DEFAULT_FROM_EMAIL', None) or getattr(settings, 'EMAIL_HOST_USER', None) or 'noreply@eagleincloud.io').strip()
@@ -526,14 +525,16 @@ def reset_password(request):
                 to=[user.email],
             )
             msg.send(fail_silently=False)
-            logger.info("Password reset email sent to %s", user.email)
-            return JsonResponse({"status": "sent", "email": user.email, "rotp": otp, "reset_link": reset_link})
+            logger.info("Password reset email successfully sent to %s", user.email)
         except Exception as e:
             logger.exception("Failed to send reset email to %s: %s", user.email, e)
-            logger.info("Development fallback: Password Reset Link for %s is %s", user.email, reset_link)
-            return JsonResponse({"status": "sent", "email": user.email, "rotp": otp, "reset_link": reset_link})
+            logger.info("Reset Link generated for %s: %s", user.email, reset_link)
+
+        # Secure Option 1: Never expose reset token or link in public HTTP response
+        return JsonResponse({"status": "sent", "email": user.email})
     except Exception:
-        return JsonResponse({"status": "failed"})
+        # Generic response to prevent user enumeration
+        return JsonResponse({"status": "sent", "email": email_address})
 
 
 @csrf_exempt
