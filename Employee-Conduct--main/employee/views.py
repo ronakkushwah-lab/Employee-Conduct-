@@ -2185,6 +2185,13 @@ def ChangePassword(request,company_id, company_staff_id):
                 if check == True:
                     user.password = make_password(new_pas)
                     user.save()
+
+                    from django.contrib.auth.models import User as DjangoUser
+                    dj_user = DjangoUser.objects.filter(email=user.email).first()
+                    if dj_user:
+                        dj_user.set_password(new_pas)
+                        dj_user.save()
+
                     messages.success(request, 'Password changed Successfully')
                     return redirect('/')
                 else:

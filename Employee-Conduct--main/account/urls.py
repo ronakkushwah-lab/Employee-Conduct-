@@ -18,6 +18,7 @@ urlpatterns = [
     # Role-based dashboards
     path('dashboard/superadmin/', views.superadmin_dashboard, name='superadmin_dashboard'),
     path('dashboard/admin/<int:company_id>/<int:company_staff_id>/', views.admin_dashboard, name='admin_dashboard'),
+    path('dashboard/admin/<int:company_id>/<int:company_staff_id>/profile/', views.hr_profile_view, name='admin_profile'),
     path('dashboard/manager/<int:company_id>/<int:company_staff_id>/', views.manager_dashboard, name='manager_dashboard'),
     path('dashboard/hr/<int:company_id>/<int:company_staff_id>/', views.hr_dashboard, name='hr_dashboard'),
     path('dashboard/hr/<int:company_id>/<int:company_staff_id>/profile/', views.hr_profile_view, name='hr_profile'),

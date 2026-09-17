@@ -79,9 +79,9 @@
               </a>
             </li>
             <li class="breadcrumb-item">
-              <a href="{% url 'hr_dashboard' company_id=company_id company_staff_id=company_staff_id %}">HR Portal</a>
+              <a href="{% url 'hr_dashboard' company_id=company_id company_staff_id=company_staff_id %}">{% if is_admin or staff.is_company_admin or staff.role == 'admin' or staff.role == 'superadmin' %}Admin Portal{% else %}HR Portal{% endif %}</a>
             </li>
-            <li class="breadcrumb-item active" aria-current="page">HR Profile</li>
+            <li class="breadcrumb-item active" aria-current="page">{% if is_admin or staff.is_company_admin or staff.role == 'admin' or staff.role == 'superadmin' %}Admin Profile{% else %}HR Profile{% endif %}</li>
           </ol>
         </nav>
       </div>
@@ -121,14 +121,19 @@
             <input type="file" id="hr-profile-file-input" accept="image/*" style="display: none;">
 
             <h5 class="mb-1 fw-bold text-dark">{{ hr_employee.employee_first_name }} {{ hr_employee.employee_last_name }}</h5>
-            <p class="text-muted mb-2 font-14">{{ hr_employee.employee_designation|default:"HR Administrator" }}</p>
+            <p class="text-muted mb-2 font-14">{{ hr_employee.employee_designation|default:"System Administrator" }}</p>
             <span class="badge rounded-pill bg-primary px-3 py-1 font-12 mb-3">
-              <i class="bx bx-shield-quarter me-1"></i> Human Resources Lead
+              <i class="bx bx-shield-quarter me-1"></i>
+              {% if is_admin or staff.is_company_admin or staff.role == 'admin' or staff.role == 'superadmin' %}
+                Company Administrator
+              {% else %}
+                Human Resources Lead
+              {% endif %}
             </span>
 
             <div class="d-flex justify-content-center gap-2 mb-3">
               <span class="badge bg-light text-dark border px-2 py-1 font-12">
-                ID: {{ hr_employee.employee_id|default:"EIC/HR" }}
+                ID: {% if is_admin or staff.is_company_admin or staff.role == 'admin' or staff.role == 'superadmin' %}{{ hr_employee.employee_id|default:"EIC/ADM" }}{% else %}{{ hr_employee.employee_id|default:"EIC/HR" }}{% endif %}
               </span>
               <span class="badge bg-light text-dark border px-2 py-1 font-12">
                 Biometric ID: {{ hr_employee.biometric_id|default:company_staff_id }}
@@ -164,7 +169,7 @@
                 </div>
                 <div>
                   <small class="text-muted d-block font-11">Department</small>
-                  <span class="font-14 text-dark fw-bold">{{ hr_employee.employee_department.department_name|default:"Human Resources" }}</span>
+                  <span class="font-14 text-dark fw-bold">{% if is_admin or staff.is_company_admin or staff.role == 'admin' or staff.role == 'superadmin' %}{{ hr_employee.employee_department.department_name|default:"Administration" }}{% else %}{{ hr_employee.employee_department.department_name|default:"Human Resources" }}{% endif %}</span>
                 </div>
               </div>
 
@@ -284,15 +289,31 @@
             <div class="row">
               <div class="col-md-6">
                 <div class="info-label">Assigned Company</div>
-                <div class="info-value">{{ company.company_name|default:"Eagle in Cloud" }}</div>
+                <div class="info-value">
+                  {% if company.company_name and company.company_name != '12' and company.company_name != '1' %}
+                    {{ company.company_name }}
+                  {% elif company.name and company.name != '12' and company.name != '1' %}
+                    {{ company.name }}
+                  {% else %}
+                    Eagle in Cloud
+                  {% endif %}
+                </div>
               </div>
               <div class="col-md-6">
                 <div class="info-label">Administrative Role</div>
-                <div class="info-value"><span class="badge bg-primary">HR Administrator</span></div>
+                <div class="info-value">
+                  <span class="badge bg-primary">
+                    {% if is_admin or staff.is_company_admin or staff.role == 'admin' or staff.role == 'superadmin' %}
+                      Company Administrator
+                    {% else %}
+                      HR Administrator
+                    {% endif %}
+                  </span>
+                </div>
               </div>
               <div class="col-md-6">
                 <div class="info-label">Department</div>
-                <div class="info-value">{{ hr_employee.employee_department.department_name|default:"Human Resources" }}</div>
+                <div class="info-value">{% if is_admin or staff.is_company_admin or staff.role == 'admin' or staff.role == 'superadmin' %}{{ hr_employee.employee_department.department_name|default:"Administration" }}{% else %}{{ hr_employee.employee_department.department_name|default:"Human Resources" }}{% endif %}</div>
               </div>
               <div class="col-md-6">
                 <div class="info-label">Reporting Line / Manager</div>

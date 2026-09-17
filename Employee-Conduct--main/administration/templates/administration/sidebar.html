@@ -19,20 +19,20 @@
                   </div>
                   <ul class="metisMenu mm-show" id="menu">
                     {% if company_staff_is_hr or staff.role == 'hr' or staff.is_hr %}
-                    <li class="{% if request.resolver_match.url_name == 'hr_dashboard' %}mm-active{% endif %}">
-                      <a href="{% url 'hr_dashboard' company_id=company_id company_staff_id=company_staff_id %}">
+                    <li class="{% if request.resolver_match.url_name == 'admin_dashboard' or request.resolver_match.url_name == 'hr_dashboard' %}mm-active{% endif %}">
+                      <a href="{% if is_admin or staff.is_company_admin or staff.role == 'admin' or staff.role == 'superadmin' %}{% url 'admin_dashboard' company_id=company_id company_staff_id=company_staff_id %}{% else %}{% url 'hr_dashboard' company_id=company_id company_staff_id=company_staff_id %}{% endif %}">
                         <div class="parent-icon">
                           <i class="bx bxs-dashboard"></i>
                         </div>
                         <div class="menu-title">
-                          <span>HR Dashboard</span>
+                          <span>{% if is_admin or staff.is_company_admin or staff.role == 'admin' or staff.role == 'superadmin' %}Admin Dashboard{% else %}HR Dashboard{% endif %}</span>
                         </div>
                       </a>
                     </li>
 
                     <li class="menu-label">My Personal Space</li>
-                    <li class="{% if request.resolver_match.url_name == 'hr_profile' %}mm-active{% endif %}">
-                      <a href="{% url 'hr_profile' company_id=company_id company_staff_id=company_staff_id %}">
+                    <li class="{% if request.resolver_match.url_name == 'admin_profile' or request.resolver_match.url_name == 'hr_profile' %}mm-active{% endif %}">
+                      <a href="{% if is_admin or staff.is_company_admin or staff.role == 'admin' or staff.role == 'superadmin' %}{% url 'admin_profile' company_id=company_id company_staff_id=company_staff_id %}{% else %}{% url 'hr_profile' company_id=company_id company_staff_id=company_staff_id %}{% endif %}">
                         <div class="parent-icon">
                           <i class="bx bx-user-circle"></i>
                         </div>

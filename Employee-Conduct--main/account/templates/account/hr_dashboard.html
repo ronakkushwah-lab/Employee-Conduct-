@@ -36,7 +36,7 @@
                         }
                         document.write("</h1>");
                       </script>
-                      <h4>Welcome to the HR Management Portal</h4>
+                      <h4>Welcome to the {% if is_admin or staff.is_company_admin or staff.role == 'admin' or staff.role == 'superadmin' %}Admin Management Portal{% else %}HR Management Portal{% endif %}</h4>
                       <p>Manage employees, monitor real-time biometric attendance, track leaves and regularizations.</p>
                     </div>
                     <div class="ms-auto">
@@ -65,7 +65,7 @@
                       {% endif %}
                     </div>
                     <div>
-                      <h5 class="mb-1 fw-bold text-dark">{{ hr_employee.get_full_name|default:staff.email }} <span class="badge bg-warning text-dark ms-1" style="font-size: 0.72rem;">HR Staff</span></h5>
+                      <h5 class="mb-1 fw-bold text-dark">{{ hr_employee.get_full_name|default:staff.email }} <span class="badge {% if is_admin or staff.is_company_admin or staff.role == 'admin' or staff.role == 'superadmin' %}bg-primary text-white{% else %}bg-warning text-dark{% endif %} ms-1" style="font-size: 0.72rem;">{% if is_admin or staff.is_company_admin or staff.role == 'admin' or staff.role == 'superadmin' %}Admin{% else %}HR Staff{% endif %}</span></h5>
                       <p class="mb-1 text-muted small"><i class="bx bx-id-card me-1"></i><strong>Emp ID:</strong> {{ hr_employee.employee_id|default:"EIC-028" }} &nbsp;|&nbsp; <i class="bx bx-fingerprint me-1"></i><strong>Bio ID:</strong> {{ hr_employee.biometric_id|default:staff.id }}</p>
                       <p class="mb-0 small text-primary">
                         <i class="bx bx-user-check me-1"></i><strong>Reports To (Manager):</strong> 

@@ -100,6 +100,15 @@
                               <label for="manager_biometric_id_add" class="form-label">Biometric ID</label>
                               <input type="text" name="biometric_id" class="form-control" placeholder="e.g. 201" id="manager_biometric_id_add">
                             </div>
+                            <div class="col-md-6">
+                              <label for="manager_reports_to_add" class="form-label">Reporting Manager</label>
+                              <select class="form-select" name="reports_to_id" id="manager_reports_to_add">
+                                <option value="">Admin / Direct (No Parent Manager)</option>
+                                {% for m in all_managers %}
+                                <option value="{{ m.id }}">{{ m.manager_first_name }} {{ m.manager_last_name }} ({{ m.formatted_manager_id }})</option>
+                                {% endfor %}
+                              </select>
+                            </div>
                           </div>
 
                         	<div class="mt-4 mb-2 button-right">
@@ -154,6 +163,9 @@
                     <div class="info mb-3 text-center">
                       <h5 class="mt-3 mb-0">{{manager.manager_first_name}} {{manager.manager_last_name}} </h5>
                       <div>{{manager.manager_department}} </div>
+                      {% if manager.manager_reports_to %}
+                      <small class="text-muted d-block mt-1"><i class="bx bx-user-check"></i> Reports to: <strong>{{ manager.manager_reports_to.manager_first_name }} {{ manager.manager_reports_to.manager_last_name }}</strong></small>
+                      {% endif %}
                     </div>
                     <div class="profile-button text-center">
 
@@ -410,6 +422,15 @@
                                         <div class="col-md-6">
                                           <label for="manager_biometric_id_edit" class="form-label">Biometric ID</label>
                                           <input type="text" class="form-control" id="manager_biometric_id_edit" name="biometric_id" placeholder="e.g. 201">
+                                        </div>
+                                        <div class="col-md-6">
+                                          <label for="manager_reports_to_edit" class="form-label">Reporting Manager</label>
+                                          <select class="form-select" id="manager_reports_to_edit" name="reports_to_id">
+                                            <option value="">Admin / Direct (No Parent Manager)</option>
+                                            {% for m in all_managers %}
+                                            <option value="{{ m.id }}">{{ m.manager_first_name }} {{ m.manager_last_name }} ({{ m.formatted_manager_id }})</option>
+                                            {% endfor %}
+                                          </select>
                                         </div>
                                       </div>
                                     </div>
@@ -807,6 +828,10 @@
             var manager_department_edit = document.getElementById("manager_department_edit");
             if (manager_department_edit && res['manager_department_id']) {
               manager_department_edit.value = res['manager_department_id'];
+            }
+            var manager_reports_to_edit = document.getElementById("manager_reports_to_edit");
+            if (manager_reports_to_edit) {
+              manager_reports_to_edit.value = res['manager_reports_to_id'] || '';
             }
             if (manager_biometric_id_edit) manager_biometric_id_edit.value = res['biometric_id'] || '';
 

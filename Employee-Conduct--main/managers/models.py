@@ -73,6 +73,7 @@ class Manager(models.Model):
     manager_email = models.EmailField(max_length=100)
     manager_joining_date = models.DateField(max_length=50)
     manager_department = models.ForeignKey(to = 'employee.Department', on_delete=models.CASCADE, null=True)
+    manager_reports_to = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='subordinate_managers')
     # manager_department = models.CharField(max_length=100, null=True,)
     manager_designation = models.CharField(max_length=100)
     manager_id = models.CharField(max_length=100)
@@ -217,7 +218,9 @@ class Manager(models.Model):
             'manager_experience_company_job_position': self.manager_experience_company_job_position,
             'manager_experience_company_period_from': self.manager_experience_company_period_from,
             'manager_experience_company_period_to': self.manager_experience_company_period_to,
-            'biometric_id': self.biometric_id or ''
+            'biometric_id': self.biometric_id or '',
+            'manager_reports_to_id': self.manager_reports_to_id if self.manager_reports_to_id else None,
+            'manager_reports_to_name': f"{self.manager_reports_to.manager_first_name} {self.manager_reports_to.manager_last_name}" if self.manager_reports_to else "Admin / Direct"
         }
         return manager_details_dict
 

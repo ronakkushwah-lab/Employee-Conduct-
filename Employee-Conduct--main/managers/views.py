@@ -331,6 +331,17 @@ def ManagerDashboardView(request, company_id, company_staff_id):
             manager=manager,
             check_in__date=tz.localdate()
         ).order_by('-id').first()
+        if not att:
+            emp_att = Attendance.objects.filter(
+                employee__employee_email=company_staff.email,
+                check_in__date=tz.localdate()
+            ).order_by('-id').first()
+            if emp_att:
+                att, _ = ManagerAttendance.objects.get_or_create(
+                    manager=manager,
+                    check_in=emp_att.check_in,
+                    defaults={'check_out': emp_att.check_out}
+                )
     ctx['attendance'] = att
     ctx['company_id'] = company_id
     ctx['company_staff_id'] = company_staff_id
@@ -340,10 +351,15 @@ def ManagerDashboardView(request, company_id, company_staff_id):
             ctx['hours_num'] = strfdelta(time_diff, "{hours}:{minutes}:{seconds}")
             diff_sec = int(time_diff.total_seconds())
             ctx['hours_worked'] = f"{diff_sec // 3600}h {(diff_sec % 3600) // 60}m"
+        elif att.check_in:
+            time_diff = tz.now() - att.check_in
+            diff_sec = max(0, int(time_diff.total_seconds()))
+            ctx['hours_num'] = f"{diff_sec // 3600}:{(diff_sec % 3600) // 60}:{diff_sec % 60}"
+            ctx['hours_worked'] = f"{diff_sec // 3600}h {(diff_sec % 3600) // 60}m"
         else:
             ctx['hours_num'] = '0:0:0'
             ctx['hours_worked'] = '0h 0m'
-        ctx['is_check_in'] = attendance_type.check_out.value
+        ctx['is_check_in'] = attendance_type.check_out.value if not att.check_out else attendance_type.check_in.value
         ctx['is_complete_attendance'] = bool(att.check_in and att.check_out)
     else:
         ctx['hours_num'] = '0:0:0'
@@ -1879,6 +1895,13 @@ def ChangePassword(request,company_id, company_staff_id):
             if check == True:
                 user.password=make_password(new_pas)
                 user.save()
+
+                from django.contrib.auth.models import User as DjangoUser
+                dj_user = DjangoUser.objects.filter(email=user.email).first()
+                if dj_user:
+                    dj_user.set_password(new_pas)
+                    dj_user.save()
+
                 messages.success(request, 'Password changed Successfully')
                 return redirect('/')
 

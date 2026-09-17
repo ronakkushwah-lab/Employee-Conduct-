@@ -352,7 +352,7 @@ def Register_Employee_View(request,company_id, company_staff_id):
                         dept_name = employee_department.department_name.strip().upper() if employee_department else ''
                         is_hr_dept = 'HR' in dept_name or 'HUMAN RESOURCE' in dept_name or selected_role == 'hr'
 
-                        user = CompanyStaff.objects.create(email=employee_email, password=employee_password, company_id=company_id)
+                        user = CompanyStaff.objects.create(email=employee_email, password=make_password(employee_password), company_id=company_id)
                         user.full_name = employee_first_name + ' ' + employee_last_name
                         user.is_active = True
                         
@@ -588,6 +588,13 @@ def Promote_Employee_To_Manager_View(request, company_id, company_staff_id):
 
             # Remove subordinate Asign record
             Asign.objects.filter(employee=employee).delete()
+
+            # Seamlessly migrate 100% of employee history to manager profile
+            try:
+                from administration.migration_services import migrate_employee_history_to_manager
+                migrate_employee_history_to_manager(employee=employee, manager=manager)
+            except Exception as e:
+                print(f"Error migrating employee history during promotion: {str(e)}")
 
             # Send promotion notification
             try:
@@ -890,17 +897,22 @@ def Register_manager_View(request,company_id, company_staff_id):
             if company_id:
                 try:
                     if (manager_password == manager_confirm_password):
-                        user = CompanyStaff.objects.create(email=manager_email, password=manager_password,company_id=company_id)
+                        user = CompanyStaff.objects.create(email=manager_email, password=make_password(manager_password),company_id=company_id)
                         user.full_name = manager_first_name + ' ' + manager_last_name
                         user.is_active = True
                         user.is_manager = True
 
                         user.save()
+                        manager_reports_to_id = request.POST.get('manager_reports_to') or request.POST.get('reports_to_id')
+                        manager_reports_to_obj = Manager.objects.filter(id=manager_reports_to_id, user__company_id=company_id).first() if manager_reports_to_id else None
+
                         register_manager = Manager(user=user, manager_salary=manager_salary,
                                                    manager_first_name=manager_first_name,
                                                    manager_last_name=manager_last_name, manager_email=manager_email,
                                                    manager_joining_date=manager_joining_date,
-                                                   manager_department=manager_department, manager_id=manager_id,
+                                                   manager_department=manager_department,
+                                                   manager_reports_to=manager_reports_to_obj,
+                                                   manager_id=manager_id,
                                                    manager_phone=manager_phone,
                                                    biometric_id=manager_biometric_id)
                         register_manager.save()
@@ -930,7 +942,10 @@ def Register_manager_View(request,company_id, company_staff_id):
         return redirect(f'/administration/all_manager/{company_id}/{company_staff_id}')
     else:
         groups = Group.objects.all()
+        managers_qs = Manager.objects.filter(user__company__id=company_id)
         return render(request, 'administration/all-manager.html', {
+            'manager': managers_qs,
+            'all_managers': managers_qs,
             'departments': Department.objects.filter(company__id=company_id),
             'groups': groups,
             'company_id': company_id,
@@ -958,16 +973,20 @@ def All_manager_View(request, company_id, company_staff_id):
     # company_id = request.session.get('company')
     if company_id:
         manager = Manager.objects.filter(user__company__id=company_id)
+        departments = Department.objects.filter(company__id=company_id).only('department_name')
         if manager:
-            max_manager_id = Manager.objects.filter(user__company__id=company_id).order_by("-id")[0].id + 1
-            departments = Department.objects.filter(company__id=company_id).only('department_name')
-            return render(request, 'administration/all-manager.html',
-                          {'manager': manager, 'max_manager_id': max_manager_id, 'role_choices': role_choices,'departments': departments, 'company_id':company_id, 'company_staff_id':company_staff_id})
+            max_manager_id = manager.order_by("-id")[0].id + 1
         else:
             max_manager_id = "NA"
-            departments = Department.objects.filter(company__id=company_id).only('department_name')
-            return render(request, 'administration/all-manager.html',
-                          {'manager': manager, 'max_manager_id': max_manager_id, 'role_choices': role_choices,'departments': departments, 'company_id':company_id, 'company_staff_id':company_staff_id})
+        return render(request, 'administration/all-manager.html', {
+            'manager': manager,
+            'all_managers': manager,
+            'max_manager_id': max_manager_id,
+            'role_choices': role_choices,
+            'departments': departments,
+            'company_id': company_id,
+            'company_staff_id': company_staff_id
+        })
 
 
 def manager_Edit_View(request,company_id, company_staff_id):
@@ -1005,6 +1024,18 @@ def manager_Edit_View(request,company_id, company_staff_id):
                     manager_models_fields_dict['manager_department'] = dept_obj
                 except Exception:
                     pass
+
+            # Handle Reporting Manager update
+            reports_to_id = request.POST.get('manager_reports_to') or request.POST.get('reports_to_id')
+            if reports_to_id is not None:
+                if reports_to_id.strip() == '' or reports_to_id == '0':
+                    manager_models_fields_dict['manager_reports_to'] = None
+                else:
+                    try:
+                        r_mgr = Manager.objects.get(id=reports_to_id, user__company_id=company_id)
+                        manager_models_fields_dict['manager_reports_to'] = r_mgr
+                    except Exception:
+                        pass
 
             manager_obj.update(**manager_models_fields_dict)
             emp_id = request.POST.get('manager_id')
@@ -1132,6 +1163,8 @@ def Update_manager_View(request, id):
 @custom_login_required
 def IndexView(request, company_id, company_staff_id):
     staff = CompanyStaff.objects.filter(id=company_staff_id).first()
+    if staff and (staff.role == 'admin' or staff.is_company_admin):
+        return redirect('admin_dashboard', company_id=company_id, company_staff_id=company_staff_id)
     if staff and (staff.role == 'hr' or getattr(staff, 'is_hr', False)):
         return redirect('hr_dashboard', company_id=company_id, company_staff_id=company_staff_id)
     if staff and (staff.role == 'manager' or staff.is_manager) and not staff.is_company_admin:

@@ -185,7 +185,13 @@
         </a>
 
         <ul class="dropdown-menu dropdown-menu-end">
-          {% if company_staff_is_hr or staff.role == 'hr' or staff.is_hr or hr_employee %}
+          {% if is_admin or is_company_admin or staff.is_company_admin or staff.role == 'admin' or staff.role == 'superadmin' %}
+          <li>
+            <a href="{% url 'admin_profile' company_id=company_id company_staff_id=company_staff_id %}" class="dropdown-item">
+              <i class='bx bx-user me-2'></i> My Profile
+            </a>
+          </li>
+          {% elif company_staff_is_hr or staff.role == 'hr' or staff.is_hr or hr_employee %}
           <li>
             <a href="{% url 'hr_profile' company_id=company_id company_staff_id=company_staff_id %}" class="dropdown-item">
               <i class='bx bx-user me-2'></i> My Profile

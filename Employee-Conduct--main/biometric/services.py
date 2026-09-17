@@ -71,61 +71,78 @@ def resolve_biometric_identity(biometric_user_id):
     if not raw_id:
         return None, None
 
-    # 1. Exact match for Employee
+    # 1. Exact match with role awareness
+    mgr = (
+        Manager.objects.filter(biometric_id__iexact=raw_id, user__role='manager').first()
+        or Manager.objects.filter(manager_id__iexact=raw_id, user__role='manager').first()
+        or Manager.objects.filter(biometric_id__iexact=raw_id).first()
+        or Manager.objects.filter(manager_id__iexact=raw_id).first()
+    )
+
     emp = (
-        Employee.objects.filter(biometric_id__iexact=raw_id).first()
+        Employee.objects.filter(biometric_id__iexact=raw_id, user__role='employee').first()
+        or Employee.objects.filter(employee_id__iexact=raw_id, user__role='employee').first()
+        or Employee.objects.filter(biometric_id__iexact=raw_id).first()
         or Employee.objects.filter(employee_id__iexact=raw_id).first()
     )
+
+    if mgr and emp:
+        if mgr.user and mgr.user.role == 'manager':
+            return None, mgr
+        elif emp.user and emp.user.role == 'employee':
+            return emp, None
+
+    if mgr:
+        return None, mgr
     if emp:
         return emp, None
 
-    # 2. Exact match for Manager
-    mgr = (
-        Manager.objects.filter(biometric_id__iexact=raw_id).first()
-        or Manager.objects.filter(manager_id__iexact=raw_id).first()
-    )
-    if mgr:
-        return None, mgr
-
-    # 3. Cleaned digits and variations (e.g. '1', '001', 'EIC-001', 'EIC-1')
+    # 2. Cleaned digits and variations (e.g. '1', '001', 'EIC-001', 'EIC-1')
     clean_id = raw_id.upper().replace('EIC-', '').strip()
     digits_only = ''.join(c for c in clean_id if c.isdigit())
 
     if clean_id:
-        emp = (
-            Employee.objects.filter(biometric_id__iexact=clean_id).first()
-            or Employee.objects.filter(employee_id__iexact=clean_id).first()
-            or Employee.objects.filter(biometric_id__iexact=f"EIC-{clean_id}").first()
-            or Employee.objects.filter(employee_id__iexact=f"EIC-{clean_id}").first()
-        )
-        if emp:
-            return emp, None
-
         mgr = (
-            Manager.objects.filter(biometric_id__iexact=clean_id).first()
+            Manager.objects.filter(biometric_id__iexact=clean_id, user__role='manager').first()
+            or Manager.objects.filter(manager_id__iexact=clean_id, user__role='manager').first()
+            or Manager.objects.filter(biometric_id__iexact=clean_id).first()
             or Manager.objects.filter(manager_id__iexact=clean_id).first()
             or Manager.objects.filter(biometric_id__iexact=f"EIC-{clean_id}").first()
             or Manager.objects.filter(manager_id__iexact=f"EIC-{clean_id}").first()
         )
+        emp = (
+            Employee.objects.filter(biometric_id__iexact=clean_id, user__role='employee').first()
+            or Employee.objects.filter(employee_id__iexact=clean_id, user__role='employee').first()
+            or Employee.objects.filter(biometric_id__iexact=clean_id).first()
+            or Employee.objects.filter(employee_id__iexact=clean_id).first()
+            or Employee.objects.filter(biometric_id__iexact=f"EIC-{clean_id}").first()
+            or Employee.objects.filter(employee_id__iexact=f"EIC-{clean_id}").first()
+        )
+        if mgr and emp:
+            if mgr.user and mgr.user.role == 'manager':
+                return None, mgr
+            return emp, None
         if mgr:
             return None, mgr
+        if emp:
+            return emp, None
 
-    # 4. Numeric value match (e.g. machine sends 1, employee has 001 or vice-versa)
+    # 3. Numeric value match
     if digits_only:
         num_val = int(digits_only)
-        for e in Employee.objects.all():
-            for field_val in (e.biometric_id, e.employee_id):
-                if field_val:
-                    e_digits = ''.join(c for c in str(field_val) if c.isdigit())
-                    if e_digits and int(e_digits) == num_val:
-                        return e, None
-
         for m in Manager.objects.all():
             for field_val in (m.biometric_id, m.manager_id):
                 if field_val:
                     m_digits = ''.join(c for c in str(field_val) if c.isdigit())
                     if m_digits and int(m_digits) == num_val:
                         return None, m
+
+        for e in Employee.objects.all():
+            for field_val in (e.biometric_id, e.employee_id):
+                if field_val:
+                    e_digits = ''.join(c for c in str(field_val) if c.isdigit())
+                    if e_digits and int(e_digits) == num_val:
+                        return e, None
 
     return None, None
 

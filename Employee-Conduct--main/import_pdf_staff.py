@@ -74,7 +74,6 @@ def run_import():
                 }
             )
             if not created:
-                staff.password = make_password(DEFAULT_PASSWORD)
                 staff.role = CompanyStaff.ROLE_MANAGER
                 staff.is_manager = True
                 staff.is_active = True
@@ -124,7 +123,6 @@ def run_import():
                 }
             )
             if not created:
-                staff.password = make_password(DEFAULT_PASSWORD)
                 staff.role = CompanyStaff.ROLE_EMPLOYEE
                 staff.is_employee = True
                 staff.is_active = True

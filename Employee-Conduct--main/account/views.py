@@ -392,7 +392,10 @@ class Login(View):
                     if role == CompanyStaff.ROLE_SUPERADMIN:
                         return HttpResponseRedirect('/superadmin/')
                     if (role == CompanyStaff.ROLE_ADMIN or company_staff.is_company_admin) and company_staff.company_id:
-                        return HttpResponseRedirect(f'/administration/index/{company_staff.company_id}/{company_staff.pk}/')
+                        return HttpResponseRedirect(reverse('admin_dashboard', kwargs={
+                            'company_id': company_staff.company_id,
+                            'company_staff_id': company_staff.pk,
+                        }))
                     if is_hr_user and company_staff.company_id:
                         return HttpResponseRedirect(reverse('hr_dashboard', kwargs={
                             'company_id': company_staff.company_id,
@@ -450,8 +453,8 @@ def superadmin_dashboard(request):
 
 
 def admin_dashboard(request, company_id, company_staff_id):
-    """Dashboard for admin role - redirect directly to administration dashboard."""
-    return HttpResponseRedirect(f'/administration/index/{company_id}/{company_staff_id}/')
+    """Dashboard for admin role - load administration portal directly under admin dashboard route."""
+    return hr_dashboard(request, company_id, company_staff_id)
 
 
 def manager_dashboard(request, company_id, company_staff_id):
@@ -473,6 +476,13 @@ def forgotpass(request):
         user = get_object_or_404(CompanyStaff, email=email)
         user.password = make_password(password)
         user.save()
+
+        from django.contrib.auth.models import User as DjangoUser
+        dj_user = DjangoUser.objects.filter(email=user.email).first()
+        if dj_user:
+            dj_user.set_password(password)
+            dj_user.save()
+
         return HttpResponseRedirect('/')
 
     return render(request, "account/forgot_pass.html", context)
@@ -557,6 +567,13 @@ def reset_password_confirm(request, uidb64, token):
                 })
             user.password = make_password(password)
             user.save()
+
+            from django.contrib.auth.models import User as DjangoUser
+            dj_user = DjangoUser.objects.filter(email=user.email).first()
+            if dj_user:
+                dj_user.set_password(password)
+                dj_user.save()
+
             sweetify.success(request, 'Password Reset Successful', text='Your password has been changed. Please sign in.', persistent='OK')
             messages.success(request, "Your password has been reset successfully! Please sign in with your new password.")
             return redirect('/')
@@ -617,13 +634,16 @@ def hr_dashboard(request, company_id, company_staff_id):
             elif hr_attendance.check_in and not hr_attendance.check_out:
                 hr_is_check_in = 'Check Out'
 
+    is_admin = bool(staff and (staff.is_company_admin or staff.role in [CompanyStaff.ROLE_ADMIN, CompanyStaff.ROLE_SUPERADMIN]))
+
     context = {
         'company': company,
         'staff': staff,
+        'is_admin': is_admin,
         'company_id': company_id,
         'company_staff_id': company_staff_id,
         'company_staff_authenticated': True,
-        'user_initials': 'HR',
+        'user_initials': 'ADM' if is_admin else 'HR',
         'total_employees': total_employees,
         'employee_count': total_employees,
         'total_managers': total_managers,
@@ -678,25 +698,30 @@ def hr_profile_view(request, company_id, company_staff_id):
 
     from employee.models import Post
 
-    # Auto-provision Employee profile for HR if missing
+    # Auto-provision Employee profile for HR/Admin if missing
+    is_staff_admin = bool(staff and (staff.is_company_admin or staff.role in [CompanyStaff.ROLE_ADMIN, CompanyStaff.ROLE_SUPERADMIN]))
+    dept_name = 'Administration' if is_staff_admin else 'Human Resources'
+    
+    profile_dept, _ = Department.objects.get_or_create(
+        company=company,
+        department_name=dept_name
+    )
+
     hr_employee = Employee.objects.filter(user=staff).first()
     if not hr_employee:
-        hr_dept, _ = Department.objects.get_or_create(
-            company=company,
-            department_name='Human Resources'
-        )
         reporting_manager = Manager.objects.filter(user__company=company).first() or Manager.objects.first()
         staff_id_num = staff.id
-        emp_id_str = f"EIC/HR/{2700 + staff_id_num}"
+        prefix = "ADM" if is_staff_admin else "HR"
+        emp_id_str = f"EIC/{prefix}/{2700 + staff_id_num}"
         bio_id_str = str(staff_id_num)
         if Employee.objects.filter(biometric_id=bio_id_str).exists():
             bio_id_str = f"BIO-{staff_id_num}"
 
-        email_str = staff.email or 'HR Manager'
+        email_str = staff.email or ('Admin' if is_staff_admin else 'HR Manager')
         name_part = email_str.split('@')[0].replace('.', ' ').replace('_', ' ')
         parts = name_part.split()
-        first_name = parts[0].capitalize() if parts else 'HR'
-        last_name = parts[1].capitalize() if len(parts) > 1 else 'Manager'
+        first_name = parts[0].capitalize() if parts else ('Admin' if is_staff_admin else 'HR')
+        last_name = parts[1].capitalize() if len(parts) > 1 else ('Manager' if is_staff_admin else 'Manager')
 
         hr_employee = Employee.objects.create(
             user=staff,
@@ -704,13 +729,26 @@ def hr_profile_view(request, company_id, company_staff_id):
             employee_last_name=last_name,
             employee_email=staff.email or '',
             employee_joining_date=timezone.now().date(),
-            employee_department=hr_dept,
-            employee_designation='HR Manager',
+            employee_department=profile_dept,
+            employee_designation='Company Administrator' if is_staff_admin else 'HR Manager',
             employee_id=emp_id_str,
             biometric_id=bio_id_str,
             employee_reports_to=reporting_manager,
             employee_status='Active'
         )
+    elif is_staff_admin:
+        updated_fields = []
+        if hr_employee.employee_department and hr_employee.employee_department.department_name == 'Human Resources':
+            hr_employee.employee_department = profile_dept
+            updated_fields.append('employee_department')
+        if hr_employee.employee_designation in ['HR Manager', 'HR Administrator', '']:
+            hr_employee.employee_designation = 'Company Administrator'
+            updated_fields.append('employee_designation')
+        if hr_employee.employee_id and hr_employee.employee_id.startswith('EIC/HR/'):
+            hr_employee.employee_id = hr_employee.employee_id.replace('EIC/HR/', 'EIC/ADM/')
+            updated_fields.append('employee_id')
+        if updated_fields:
+            hr_employee.save(update_fields=updated_fields)
 
     if request.method == "POST":
         # Check for cropped image input (base64)
@@ -771,9 +809,12 @@ def hr_profile_view(request, company_id, company_staff_id):
     # Documents
     post = Post.objects.filter(user=hr_employee).first()
 
+    is_admin = bool(staff and (staff.is_company_admin or staff.role in [CompanyStaff.ROLE_ADMIN, CompanyStaff.ROLE_SUPERADMIN]))
+
     context = {
         'company': company,
         'staff': staff,
+        'is_admin': is_admin,
         'company_id': company_id,
         'company_staff_id': company_staff_id,
         'hr_employee': hr_employee,

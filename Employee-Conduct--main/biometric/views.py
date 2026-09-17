@@ -1,12 +1,29 @@
 import json
+import re
 
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from .models import BiometricDevice, BiometricEventLog
 from .services import get_payload_list, process_biometric_punch
+
+
+def _is_valid_biometric_user_id(uid):
+    if not uid or not isinstance(uid, str):
+        return False
+    uid = uid.strip()
+    if not uid or len(uid) > 50:
+        return False
+    # Must contain only valid characters (alphanumeric, dashes, underscores, dots)
+    if not re.match(r'^[A-Za-z0-9_\-\.]{1,50}$', uid):
+        return False
+    # Exclude device keywords / binary header signatures
+    if uid.upper() in ('FKDATAHS101', 'ATTLOG', 'OPERLOG', 'BIODATA', 'USER', 'PIN', 'TIME', 'STAMP', 'SN', 'TABLE'):
+        return False
+    return True
+
 
 
 def _json_body(request):
@@ -234,27 +251,41 @@ def iclock_cdata(request):
         body_text = request.body.decode('utf-8', errors='ignore')
         inserted_count = 0
 
+        # Non-attendance table requests (OPERLOG, BIODATA, USER, TEMPLATE, etc.) should be acknowledged without creating punch logs
+        if table and table not in ('ATTLOG', 'ATTLOG_OLD', 'PUNCH'):
+            response = HttpResponse("OK\n", content_type='text/plain')
+            response['response_code'] = 'OK'
+            response['result'] = 'OK'
+            response['status'] = 'SUCCESS'
+            response['Connection'] = 'close'
+            return response
+
         # Try to parse as JSON Push Protocol (Secureye / ZK Cloud Push)
         json_data = _extract_json_from_body(body_text)
         json_punches = extract_punches_from_json(json_data) if json_data else []
 
         if json_punches:
             for item in json_punches:
-                payload = {
-                    'user_id': item['user_id'],
-                    'punch_time': item['punch_time'] or str(timezone.now()),
-                    'verify_mode': item['verify_mode'],
-                    'device_id': sn or (device.device_id if device else '1'),
-                    'source_ip': source_ip,
-                }
-                process_biometric_punch(payload, protocol='adms_push', source_ip=source_ip, device=device)
-                inserted_count += 1
+                uid = item.get('user_id')
+                if _is_valid_biometric_user_id(uid):
+                    payload = {
+                        'user_id': uid,
+                        'punch_time': item['punch_time'] or str(timezone.now()),
+                        'verify_mode': item['verify_mode'],
+                        'device_id': sn or (device.device_id if device else '1'),
+                        'source_ip': source_ip,
+                    }
+                    process_biometric_punch(payload, protocol='adms_push', source_ip=source_ip, device=device)
+                    inserted_count += 1
         elif json_data is None:
             # Fall back to standard ADMS text parser
             body_text_clean = body_text.replace('\x00', '')
             if body_text_clean:
                 lines = [l.strip() for l in body_text_clean.split('\n') if l.strip()]
                 for line in lines:
+                    user_id = ''
+                    punch_time_str = str(timezone.now())
+                    verify_mode = ''
                     # Handle key-value style (e.g. PIN=101\tTime=...)
                     if '=' in line:
                         kv = {}
@@ -284,18 +315,18 @@ def iclock_cdata(request):
                     else:
                         # Space separated: "101 2026-08-25 13:10:00 1 1"
                         parts = line.split()
-                        if len(parts) >= 3 and '-' in parts[1] and ':' in parts[2]:
+                        if len(parts) >= 3 and ('-' in parts[1] or '/' in parts[1]) and ':' in parts[2]:
                             user_id = parts[0]
                             punch_time_str = f"{parts[1]} {parts[2]}"
                             verify_mode = parts[3] if len(parts) > 3 else ''
-                        elif len(parts) >= 1:
+                        elif len(parts) >= 2 and ('-' in parts[1] or '/' in parts[1] or ':' in parts[1]):
                             user_id = parts[0]
-                            punch_time_str = str(timezone.now())
-                            verify_mode = ''
+                            punch_time_str = parts[1]
+                            verify_mode = parts[2] if len(parts) > 2 else ''
                         else:
                             continue
 
-                    if user_id:
+                    if _is_valid_biometric_user_id(user_id):
                         payload = {
                             'user_id': user_id,
                             'punch_time': punch_time_str,
@@ -306,7 +337,7 @@ def iclock_cdata(request):
                         process_biometric_punch(payload, protocol='adms_push', source_ip=source_ip, device=device)
                         inserted_count += 1
 
-        if device:
+        if device and inserted_count > 0:
             device.last_punch_at = timezone.now()
             device.save(update_fields=['last_punch_at', 'updated'])
 
