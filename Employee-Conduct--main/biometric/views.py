@@ -425,7 +425,9 @@ def latest_events_api(request):
     Returns latest applied event ID and event details as JSON.
     """
     events = (
-        BiometricEventLog.objects.filter(status=BiometricEventLog.STATUS_APPLIED)
+        BiometricEventLog.objects.filter(
+            status__in=[BiometricEventLog.STATUS_APPLIED, BiometricEventLog.STATUS_UNMATCHED]
+        )
         .select_related('employee', 'manager')
         .exclude(biometric_user_id__icontains='fk_name')
         .exclude(biometric_user_id__icontains='{')

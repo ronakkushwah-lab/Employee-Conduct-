@@ -674,7 +674,7 @@ def hr_biometric_monitor(request, company_id, company_staff_id):
     recent_events = (
         BiometricEventLog.objects.filter(
             Q(company=company) | Q(device__company=company) | Q(company__isnull=True),
-            status=BiometricEventLog.STATUS_APPLIED,
+            status__in=[BiometricEventLog.STATUS_APPLIED, BiometricEventLog.STATUS_UNMATCHED],
         )
         .exclude(biometric_user_id__icontains='fk_name')
         .exclude(biometric_user_id__icontains='{')
