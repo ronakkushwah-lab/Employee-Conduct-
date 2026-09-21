@@ -96,27 +96,47 @@ def send_email_notification(subject, recipient_email, template_name, context, re
 
 def send_attendance_notification(attendance, action='check_in'):
     """
-    In-app notification for attendance check-in or check-out.
+    In-app notification for attendance check-in or check-out localized to the current timezone.
     """
     try:
-        employee = attendance.employee
-        if not employee:
-            return False
-        
-        recipient_name = f"{employee.employee_first_name} {employee.employee_last_name}"
-        time_str = attendance.check_in.strftime('%I:%M %p') if (action == 'check_in' and attendance.check_in) else (attendance.check_out.strftime('%I:%M %p') if attendance.check_out else 'N/A')
-        date_str = attendance.check_in.strftime('%B %d, %Y') if attendance.check_in else timezone.now().strftime('%B %d, %Y')
-        
-        # 1. Notify Employee in-app
-        emp_msg = f"Attendance {action.replace('_', '-').title()} recorded at {time_str} on {date_str}."
-        create_in_app_notification(recipient_employee=employee, message=emp_msg)
-        
-        # 2. Notify Manager in-app if exists
-        if employee.employee_reports_to:
-            mgr = employee.employee_reports_to
-            mgr_msg = f"Team Member {recipient_name} recorded {action.replace('_', '-').title()} at {time_str} ({date_str})."
-            create_in_app_notification(recipient_manager=mgr, message=mgr_msg)
-            
+        employee = getattr(attendance, 'employee', None)
+        manager = getattr(attendance, 'manager', None)
+
+        target_dt = attendance.check_in if action == 'check_in' else attendance.check_out
+        if target_dt:
+            local_dt = timezone.localtime(target_dt) if timezone.is_aware(target_dt) else target_dt
+            time_str = local_dt.strftime('%I:%M %p')
+            date_str = local_dt.strftime('%B %d, %Y')
+        else:
+            local_now = timezone.localtime(timezone.now())
+            time_str = local_now.strftime('%I:%M %p')
+            date_str = local_now.strftime('%B %d, %Y')
+
+        action_label = action.replace('_', '-').title()
+
+        if employee:
+            recipient_name = f"{employee.employee_first_name} {employee.employee_last_name}"
+            # 1. Notify Employee in-app
+            emp_msg = f"Attendance {action_label} recorded at {time_str} on {date_str}."
+            create_in_app_notification(recipient_employee=employee, message=emp_msg)
+
+            # 2. Notify Manager in-app if exists
+            if employee.employee_reports_to:
+                mgr = employee.employee_reports_to
+                mgr_msg = f"Team Member {recipient_name} recorded {action_label} at {time_str} ({date_str})."
+                create_in_app_notification(recipient_manager=mgr, message=mgr_msg)
+        elif manager:
+            # 1. Notify Manager in-app
+            mgr_msg = f"Attendance {action_label} recorded at {time_str} on {date_str}."
+            create_in_app_notification(recipient_manager=manager, message=mgr_msg)
+
+            # 2. Notify Senior Manager in-app if exists
+            if manager.manager_reports_to:
+                sr_mgr = manager.manager_reports_to
+                recipient_name = f"{manager.manager_first_name} {manager.manager_last_name}"
+                sr_msg = f"Manager {recipient_name} recorded {action_label} at {time_str} ({date_str})."
+                create_in_app_notification(recipient_manager=sr_mgr, message=sr_msg)
+
         return True
     except Exception as e:
         logger.exception("Error sending attendance in-app notification: %s", str(e))
@@ -137,7 +157,8 @@ def send_leave_applied_notification_to_manager(leave, manager):
         start_str = leave.startdate.strftime('%b %d, %Y') if leave.startdate else 'N/A'
         end_str = leave.enddate.strftime('%b %d, %Y') if leave.enddate else 'N/A'
         
-        msg = f"Employee {employee_name} has applied for {leave.leavetype.title()} leave ({start_str} to {end_str}). Reason: {leave.reason or 'N/A'}."
+        ltype = leave.get_leavetype_display() if hasattr(leave, 'get_leavetype_display') else str(leave.leavetype).title()
+        msg = f"Employee {employee_name} has applied for {ltype} ({start_str} to {end_str}). Reason: {leave.reason or 'N/A'}."
         return create_in_app_notification(recipient_manager=manager, message=msg)
     except Exception as e:
         logger.exception("send_leave_applied_notification_to_manager in-app failed: %s", str(e))
@@ -173,12 +194,13 @@ def send_leave_submission_notification(leave, manager=None):
         start_str = leave.startdate.strftime('%b %d, %Y') if leave.startdate else 'N/A'
         end_str = leave.enddate.strftime('%b %d, %Y') if leave.enddate else 'N/A'
 
+        ltype = leave.get_leavetype_display() if hasattr(leave, 'get_leavetype_display') else str(leave.leavetype).title()
         if hasattr(leave, 'user'):
             if isinstance(leave.user, Manager):
-                mgr_msg = f"Your {leave.leavetype.title()} leave request ({start_str} to {end_str}) has been submitted successfully."
+                mgr_msg = f"Your {ltype} request ({start_str} to {end_str}) has been submitted successfully."
                 create_in_app_notification(recipient_manager=leave.user, message=mgr_msg)
             elif isinstance(leave.user, Employee):
-                emp_msg = f"Your {leave.leavetype.title()} leave request ({start_str} to {end_str}) has been submitted successfully."
+                emp_msg = f"Your {ltype} request ({start_str} to {end_str}) has been submitted successfully."
                 create_in_app_notification(recipient_employee=leave.user, message=emp_msg)
                 
                 mgr_target = manager or getattr(leave.user, 'employee_reports_to', None)
@@ -198,7 +220,8 @@ def send_leave_approval_notification(leave, approved=True):
         status_str = "Approved" if approved else "Rejected"
         start_str = leave.startdate.strftime('%b %d, %Y') if leave.startdate else 'N/A'
         end_str = leave.enddate.strftime('%b %d, %Y') if leave.enddate else 'N/A'
-        msg = f"Your {leave.leavetype.title()} leave request ({start_str} to {end_str}) has been {status_str}."
+        ltype = leave.get_leavetype_display() if hasattr(leave, 'get_leavetype_display') else str(leave.leavetype).title()
+        msg = f"Your {ltype} request ({start_str} to {end_str}) has been {status_str}."
 
         if hasattr(leave, 'user'):
             from managers.models import Manager
@@ -300,10 +323,11 @@ def send_leave_manager_approval_notification(leave):
         manager = getattr(leave, 'manager', None) or getattr(employee, 'employee_reports_to', None)
         manager_name = f"{manager.manager_first_name} {manager.manager_last_name}" if manager else "Reporting Manager"
 
+        ltype = leave.get_leavetype_display() if hasattr(leave, 'get_leavetype_display') else str(leave.leavetype).title()
         # 1. Notify employee
         create_in_app_notification(
             recipient_employee=employee,
-            message=f"Your {leave.leavetype.title()} leave request was approved by {manager_name} and is pending HR approval."
+            message=f"Your {ltype} request was approved by {manager_name} and is pending HR approval."
         )
 
         # 2. Notify HR staff in-app
@@ -312,7 +336,7 @@ def send_leave_manager_approval_notification(leave):
         for hs in hr_staffs:
             create_in_app_notification(
                 recipient_staff=hs,
-                message=f"Action Required: Manager {manager_name} approved {employee_name}'s {leave.leavetype.title()} leave request (Pending HR approval)."
+                message=f"Action Required: Manager {manager_name} approved {employee_name}'s {ltype} request (Pending HR approval)."
             )
         return True
     except Exception as e:

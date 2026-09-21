@@ -70,6 +70,8 @@
                           <td>
                             {% if i.formatted_working_hours == 'In Progress' %}
                               <span class="badge bg-light-primary text-primary">In Progress</span>
+                            {% elif i.is_short_hours %}
+                              <span class="text-danger fw-bold" title="Short by {{ i.shortfall_working_hours }} hrs ({{ i.shortfall_human }})">{{ i.formatted_working_hours }} <small>⚠️</small></span>
                             {% elif i.formatted_working_hours != '-' %}
                               <span class="fw-semibold text-dark">{{ i.formatted_working_hours }}</span>
                             {% else %}
@@ -150,7 +152,7 @@
           </div>
         </div>
         <footer class="page-footer">
-          <p class="mb-0">Copyright © 2022. All right reserved.</p>
+          <p class="mb-0">Copyright © Eagle in Cloud. All rights reserved. (<a href="https://www.eagleinclouds.com" target="_blank" style="color: #FC0101; text-decoration: none; font-weight: 600;">www.eagleinclouds.com</a>)</p>
         </footer>
       </div>
     </div>

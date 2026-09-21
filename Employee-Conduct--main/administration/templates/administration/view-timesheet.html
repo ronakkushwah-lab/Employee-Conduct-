@@ -75,27 +75,43 @@
                                   <th>Start Time</th>
                                   <th>End Time</th>
                                   <th>Total Time</th>
+                                  <th>Approval Status</th>
                                   <th>Action</th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {% for obj in emp.entries %}
                                 <tr>
-                                  <td>{{ obj.project }}</td>
-                                  <td>{{ obj.start_time }}</td>
-                                  <td>{{ obj.end_time }}</td>
+                                  <td><strong>{{ obj.project }}</strong></td>
+                                  <td>{{ obj.start_time|date:"Y-m-d h:i A" }}</td>
+                                  <td>{{ obj.end_time|date:"Y-m-d h:i A" }}</td>
                                   <td>{{ obj.formatted_duration }}</td>
+                                  <td>
+                                    {% if obj.status == 'approved' %}
+                                    <span class="badge bg-light-success text-success"><i class='bx bx-check-circle me-1'></i>Approved</span>
+                                    {% if obj.approved_by %}
+                                    <small class="text-muted d-block" style="font-size: 0.75rem;">by {{ obj.approved_by.manager_first_name }} {{ obj.approved_by.manager_last_name }}</small>
+                                    {% endif %}
+                                    {% elif obj.status == 'rejected' %}
+                                    <span class="badge bg-light-danger text-danger"><i class='bx bx-x-circle me-1'></i>Rejected</span>
+                                    {% if obj.approved_by %}
+                                    <small class="text-muted d-block" style="font-size: 0.75rem;">by {{ obj.approved_by.manager_first_name }} {{ obj.approved_by.manager_last_name }}</small>
+                                    {% endif %}
+                                    {% else %}
+                                    <span class="badge bg-light-warning text-warning"><i class='bx bx-time-five me-1'></i>Pending</span>
+                                    {% endif %}
+                                  </td>
                                   <td>
                                     <button type="button" class="btn btn-outline-orangeyellow btn-sm" data-bs-toggle="modal"
                                       data-bs-target="#viewTimesheetModal"
-                                      onclick="entry_details_fetch('{{obj.pk}}')">View</button>
+                                      onclick="entry_details_fetch('{{obj.pk}}')"><i class='bx bx-show'></i> View</button>
                                   </td>
                                 </tr>
                                 {% endfor %}
                                 <tr class="table-light">
                                   <td colspan="3"><strong>Total Duration</strong></td>
                                   <td><strong>{{ emp.total_time }}</strong></td>
-                                  <td></td>
+                                  <td colspan="2"></td>
                                 </tr>
                               </tbody>
                             </table>
@@ -122,6 +138,10 @@
                           <div class="row">
                             <div class="col">
                               <table class="table table-fluid table-bordered">
+                                <tr>
+                                  <th>Approval Status</th>
+                                  <td id="employee_status_heading"></td>
+                                </tr>
                                 <tr>
                                   <th>Project</th>
                                   <td id="employee_project_heading"></td>
@@ -150,6 +170,18 @@
                                   <th>Attachment</th>
                                   <td id="employee_attachment_heading"></td>
                                 </tr>
+                                <tr id="approved_by_row" style="display: none;">
+                                  <th>Approved By (Manager)</th>
+                                  <td id="employee_approved_by_heading"></td>
+                                </tr>
+                                <tr id="approved_at_row" style="display: none;">
+                                  <th>Approved At</th>
+                                  <td id="employee_approved_at_heading"></td>
+                                </tr>
+                                <tr id="rejection_reason_row" style="display: none;">
+                                  <th>Rejection Remarks</th>
+                                  <td id="employee_rejection_heading" class="text-danger"></td>
+                                </tr>
                               </table>
                             </div>
                           </div>
@@ -164,7 +196,7 @@
 
         </div>
         <footer class="page-footer">
-          <p class="mb-0">Copyright © 2022. All right reserved.</p>
+          <p class="mb-0">Copyright © Eagle in Cloud. All rights reserved. (<a href="https://www.eagleinclouds.com" target="_blank" style="color: #FC0101; text-decoration: none; font-weight: 600;">www.eagleinclouds.com</a>)</p>
         </footer>
       </div>
     </div>
@@ -176,7 +208,8 @@
     <script src="https://unpkg.com/boxicons@2.1.2/dist/boxicons.js"></script>
     <script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/js/all.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.5.3/jspdf.debug.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.3.4/jspdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.14/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.8.0/html2pdf.bundle.js"></script>
     <script src="{% static 'asets/js/jquery.sparkline.min.js' %}"></script>
@@ -184,11 +217,9 @@
     <script src="{% static 'asets/js/Chart.extension.js' %}"></script>
     <script src="{% static 'asets/js/script.js' %}"></script>
 
-           <script>
-       function entry_details_fetch(id){
-
-
-        // Ajax POST Request
+    <script>
+      function entry_details_fetch(id){
+        var employee_status_heading = document.getElementById("employee_status_heading");
         var employee_start_time_heading = document.getElementById("employee_start_time_heading");
         var employee_end_time_heading = document.getElementById("employee_end_time_heading");
         var employee_activity_heading = document.getElementById("employee_activity_heading");
@@ -196,50 +227,82 @@
         var employee_total_duration_heading = document.getElementById("employee_total_duration_heading");
         var employee_blockers_heading = document.getElementById("employee_blockers_heading");
         var employee_attachment_heading = document.getElementById("employee_attachment_heading");
-
+        var employee_approved_by_heading = document.getElementById("employee_approved_by_heading");
+        var employee_approved_at_heading = document.getElementById("employee_approved_at_heading");
+        var employee_rejection_heading = document.getElementById("employee_rejection_heading");
+        var approved_by_row = document.getElementById("approved_by_row");
+        var approved_at_row = document.getElementById("approved_at_row");
+        var rejection_reason_row = document.getElementById("rejection_reason_row");
 
         $.ajax({
-                  url: '{% url "All_entry" company_id=company_id company_staff_id=company_staff_id %}',
-                  method: "POST",
-                  processData: false,
-                  contentType: 'application/json',
-                  mimeType: "multipart/form-data",
-                  headers: {'X-CSRFToken': "{{csrf_token}}", "Content-Type":"application/json"},
-                  data: JSON.stringify({'id': id}),
-                  dataType: "json",
-                  success: function(res){
+          url: '{% url "All_entry" company_id=company_id company_staff_id=company_staff_id %}',
+          method: "POST",
+          processData: false,
+          contentType: 'application/json',
+          mimeType: "multipart/form-data",
+          headers: {'X-CSRFToken': "{{csrf_token}}", "Content-Type":"application/json"},
+          data: JSON.stringify({'id': id}),
+          dataType: "json",
+          success: function(res){
+            var start_time = res['start_time'];
+            var end_time = res['end_time'];
+            var task = res['task'];
+            var project = res['project'];
+            var total_duration = res['total_duration'];
+            var blocker_name = res['blocker_name'];
+            var attachment_url = res['attachment_url'];
+            var attachment_name = res['attachment_name'];
+            var status = res['status'];
+            var approved_by = res['approved_by'];
+            var approved_at = res['approved_at'];
+            var rejection_reason = res['rejection_reason'];
 
-                  var start_time = res['start_time'];
-                  var end_time = res['end_time'];
-                  var task = res['task']; // FIX: Changed from 'activity' to 'task' to match models.py to_json()
-                  var project = res['project'];
-                  var total_duration = res['total_duration'];
-                  var blocker_name = res['blocker_name'];
-                  var attachment_url = res['attachment_url'];
-                  var attachment_name = res['attachment_name'];
+            if (status === 'approved') {
+              employee_status_heading.innerHTML = '<span class="badge bg-light-success text-success"><i class="bx bx-check-circle me-1"></i>Approved</span>';
+            } else if (status === 'rejected') {
+              employee_status_heading.innerHTML = '<span class="badge bg-light-danger text-danger"><i class="bx bx-x-circle me-1"></i>Rejected</span>';
+            } else {
+              employee_status_heading.innerHTML = '<span class="badge bg-light-warning text-warning"><i class="bx bx-time-five me-1"></i>Pending</span>';
+            }
 
+            employee_start_time_heading.textContent = start_time;
+            employee_end_time_heading.textContent = end_time;
+            employee_activity_heading.textContent = task;
+            employee_project_heading.textContent = project;
+            employee_total_duration_heading.textContent = total_duration;
+            employee_blockers_heading.textContent = blocker_name ? blocker_name : "None";
+            
+            if (attachment_url) {
+              employee_attachment_heading.innerHTML = `<a href="${attachment_url}" target="_blank" class="btn btn-sm btn-outline-primary" download>${attachment_name}</a>`;
+            } else {
+              employee_attachment_heading.textContent = "No attachment";
+            }
 
-                  employee_start_time_heading.textContent = start_time;
-                  employee_end_time_heading.textContent = end_time;
-                  employee_activity_heading.textContent = task;
-                  employee_project_heading.textContent = project;
-                  employee_total_duration_heading.textContent = total_duration;
-                  
-                  employee_blockers_heading.textContent = blocker_name ? blocker_name : "None";
-                  
-                  if (attachment_url) {
-                      employee_attachment_heading.innerHTML = `<a href="${attachment_url}" target="_blank" class="btn btn-sm btn-outline-primary" download>${attachment_name}</a>`;
-                  } else {
-                      employee_attachment_heading.textContent = "No attachment";
-                  }
+            if (approved_by) {
+              employee_approved_by_heading.textContent = approved_by;
+              approved_by_row.style.display = '';
+            } else {
+              approved_by_row.style.display = 'none';
+            }
 
-                },
-                error: function(xhr, status, error){
-                  console.log(error);
-                  console.log(status);
-                  console.log(xhr);
-                }
-        })
+            if (approved_at) {
+              employee_approved_at_heading.textContent = approved_at;
+              approved_at_row.style.display = '';
+            } else {
+              approved_at_row.style.display = 'none';
+            }
+
+            if (rejection_reason) {
+              employee_rejection_heading.textContent = rejection_reason;
+              rejection_reason_row.style.display = '';
+            } else {
+              rejection_reason_row.style.display = 'none';
+            }
+          },
+          error: function(xhr, status, error){
+            console.log(error);
+          }
+        });
       }
 
       // Real-time client-side Employee Search Filtering
@@ -257,8 +320,5 @@
         });
       });
     </script>
-
-
-    
   </body>
 </html>

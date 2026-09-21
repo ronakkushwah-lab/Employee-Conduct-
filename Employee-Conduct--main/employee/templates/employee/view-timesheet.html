@@ -50,211 +50,269 @@
                       <div id="collapse{{ forloop.counter }}" class="accordion-collapse collapse" aria-labelledby="heading{{ forloop.counter }}" data-bs-parent="#projectTimesheetAccordion">
                         <div class="accordion-body">
                           <div class="table-responsive">
-                            <table class="table table-fluid table-hover mb-0">
-                              <thead>
-                                <tr>
-                                  <th>Start Time</th>
-                                  <th>End Time</th>
-                                  <th>Total Time</th>
-                                  <th>Action</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {% for obj in project.entries %}
-                                <tr>
-                                  <td>{{ obj.start_time }}</td>
-                                  <td>{{ obj.end_time }}</td>
-                                  <td>{{ obj.formatted_duration }}</td>
-                                  <td>
-                                    <button type="button" class="btn btn-outline-orangeyellow btn-sm me-1" data-bs-toggle="modal" data-bs-target="#viewprojectModal" id="viewBtn" onclick="entry_details_fetch('{{obj.pk}}')">View</button>
-                                    <button type="button" class="btn btn-outline-orangeyellow btn-sm" data-bs-toggle="modal" data-bs-target="#deleteprojectModal" id="deleteBtn" onClick="getId('{{obj.id}}')">Delete</button>
-                                  </td>
-                                </tr>
-                                {% endfor %}
-                                <tr class="table-light">
-                                  <td colspan="2"><strong>Total</strong></td>
-                                  <td><strong>{{ project.total_time }}</strong></td>
-                                  <td></td>
-                                </tr>
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    {% empty %}
-                    <div class="text-center py-4">
-                      <p class="text-muted mb-0">No timesheet entries found.</p>
-                    </div>
-                    {% endfor %}
-                  </div>
-
-                  <!-- Shareable Modals (Defined once outside loops) -->
-                  <!-- View Modal -->
-                  <div class="modal fade" id="viewprojectModal" tabindex="-1" aria-hidden="true">
-                    <div class="modal-dialog w-80">
-                      <div class="modal-content">
-                        <div class="modal-header">
-                          <h5 class="modal-title" id="exampleModalLabel">View Timesheet Details</h5>
-                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                          <table class="table table-fluid table-bordered table-hover">
-                            <tbody>
-                              <tr>
-                                <th>Start Time</th>
-                                <td id="employee_start_time_heading"></td>
-                              </tr>
-                              <tr>
-                                <th>End Time</th>
-                                <td id="employee_end_time_heading"></td>
-                              </tr>
-                              <tr>
-                                <th>Total Time</th>
-                                <td id="employee_total_duration_heading"></td>
-                              </tr>
-                              <tr>
-                                <th>Project</th>
-                                <td id="employee_project_heading"></td>
-                              </tr>
-                              <tr>
-                                <th>Task</th>
-                                <td id="employee_task_heading"></td>
-                              </tr>
-                              <tr>
-                                <th>Blockers</th>
-                                <td id="employee_blocker_name_heading"></td>
-                              </tr>
-                              <tr>
-                                <th>Attachment</th>
-                                <td id="employee_attachment_heading">
-                                  <a href="#" id="employee_attachment_link" target="_blank">View Attachment</a>
-                                </td>
-                              </tr>
-                              <tr>
-                                <th>Reporting To</th>
-                                <td id="employee_assigned_to_heading"></td>
-                              </tr>
-                            </tbody>
-                          </table>
-                        </div>
+                        <table class="table table-fluid table-hover mb-0">
+                          <thead>
+                            <tr>
+                              <th>Start Time</th>
+                              <th>End Time</th>
+                              <th>Total Time</th>
+                              <th>Approval Status</th>
+                              <th>Action</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {% for obj in project.entries %}
+                            <tr>
+                              <td>{{ obj.start_time|date:"Y-m-d h:i A" }}</td>
+                              <td>{{ obj.end_time|date:"Y-m-d h:i A" }}</td>
+                              <td>{{ obj.formatted_duration }}</td>
+                              <td>
+                                {% if obj.status == 'approved' %}
+                                <span class="badge bg-light-success text-success"><i class='bx bx-check-circle me-1'></i>Approved</span>
+                                {% elif obj.status == 'rejected' %}
+                                <span class="badge bg-light-danger text-danger"><i class='bx bx-x-circle me-1'></i>Rejected</span>
+                                {% else %}
+                                <span class="badge bg-light-warning text-warning"><i class='bx bx-time-five me-1'></i>Pending</span>
+                                {% endif %}
+                              </td>
+                              <td>
+                                <div class="btn-group" role="group">
+                                  <button type="button" class="btn btn-outline-orangeyellow btn-sm me-1" data-bs-toggle="modal" data-bs-target="#viewprojectModal" onclick="entry_details_fetch('{{obj.pk}}')"><i class='bx bx-show'></i> View</button>
+                                  {% if obj.status == 'approved' %}
+                                  <button type="button" class="btn btn-outline-secondary btn-sm" disabled title="Approved entries are locked"><i class='bx bx-lock-alt'></i> Locked</button>
+                                  {% else %}
+                                  <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteprojectModal" onClick="getId('{{obj.id}}')"><i class='bx bx-trash'></i> Delete</button>
+                                  {% endif %}
+                                </div>
+                              </td>
+                            </tr>
+                            {% endfor %}
+                            <tr class="table-light">
+                              <td colspan="2"><strong>Total</strong></td>
+                              <td><strong>{{ project.total_time }}</strong></td>
+                              <td colspan="2"></td>
+                            </tr>
+                          </tbody>
+                        </table>
                       </div>
                     </div>
                   </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-4">
+                  <p class="text-muted mb-0">No timesheet entries found.</p>
+                </div>
+                {% endfor %}
+              </div>
 
-                  <!-- Delete Modal -->
-                  <div class="modal fade" id="deleteprojectModal" tabindex="-1" aria-hidden="true">
-                    <div class="modal-dialog">
-                      <div class="modal-content">
-                        <div class="modal-header">
-                          <h5 class="modal-title">Delete Project Entry</h5>
-                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body text-center">
-                          <p>Are you sure want to delete this timesheet entry?</p>
-                          <div class="col-12">
-                            <a href="javascript:void(0);" id="delete" class="btn btn-outline-orangeyellow w-100 mb-2">Delete</a>
-                          </div>
-                          <button type="button" class="btn btn-outline-orangeyellow w-100" data-bs-dismiss="modal">Cancel</button>
-                        </div>
-                      </div>
+              <!-- Shareable Modals (Defined once outside loops) -->
+              <!-- View Modal -->
+              <div class="modal fade" id="viewprojectModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog w-80">
+                  <div class="modal-content">
+                    <div class="modal-header">
+                      <h5 class="modal-title" id="exampleModalLabel">View Timesheet Details</h5>
+                      <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                      <table class="table table-fluid table-bordered table-hover">
+                        <tbody>
+                          <tr>
+                            <th>Approval Status</th>
+                            <td id="employee_status_heading"></td>
+                          </tr>
+                          <tr>
+                            <th>Project</th>
+                            <td id="employee_project_heading"></td>
+                          </tr>
+                          <tr>
+                            <th>Task</th>
+                            <td id="employee_task_heading"></td>
+                          </tr>
+                          <tr>
+                            <th>Start Time</th>
+                            <td id="employee_start_time_heading"></td>
+                          </tr>
+                          <tr>
+                            <th>End Time</th>
+                            <td id="employee_end_time_heading"></td>
+                          </tr>
+                          <tr>
+                            <th>Total Time</th>
+                            <td id="employee_total_duration_heading"></td>
+                          </tr>
+                          <tr>
+                            <th>Blockers</th>
+                            <td id="employee_blocker_name_heading"></td>
+                          </tr>
+                          <tr>
+                            <th>Attachment</th>
+                            <td id="employee_attachment_heading">
+                              <a href="#" id="employee_attachment_link" target="_blank">View Attachment</a>
+                            </td>
+                          </tr>
+                          <tr>
+                            <th>Assigned Manager</th>
+                            <td id="employee_assigned_to_heading"></td>
+                          </tr>
+                          <tr id="approved_by_row" style="display: none;">
+                            <th>Approved By</th>
+                            <td id="employee_approved_by_heading"></td>
+                          </tr>
+                          <tr id="approved_at_row" style="display: none;">
+                            <th>Approved At</th>
+                            <td id="employee_approved_at_heading"></td>
+                          </tr>
+                          <tr id="rejection_reason_row" style="display: none;">
+                            <th>Rejection Remarks</th>
+                            <td id="employee_rejection_heading" class="text-danger"></td>
+                          </tr>
+                        </tbody>
+                      </table>
                     </div>
                   </div>
-
                 </div>
               </div>
+
+              <!-- Delete Modal -->
+              <div class="modal fade" id="deleteprojectModal" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                  <form method="POST" id="deleteEntryForm" action="">
+                    {% csrf_token %}
+                    <div class="modal-content">
+                      <div class="modal-header bg-light">
+                        <h5 class="modal-title text-danger"><i class='bx bx-trash me-1'></i>Delete Timesheet Entry</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                      </div>
+                      <div class="modal-body text-center">
+                        <p class="mb-3">Are you sure you want to delete this timesheet entry?</p>
+                        <button type="submit" class="btn btn-danger w-100 mb-2">Confirm Delete</button>
+                        <button type="button" class="btn btn-secondary w-100" data-bs-dismiss="modal">Cancel</button>
+                      </div>
+                    </div>
+                  </form>
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
-        <footer class="page-footer">
-          <p class="mb-0">Copyright © 2022. All right reserved.</p>
-        </footer>
       </div>
     </div>
+    <footer class="page-footer">
+      <p class="mb-0">Copyright © Eagle in Cloud. All rights reserved. (<a href="https://www.eagleinclouds.com" target="_blank" style="color: #FC0101; text-decoration: none; font-weight: 600;">www.eagleinclouds.com</a>)</p>
+    </footer>
+  </div>
+</div>
 
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://unpkg.com/simplebar@latest/dist/simplebar.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/metisMenu/3.0.7/metisMenu.min.js"></script>
-    <script src="https://unpkg.com/boxicons@2.1.2/dist/boxicons.js"></script>
-    <script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/js/all.min.js"></script>
-    <script src="{% static 'asets/js/jquery.sparkline.min.js' %}"></script>
-    <script src="{% static 'asets/js/Chart.min.js' %}"></script>
-    <script src="{% static 'asets/js/Chart.extension.js' %}"></script>
-    <script src="{% static 'asets/js/script.js' %}"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://unpkg.com/simplebar@latest/dist/simplebar.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/metisMenu/3.0.7/metisMenu.min.js"></script>
+<script src="https://unpkg.com/boxicons@2.1.2/dist/boxicons.js"></script>
+<script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/js/all.min.js"></script>
+<script src="{% static 'asets/js/jquery.sparkline.min.js' %}"></script>
+<script src="{% static 'asets/js/Chart.min.js' %}"></script>
+<script src="{% static 'asets/js/Chart.extension.js' %}"></script>
+<script src="{% static 'asets/js/script.js' %}"></script>
 
+<script>
+  function entry_details_fetch(id){
+    var employee_status_heading = document.getElementById("employee_status_heading");
+    var employee_attachment_heading = document.getElementById("employee_attachment_heading");
+    var employee_start_time_heading = document.getElementById("employee_start_time_heading");
+    var employee_end_time_heading = document.getElementById("employee_end_time_heading");
+    var employee_task_heading = document.getElementById("employee_task_heading");
+    var employee_project_heading = document.getElementById("employee_project_heading");
+    var employee_total_duration_heading = document.getElementById("employee_total_duration_heading");
+    var employee_blocker_name_heading = document.getElementById("employee_blocker_name_heading");
+    var employee_assigned_to_heading = document.getElementById("employee_assigned_to_heading");
+    var employee_approved_by_heading = document.getElementById("employee_approved_by_heading");
+    var employee_approved_at_heading = document.getElementById("employee_approved_at_heading");
+    var employee_rejection_heading = document.getElementById("employee_rejection_heading");
+    var approved_by_row = document.getElementById("approved_by_row");
+    var approved_at_row = document.getElementById("approved_at_row");
+    var rejection_reason_row = document.getElementById("rejection_reason_row");
 
-          <script>
-       function entry_details_fetch(id){
+    $.ajax({
+      url: '{% url "All_entry" company_id=company_id company_staff_id=company_staff_id %}',
+      method: "POST",
+      processData: false,
+      contentType: 'application/json',
+      mimeType: "multipart/form-data",
+      headers: {'X-CSRFToken': "{{csrf_token}}", "Content-Type":"application/json"},
+      data: JSON.stringify({'id': id}),
+      dataType: "json",
+      success: function(res){
+        var start_time = res['start_time'];
+        var end_time = res['end_time'];
+        var task = res['task'];
+        var blocker_name = res['blocker_name'];
+        var project = res['project'];
+        var total_duration = res['total_duration'];
+        var attachment_url = res['attachment_url'];
+        var attachment_name = res['attachment_name'];
+        var assigned_to = res['assigned_to'];
+        var status = res['status'];
+        var approved_by = res['approved_by'];
+        var approved_at = res['approved_at'];
+        var rejection_reason = res['rejection_reason'];
 
+        if (status === 'approved') {
+          employee_status_heading.innerHTML = '<span class="badge bg-light-success text-success"><i class="bx bx-check-circle me-1"></i>Approved</span>';
+        } else if (status === 'rejected') {
+          employee_status_heading.innerHTML = '<span class="badge bg-light-danger text-danger"><i class="bx bx-x-circle me-1"></i>Rejected</span>';
+        } else {
+          employee_status_heading.innerHTML = '<span class="badge bg-light-warning text-warning"><i class="bx bx-time-five me-1"></i>Pending Approval</span>';
+        }
 
-        // Ajax POST Request
-        var employee_attachment_heading = document.getElementById("employee_attachment_heading");
-        var employee_start_time_heading = document.getElementById("employee_start_time_heading");
-        var employee_end_time_heading = document.getElementById("employee_end_time_heading");
-        var employee_task_heading = document.getElementById("employee_task_heading");        var employee_project_heading = document.getElementById("employee_project_heading");
-        var employee_total_duration_heading = document.getElementById("employee_total_duration_heading");
-        var employee_assigned_to_heading = document.getElementById("employee_assigned_to_heading");
+        employee_start_time_heading.textContent = start_time;
+        employee_end_time_heading.textContent = end_time;
+        employee_task_heading.textContent = task;
+        employee_blocker_name_heading.textContent = blocker_name ? blocker_name : "None";
+        employee_project_heading.textContent = project;
+        employee_total_duration_heading.textContent = total_duration;
+        employee_assigned_to_heading.textContent = assigned_to;
 
+        if (attachment_url) {
+          employee_attachment_heading.innerHTML = '<a href="' + attachment_url + '" target="_blank" class="btn btn-sm btn-outline-primary" download>' + attachment_name + '</a>';
+        } else {
+          employee_attachment_heading.textContent = 'No file attached';
+        }
 
-        $.ajax({
-                  url: '{% url "All_entry" company_id=company_id company_staff_id=company_staff_id %}',
-                  method: "POST",
-                  processData: false,
-                  contentType: 'application/json',
-                  mimeType: "multipart/form-data",
-                  headers: {'X-CSRFToken': "{{csrf_token}}", "Content-Type":"application/json"},
-                  data: JSON.stringify({'id': id}),
-                  dataType: "json",
-                  success: function(res){
+        if (approved_by) {
+          employee_approved_by_heading.textContent = approved_by;
+          approved_by_row.style.display = '';
+        } else {
+          approved_by_row.style.display = 'none';
+        }
 
-                  start_time = res['start_time'];
-                  end_time = res['end_time'];
-                  task = res['task'];
-                  blocker_name = res['blocker_name'];
-                  project = res['project'];
-                  total_duration = res['total_duration'];
-                  attachment_url = res['attachment_url'];
-                  attachment_name = res['attachment_name'];
-                  assigned_to = res['assigned_to'];
-                  
+        if (approved_at) {
+          employee_approved_at_heading.textContent = approved_at;
+          approved_at_row.style.display = '';
+        } else {
+          approved_at_row.style.display = 'none';
+        }
 
-
-                  employee_start_time_heading.textContent = start_time;
-                  employee_end_time_heading.textContent = end_time;
-                  employee_task_heading.textContent = task;
-                  employee_blocker_name_heading.textContent = blocker_name;
-                  employee_project_heading.textContent = project;
-                  employee_total_duration_heading.textContent = total_duration;
-                  employee_assigned_to_heading.textContent = assigned_to;
-                 
-
-                  if (attachment_url) {
-                    employee_attachment_heading.innerHTML = '<a href="' + attachment_url + '" target="_blank">' + attachment_name + '</a>';
-                  } else {
-                    employee_attachment_heading.textContent = 'No file attached';
-                  }
-
-                },
-                error: function(xhr, status, error){
-                  console.log(error);
-                  console.log(status);
-                  console.log(xhr);
-                }
-        })
+        if (rejection_reason) {
+          employee_rejection_heading.textContent = rejection_reason;
+          rejection_reason_row.style.display = '';
+        } else {
+          rejection_reason_row.style.display = 'none';
+        }
+      },
+      error: function(xhr, status, error){
+        console.log(error);
       }
-    </script>
+    });
+  }
 
-
-   <script>
-  	function getId(id) {
-		// alert(id)
-		var a =document.getElementById('delete');
-		a.href = "/employee/entry_remove/{{company_id}}/{{company_staff_id}}/"+id;
-	}
-
-   </script>
+  function getId(id) {
+    var form = document.getElementById('deleteEntryForm');
+    form.action = "/employee/entry_remove/{{company_id}}/{{company_staff_id}}/" + id;
+  }
+</script>
 
 
 

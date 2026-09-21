@@ -5,11 +5,24 @@ from django.forms.models import model_to_dict
 from django.utils.html import escape
 
 
-def strfdelta(tdelta, fmt):
-    d = {}
-    d["hours"], rem = divmod(tdelta.seconds, 3600)
-    d["minutes"], d["seconds"] = divmod(rem, 60)
-    return fmt.format(**d)
+def strfdelta(tdelta, fmt="{hours}.{minutes}"):
+    if not tdelta:
+        return ''
+    try:
+        total_seconds = int(tdelta.total_seconds()) if hasattr(tdelta, 'total_seconds') else getattr(tdelta, 'seconds', 0)
+        hours, rem = divmod(abs(total_seconds), 3600)
+        minutes, seconds = divmod(rem, 60)
+        d = {
+            "hours": f"{hours:02d}",
+            "minutes": f"{minutes:02d}",
+            "seconds": f"{seconds:02d}"
+        }
+        try:
+            return fmt.format(**d)
+        except Exception:
+            return f"{hours:02d}.{minutes:02d}"
+    except Exception:
+        return ''
 
 
 def getgriddatapaginated(request, rs, sort_column):

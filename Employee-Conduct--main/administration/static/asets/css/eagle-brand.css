@@ -1,0 +1,324 @@
+/* ==========================================================================
+   EAGLE IN CLOUD - OFFICIAL BRAND DESIGN SYSTEM
+   Brand Guidelines: Montserrat Typography & #FC0101 / #B00101 / #000000 / #FFE6E6 / #FFFFFF Palette
+   Website: www.eagleinclouds.com
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap');
+
+:root {
+  /* Brand Color Tokens */
+  --eic-red: #FC0101;
+  --eic-dark-red: #B00101;
+  --eic-black: #000000;
+  --eic-dark-surface: #0a0b0e;
+  --eic-sidebar-bg: #07080b;
+  --eic-soft-blush: #FFE6E6;
+  --eic-soft-blush-border: #ffd1d1;
+  --eic-white: #FFFFFF;
+  
+  /* Slate & Neutral Tokens */
+  --eic-gray-50: #f8fafc;
+  --eic-gray-100: #f1f5f9;
+  --eic-gray-200: #e2e8f0;
+  --eic-gray-300: #cbd5e1;
+  --eic-gray-600: #475569;
+  --eic-gray-700: #334155;
+  --eic-gray-800: #1e293b;
+  --eic-gray-900: #0f172a;
+
+  /* Typography */
+  --eic-font: 'Montserrat', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* 1. Global Typography & Resets */
+body, h1, h2, h3, h4, h5, h6, .btn, .nav-link, .form-control, .form-select, 
+.table, .badge, .dropdown-item, .breadcrumb, .card-title, .modal-title {
+  font-family: var(--eic-font) !important;
+}
+
+body {
+  color: var(--eic-gray-800);
+  background-color: #f8fafc;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--eic-black);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* 2. Global Greeting (.wish) & Message Card Override */
+.page_wrapper .page-content .message .wish,
+.message .wish,
+h1.wish {
+  color: var(--eic-red) !important;
+  font-family: var(--eic-font) !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.02em !important;
+}
+
+.page_wrapper .page-content .message,
+.card.message {
+  border: 1px solid var(--eic-soft-blush-border) !important;
+  background: #ffffff !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 20px rgba(252, 1, 1, 0.04) !important;
+}
+
+/* 3. Global Links & Text Overrides */
+a {
+  color: var(--eic-red);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--eic-dark-red);
+}
+
+.text-primary,
+a.text-primary,
+.text-info,
+.text-blue {
+  color: var(--eic-red) !important;
+}
+
+.text-purple,
+.text-brand-red {
+  color: var(--eic-red) !important;
+}
+
+.text-dark {
+  color: var(--eic-black) !important;
+}
+
+/* 4. Brand Buttons */
+.btn-outline-orangeyellow,
+.btn-brand,
+.btn-primary {
+  background: var(--eic-red) !important;
+  background-color: var(--eic-red) !important;
+  border-color: var(--eic-red) !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+  padding: 0.5rem 1.25rem !important;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: 0 4px 12px rgba(252, 1, 1, 0.25) !important;
+}
+
+.btn-outline-orangeyellow:hover,
+.btn-outline-orangeyellow:focus,
+.btn-brand:hover,
+.btn-primary:hover {
+  background: var(--eic-dark-red) !important;
+  background-color: var(--eic-dark-red) !important;
+  border-color: var(--eic-dark-red) !important;
+  color: #ffffff !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 6px 18px rgba(176, 1, 1, 0.35) !important;
+}
+
+.btn-outline-primary,
+.btn-outline-red {
+  color: var(--eic-red) !important;
+  border-color: var(--eic-red) !important;
+  background: transparent !important;
+  font-weight: 600 !important;
+  border-radius: 8px !important;
+  transition: all 0.2s ease !important;
+}
+
+.btn-outline-primary:hover,
+.btn-outline-red:hover {
+  background: var(--eic-red) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(252, 1, 1, 0.25) !important;
+}
+
+/* 5. Badges, Chips & Soft Accents */
+.badge-light-purple,
+.badge-light-danger,
+.badge-soft-red,
+.badge.bg-light-purple,
+.badge-primary,
+.badge.bg-primary {
+  background-color: var(--eic-soft-blush) !important;
+  color: var(--eic-dark-red) !important;
+  border: 1px solid var(--eic-soft-blush-border) !important;
+  font-weight: 600 !important;
+  padding: 0.35em 0.75em !important;
+  border-radius: 6px !important;
+}
+
+.badge-brand-solid,
+.badge.bg-danger {
+  background-color: var(--eic-red) !important;
+  color: #ffffff !important;
+}
+
+.badge-dark-solid,
+.badge.bg-dark {
+  background-color: var(--eic-black) !important;
+  color: #ffffff !important;
+}
+
+/* 6. Form Controls & Focus */
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--eic-red) !important;
+  box-shadow: 0 0 0 0.25rem rgba(252, 1, 1, 0.15) !important;
+}
+
+.form-check-input:checked {
+  background-color: var(--eic-red) !important;
+  border-color: var(--eic-red) !important;
+}
+
+/* 7. Pagination & Tabs */
+.page-item.active .page-link {
+  background-color: var(--eic-red) !important;
+  border-color: var(--eic-red) !important;
+  color: #ffffff !important;
+}
+
+.page-link {
+  color: var(--eic-red) !important;
+}
+
+.page-link:hover {
+  color: var(--eic-dark-red) !important;
+}
+
+.nav-pills .nav-link.active,
+.nav-tabs .nav-link.active {
+  background-color: var(--eic-red) !important;
+  border-color: var(--eic-red) !important;
+  color: #ffffff !important;
+}
+
+.border-primary {
+  border-color: var(--eic-red) !important;
+}
+
+/* 8. Sidebar Branding & Navigation */
+.sidebar_wrapper {
+  background: linear-gradient(180deg, #07080b 0%, #000000 100%) !important;
+  box-shadow: 2px 0 15px rgba(0, 0, 0, 0.4) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+.sidebar-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: #000000 !important;
+  height: 60px !important;
+  display: flex !important;
+  align-items: center !important;
+  padding: 0 15px !important;
+}
+
+.sidebar-header img,
+.sidebar-header .logo-icon,
+.simplebar-content .sidebar-header img,
+.wrapper .sidebar_wrapper:hover .sidebar-header img,
+.wrapper.active .sidebar_wrapper:hover .sidebar-header img {
+  width: 165px !important;
+  max-width: 175px !important;
+  height: auto !important;
+  max-height: 42px !important;
+  background: transparent !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  display: block !important;
+  object-fit: contain !important;
+}
+
+.wrapper.active .sidebar-header img {
+  display: none !important;
+}
+
+.wrapper.active .sidebar_wrapper:hover .sidebar-header img {
+  display: block !important;
+}
+
+.sidebar_wrapper .metismenu a {
+  color: #cbd5e1 !important;
+  font-weight: 500 !important;
+  font-size: 0.92rem !important;
+  border-radius: 8px !important;
+  margin: 2px 12px !important;
+  padding: 10px 14px !important;
+  transition: all 0.2s ease !important;
+}
+
+.sidebar_wrapper .metismenu a:hover {
+  color: #ffffff !important;
+  background: rgba(252, 1, 1, 0.12) !important;
+}
+
+.sidebar_wrapper .metismenu li.mm-active > a,
+.sidebar_wrapper .metismenu a.active {
+  color: #ffffff !important;
+  background: linear-gradient(90deg, #FC0101 0%, #B00101 100%) !important;
+  font-weight: 600 !important;
+  box-shadow: 0 4px 12px rgba(252, 1, 1, 0.3) !important;
+}
+
+.sidebar_wrapper .parent-icon,
+.sidebar_wrapper .metismenu i {
+  color: #FC0101 !important;
+}
+
+.sidebar_wrapper .metismenu li.mm-active > a i,
+.sidebar_wrapper .metismenu a.active i {
+  color: #ffffff !important;
+}
+
+/* 9. Topbar & Header */
+.topbar {
+  background: #ffffff !important;
+  border-bottom: 1px solid var(--eic-gray-200) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+.user-img {
+  border: 2px solid var(--eic-red) !important;
+}
+
+/* 10. Cards, Tables & Dashboard Panels */
+.card {
+  border-radius: 12px !important;
+  border: 1px solid var(--eic-gray-200) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+}
+
+.table-bordered thead th,
+.table thead th {
+  background-color: var(--eic-gray-900) !important;
+  color: var(--eic-white) !important;
+  border-color: var(--eic-gray-700) !important;
+  font-weight: 600 !important;
+  font-size: 0.85rem !important;
+  letter-spacing: 0.03em !important;
+  text-transform: uppercase !important;
+}
+
+.table tbody tr:hover {
+  background-color: rgba(252, 1, 1, 0.02) !important;
+}
+
+/* 11. Modal Dialogs */
+.modal-header {
+  background: linear-gradient(135deg, #07080b 0%, #151111 100%) !important;
+  color: #ffffff !important;
+  border-bottom: 2px solid var(--eic-red) !important;
+}
+
+.modal-header .modal-title {
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+.modal-header .btn-close {
+  filter: invert(1) grayscale(100%) brightness(200%);
+}

@@ -155,11 +155,15 @@ DATABASES = {
 
 if dj_database_url and os.environ.get('DATABASE_URL'):
     DATABASES['default'] = dj_database_url.config(
-        conn_max_age=600,
+        conn_max_age=0,
         conn_health_checks=True,
     )
     DATABASES['default']['OPTIONS'] = {
         'sslmode': 'require',
+        'keepalives': 1,
+        'keepalives_idle': 30,
+        'keepalives_interval': 10,
+        'keepalives_count': 5,
     }
 
 

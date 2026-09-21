@@ -41,32 +41,34 @@
                     <div class="row mb-2">
                       <div class="col">
                         <label for="project" class="form-label">Project <span class="text-danger">*</span></label>
-                        <select class="form-select" name="project" id="project" required>
+                        <select class="form-select" name="project" id="project" required onchange="toggleCustomProject(this.value)">
                           <option value="">Select Project</option>
                           {% for project in assigned_projects %}
                             <option value="{{ project.id }}">{{ project.display_title|default:project.title }}</option>
-                          {% empty %}
-                            <option value="" disabled>No projects assigned to you yet</option>
                           {% endfor %}
+                          <option value="custom" {% if not assigned_projects %}selected{% endif %}>+ Other / Custom Project</option>
                         </select>
+                        <div id="customProjectContainer" class="mt-2" style="{% if assigned_projects %}display: none;{% endif %}">
+                          <input type="text" class="form-control" name="custom_project" id="custom_project" placeholder="Enter custom project name" {% if not assigned_projects %}required{% endif %}>
+                        </div>
                       </div>
                     </div>
                     <div class="row mb-2">
                       <div class="col">
                         <label for="task" class="form-label">Task <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" name="task" id="task" required>
+                        <input type="text" class="form-control" name="task" id="task" placeholder="Describe the task completed" required>
                       </div>
-                      <div class="row mb-2">
-                        <div class="col">
-                          <label for="blocker_name" class="form-label">Blockers</label>
-                          <input type="text" class="form-control" name="blocker_name" id="blocker_name">
+                    </div>
+                    <div class="row mb-2">
+                      <div class="col">
+                        <label for="blocker_name" class="form-label">Blockers (Optional)</label>
+                        <input type="text" class="form-control" name="blocker_name" id="blocker_name" placeholder="Any blockers faced">
                       </div>
-                      </div>
-                      <div class="row mb-2">
-                        <div class="col">
-                          <label for="attachment" class="form-label">Attached File</label>
-                          <input type="file" class="form-control" name="attachment" id="attachment">
-                      </div>
+                    </div>
+                    <div class="row mb-2">
+                      <div class="col">
+                        <label for="attachment" class="form-label">Attached File (Optional)</label>
+                        <input type="file" class="form-control" name="attachment" id="attachment">
                       </div>
                     </div>                          
                     <div class="row mb-2">
@@ -74,7 +76,7 @@
                         <label for="assigned-to" class="form-label">Assigned to <span class="text-danger">*</span></label>
                         <select class="form-select" aria-label="Default select example" name="manager_id" required>
                           {% for i in assigned %}
-                          <option value="{{i.id}}" selected>{{i.manager_email}}</option>
+                          <option value="{{i.id}}" {% if forloop.first %}selected{% endif %}>{{i.manager_first_name}} {{i.manager_last_name}} ({{i.manager_email}})</option>
                           {% empty %}
                           <option value="" disabled selected>No reporting manager assigned</option>
                           {% endfor %}
@@ -91,7 +93,7 @@
           </div>
         </div>
         <footer class="page-footer">
-          <p class="mb-0">Copyright © 2022. All right reserved.</p>
+          <p class="mb-0">Copyright © Eagle in Cloud. All rights reserved. (<a href="https://www.eagleinclouds.com" target="_blank" style="color: #FC0101; text-decoration: none; font-weight: 600;">www.eagleinclouds.com</a>)</p>
         </footer>
       </div>
     </div>
@@ -107,6 +109,20 @@
     <script src="{% static 'asets/js/Chart.min.js' %}"></script>
     <script src="{% static 'asets/js/Chart.extension.js' %}"></script>
     <script src="{% static 'asets/js/script.js' %}"></script>
+    <script>
+      function toggleCustomProject(val) {
+        var container = document.getElementById('customProjectContainer');
+        var input = document.getElementById('custom_project');
+        if (val === 'custom') {
+          container.style.display = 'block';
+          input.setAttribute('required', 'required');
+          input.focus();
+        } else {
+          container.style.display = 'none';
+          input.removeAttribute('required');
+        }
+      }
+    </script>
 
   </body>
 </html>

@@ -4,14 +4,20 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Employee Conduct HRMS - Premium Login</title>
+    <title>Eagle in Cloud - HRMS Portal</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --eic-red: #FC0101;
+            --eic-dark-red: #B00101;
+            --eic-black: #000000;
+            --eic-soft-blush: #FFE6E6;
+        }
         body {
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            font-family: 'Montserrat', sans-serif;
+            background: linear-gradient(135deg, #090a0d 0%, #15171e 50%, #000000 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -19,42 +25,28 @@
             margin: 0;
             position: relative;
         }
-        .top-right-dropdown {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            z-index: 1050;
-        }
-        .role-dropdown-btn {
-            background: rgba(255, 255, 255, 0.1);
-            color: #ffffff;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 8px;
-            padding: 8px 16px;
-            font-weight: 500;
-            backdrop-filter: blur(10px);
-            transition: all 0.3s ease;
-        }
-        .role-dropdown-btn:hover, .role-dropdown-btn:focus {
-            background: rgba(255, 255, 255, 0.2);
-            color: #ffffff;
-        }
         .login-wrapper {
             width: 100%;
-            max-width: 440px;
-            padding: 20px;
+            max-width: 460px;
+            padding: 24px;
         }
         .login-card {
             background: #ffffff;
-            border-radius: 24px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            padding: 3.5rem 3rem;
+            border-radius: 20px;
+            box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.7), 0 0 30px rgba(252, 1, 1, 0.15);
+            padding: 3rem 2.5rem;
             position: relative;
             overflow: hidden;
+            border-top: 4px solid var(--eic-red);
         }
         .brand-logo {
-            width: 160px;
-            margin-bottom: 1.5rem;
+            max-width: 220px;
+            max-height: 85px;
+            width: auto;
+            height: auto;
+            margin-bottom: 1.25rem;
+            object-fit: contain;
+            display: inline-block;
         }
         .form-control {
             border-radius: 10px;
@@ -62,53 +54,56 @@
             border: 1.5px solid #e2e8f0;
             font-size: 0.95rem;
             background: #f8fafc;
-            color: #1e293b;
+            color: #0f172a;
+            font-weight: 500;
             transition: all 0.2s ease;
         }
         .form-control:focus {
             background: #ffffff;
-            border-color: #3b82f6;
-            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+            border-color: var(--eic-red);
+            box-shadow: 0 0 0 4px rgba(252, 1, 1, 0.12);
         }
         .form-label {
             font-size: 0.85rem;
             font-weight: 600;
-            color: #475569;
+            color: #334155;
             margin-bottom: 0.5rem;
         }
         .btn-login {
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            background: linear-gradient(135deg, var(--eic-red) 0%, var(--eic-dark-red) 100%);
             border: none;
             border-radius: 10px;
-            padding: 1rem;
-            font-weight: 600;
+            padding: 0.9rem 1.2rem;
+            font-weight: 700;
             font-size: 1rem;
             color: #ffffff;
             width: 100%;
             transition: all 0.3s ease;
-            box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);
+            box-shadow: 0 10px 20px -3px rgba(252, 1, 1, 0.35);
             margin-top: 1.5rem;
+            letter-spacing: 0.5px;
         }
         .btn-login:hover {
             transform: translateY(-2px);
-            box-shadow: 0 20px 25px -5px rgba(37, 99, 235, 0.4);
+            box-shadow: 0 16px 25px -4px rgba(176, 1, 1, 0.45);
+            color: #ffffff;
         }
         .forgot-link {
             font-size: 0.85rem;
-            color: #3b82f6;
+            color: var(--eic-red);
             text-decoration: none;
-            font-weight: 500;
+            font-weight: 600;
         }
         .forgot-link:hover {
-            color: #1d4ed8;
+            color: var(--eic-dark-red);
             text-decoration: underline;
         }
         .page-title {
-            font-size: 1.75rem;
+            font-size: 1.6rem;
             font-weight: 800;
-            color: #0f172a;
-            margin-bottom: 0.5rem;
-            letter-spacing: -0.025em;
+            color: #000000;
+            margin-bottom: 0.35rem;
+            letter-spacing: -0.02em;
         }
         .password-input-group {
             position: relative;
@@ -135,12 +130,15 @@
             z-index: 5;
         }
         .password-toggle-btn:hover {
-            color: #1e293b;
+            color: var(--eic-red);
         }
-        .password-toggle-btn:focus {
-            outline: none;
-            box-shadow: none;
-            color: #3b82f6;
+        .brand-footer-link {
+            color: var(--eic-red);
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .brand-footer-link:hover {
+            text-decoration: underline;
         }
     </style>
 </head>
@@ -149,14 +147,14 @@
     <div class="login-wrapper">
         <div class="login-card">
             <div class="text-center">
-                <img src="{% static 'assets/images/employee_conduct_logo.png' %}" class="brand-logo" alt="Logo">
+                <img src="{% static 'assets/images/eagle_in_cloud_logo.svg' %}?v=4" class="brand-logo" alt="Eagle in Cloud Logo" onerror="this.onerror=null; this.src='{% static 'asets/images/eagle_in_cloud_logo.svg' %}?v=4';">
                 <h2 class="page-title">Sign In</h2>
-                <p class="text-muted mb-4" style="font-size: 0.95rem;">Enter your credentials to access your HRMS portal.</p>
+                <p class="text-muted mb-4" style="font-size: 0.88rem; font-weight: 500;">Access your Eagle in Cloud HRMS portal</p>
             </div>
 
             {% for message in messages %}
             {% if 'Incorrect' in message.message or 'Access Denied' in message.message or 'Registered' in message.message or 'password' in message.message|lower or 'credentials' in message.message|lower or 'inactive' in message.message|lower or 'error' in message.message|lower %}
-            <div class="alert alert-danger alert-dismissible fade show" style="border-radius:10px; font-size:0.9rem;" role="alert">
+            <div class="alert alert-danger alert-dismissible fade show" style="border-radius:10px; font-size:0.88rem; border: 1px solid var(--eic-soft-blush); background-color: var(--eic-soft-blush); color: var(--eic-dark-red);" role="alert">
                 {{ message }}
             </div>
             {% endif %}
@@ -164,11 +162,11 @@
 
             <form action="{% url 'signin' %}" method="post">
                 {% csrf_token %}
-                <div class="mb-4 mt-2">
+                <div class="mb-3 mt-2">
                     <label for="email_address" class="form-label">Email Address</label>
-                    <input type="email" class="form-control" name="email" id="email_address" placeholder="name@company.com" required autofocus>
+                    <input type="email" class="form-control" name="email" id="email_address" placeholder="name@eagleinclouds.com" required autofocus>
                 </div>
-                <div class="mb-4">
+                <div class="mb-3">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <label for="password" class="form-label mb-0">Password</label>
                         <a href="{% url 'forgotpass' %}" class="forgot-link">Forgot Password?</a>
@@ -181,10 +179,10 @@
                     </div>
                 </div>
                 
-                <button type="submit" class="btn-login">Sign In</button>
+                <button type="submit" class="btn-login">Sign In to Dashboard</button>
                 
                 <div class="text-center mt-4">
-                    <span style="font-size: 0.85rem; color: #64748b;">Need an account? Please contact your Company Administrator.</span>
+                    <span style="font-size: 0.82rem; color: #64748b;">Need assistance? Visit <a href="https://www.eagleinclouds.com" target="_blank" class="brand-footer-link">www.eagleinclouds.com</a></span>
                 </div>
             </form>
         </div>

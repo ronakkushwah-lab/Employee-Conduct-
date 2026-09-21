@@ -42,7 +42,7 @@ class CurrentLeaveWorkflowTests(TestCase):
         return Leave.objects.create(
             user=self.employee, manager=self.manager,
             startdate=start, enddate=start + timedelta(days=days - 1),
-            leavetype='casual', reason='Test',
+            leavetype='paid', reason='Test',
         )
 
     def test_leave_state_transitions(self):

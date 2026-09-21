@@ -103,7 +103,7 @@ def test_email_notifications():
             user=employee,
             startdate=datetime.now().date() + timedelta(days=7),
             enddate=datetime.now().date() + timedelta(days=9),
-            leavetype='casual',
+            leavetype='paid',
             reason='Personal work',
             description='Need to attend personal matters',
             status='pending'

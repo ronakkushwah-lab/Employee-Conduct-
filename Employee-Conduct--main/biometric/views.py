@@ -248,105 +248,124 @@ def iclock_cdata(request):
         return HttpResponse(response_text, content_type='text/plain')
 
     if request.method == 'POST':
-        body_text = request.body.decode('utf-8', errors='ignore')
-        inserted_count = 0
+        try:
+            body_text = request.body.decode('utf-8', errors='ignore')
+            inserted_count = 0
 
-        # Non-attendance table requests (OPERLOG, BIODATA, USER, TEMPLATE, etc.) should be acknowledged without creating punch logs
-        if table and table not in ('ATTLOG', 'ATTLOG_OLD', 'PUNCH'):
-            response = HttpResponse("OK\n", content_type='text/plain')
-            response['response_code'] = 'OK'
-            response['result'] = 'OK'
-            response['status'] = 'SUCCESS'
-            response['Connection'] = 'close'
-            return response
+            # Try to parse as JSON Push Protocol (Secureye / ZK Cloud Push)
+            json_data = _extract_json_from_body(body_text)
 
-        # Try to parse as JSON Push Protocol (Secureye / ZK Cloud Push)
-        json_data = _extract_json_from_body(body_text)
-        json_punches = extract_punches_from_json(json_data) if json_data else []
-
-        if json_punches:
-            for item in json_punches:
-                uid = item.get('user_id')
-                if _is_valid_biometric_user_id(uid):
-                    payload = {
-                        'user_id': uid,
-                        'punch_time': item['punch_time'] or str(timezone.now()),
-                        'verify_mode': item['verify_mode'],
-                        'device_id': sn or (device.device_id if device else '1'),
-                        'source_ip': source_ip,
+            # Non-attendance table requests (OPERLOG, BIODATA, USER, TEMPLATE, etc.) should be acknowledged without creating punch logs
+            if table and table not in ('ATTLOG', 'ATTLOG_OLD', 'PUNCH'):
+                if json_data is not None:
+                    resp_dict = {
+                        "status": "SUCCESS",
+                        "code": 200,
+                        "result": "OK",
+                        "message": "Success",
+                        "ret": 1,
+                        "msg": "ok",
                     }
-                    process_biometric_punch(payload, protocol='adms_push', source_ip=source_ip, device=device)
-                    inserted_count += 1
-        elif json_data is None:
-            # Fall back to standard ADMS text parser
-            body_text_clean = body_text.replace('\x00', '')
-            if body_text_clean:
-                lines = [l.strip() for l in body_text_clean.split('\n') if l.strip()]
-                for line in lines:
-                    user_id = ''
-                    punch_time_str = str(timezone.now())
-                    verify_mode = ''
-                    # Handle key-value style (e.g. PIN=101\tTime=...)
-                    if '=' in line:
-                        kv = {}
-                        for item in line.replace('\t', ' ').split():
-                            if '=' in item:
-                                k, v = item.split('=', 1)
-                                kv[k.upper()] = v
-                        user_id = kv.get('PIN') or kv.get('USERID') or kv.get('USER_ID') or kv.get('ENROLLNUMBER')
-                        punch_time_str = kv.get('TIME') or kv.get('PUNCHTIME') or kv.get('DATETIME') or str(timezone.now())
-                        verify_mode = kv.get('STATUS') or kv.get('VERIFY') or ''
-                    elif '\t' in line:
-                        # Tab separated: user_id \t date \t time \t verify_mode OR user_id \t punch_time \t verify_mode
-                        parts = [p.strip() for p in line.split('\t') if p.strip()]
-                        user_id = parts[0] if len(parts) > 0 else ''
-                        if len(parts) >= 3 and (':' in parts[2] or (len(parts[2]) == 8 and parts[2].isdigit())):
-                            punch_time_str = f"{parts[1]} {parts[2]}"
-                            verify_mode = parts[3] if len(parts) > 3 else ''
-                        else:
-                            punch_time_str = parts[1] if len(parts) > 1 else str(timezone.now())
-                            verify_mode = parts[2] if len(parts) > 2 else ''
-                    elif ',' in line:
-                        # Comma separated
-                        parts = [p.strip() for p in line.split(',') if p.strip()]
-                        user_id = parts[0] if len(parts) > 0 else ''
-                        punch_time_str = parts[1] if len(parts) > 1 else str(timezone.now())
-                        verify_mode = parts[2] if len(parts) > 2 else ''
-                    else:
-                        # Space separated: "101 2026-08-25 13:10:00 1 1"
-                        parts = line.split()
-                        if len(parts) >= 3 and ('-' in parts[1] or '/' in parts[1]) and ':' in parts[2]:
-                            user_id = parts[0]
-                            punch_time_str = f"{parts[1]} {parts[2]}"
-                            verify_mode = parts[3] if len(parts) > 3 else ''
-                        elif len(parts) >= 2 and ('-' in parts[1] or '/' in parts[1] or ':' in parts[1]):
-                            user_id = parts[0]
-                            punch_time_str = parts[1]
-                            verify_mode = parts[2] if len(parts) > 2 else ''
-                        else:
-                            continue
+                    response = HttpResponse(json.dumps(resp_dict), content_type='application/json')
+                else:
+                    response = HttpResponse("OK\n", content_type='text/plain')
+                response['response_code'] = 'OK'
+                response['result'] = 'OK'
+                response['status'] = 'SUCCESS'
+                return response
 
-                    if _is_valid_biometric_user_id(user_id):
+            json_punches = extract_punches_from_json(json_data) if json_data else []
+
+            if json_punches:
+                for item in json_punches:
+                    uid = item.get('user_id')
+                    if _is_valid_biometric_user_id(uid):
                         payload = {
-                            'user_id': user_id,
-                            'punch_time': punch_time_str,
-                            'verify_mode': verify_mode,
+                            'user_id': uid,
+                            'punch_time': item['punch_time'] or str(timezone.now()),
+                            'verify_mode': item['verify_mode'],
                             'device_id': sn or (device.device_id if device else '1'),
                             'source_ip': source_ip,
                         }
                         process_biometric_punch(payload, protocol='adms_push', source_ip=source_ip, device=device)
                         inserted_count += 1
+            elif json_data is None:
+                # Fall back to standard ADMS text parser
+                body_text_clean = body_text.replace('\x00', '')
+                if body_text_clean:
+                    lines = [l.strip() for l in body_text_clean.split('\n') if l.strip()]
+                    for line in lines:
+                        user_id = ''
+                        punch_time_str = str(timezone.now())
+                        verify_mode = ''
+                        # Handle key-value style (e.g. PIN=101\tTime=...)
+                        if '=' in line:
+                            kv = {}
+                            for item in line.replace('\t', ' ').split():
+                                if '=' in item:
+                                    k, v = item.split('=', 1)
+                                    kv[k.upper()] = v
+                            user_id = kv.get('PIN') or kv.get('USERID') or kv.get('USER_ID') or kv.get('ENROLLNUMBER')
+                            punch_time_str = kv.get('TIME') or kv.get('PUNCHTIME') or kv.get('DATETIME') or str(timezone.now())
+                            verify_mode = kv.get('STATUS') or kv.get('VERIFY') or ''
+                        elif '\t' in line:
+                            # Tab separated: user_id \t date \t time \t verify_mode OR user_id \t punch_time \t verify_mode
+                            parts = [p.strip() for p in line.split('\t') if p.strip()]
+                            user_id = parts[0] if len(parts) > 0 else ''
+                            if len(parts) >= 3 and (':' in parts[2] or (len(parts[2]) == 8 and parts[2].isdigit())):
+                                punch_time_str = f"{parts[1]} {parts[2]}"
+                                verify_mode = parts[3] if len(parts) > 3 else ''
+                            else:
+                                punch_time_str = parts[1] if len(parts) > 1 else str(timezone.now())
+                                verify_mode = parts[2] if len(parts) > 2 else ''
+                        elif ',' in line:
+                            # Comma separated
+                            parts = [p.strip() for p in line.split(',') if p.strip()]
+                            user_id = parts[0] if len(parts) > 0 else ''
+                            punch_time_str = parts[1] if len(parts) > 1 else str(timezone.now())
+                            verify_mode = parts[2] if len(parts) > 2 else ''
+                        else:
+                            # Space separated: "101 2026-08-25 13:10:00 1 1"
+                            parts = line.split()
+                            if len(parts) >= 3 and ('-' in parts[1] or '/' in parts[1]) and ':' in parts[2]:
+                                user_id = parts[0]
+                                punch_time_str = f"{parts[1]} {parts[2]}"
+                                verify_mode = parts[3] if len(parts) > 3 else ''
+                            elif len(parts) >= 2 and ('-' in parts[1] or '/' in parts[1] or ':' in parts[1]):
+                                user_id = parts[0]
+                                punch_time_str = parts[1]
+                                verify_mode = parts[2] if len(parts) > 2 else ''
+                            else:
+                                continue
 
-        if device and inserted_count > 0:
-            device.last_punch_at = timezone.now()
-            device.save(update_fields=['last_punch_at', 'updated'])
+                        if _is_valid_biometric_user_id(user_id):
+                            payload = {
+                                'user_id': user_id,
+                                'punch_time': punch_time_str,
+                                'verify_mode': verify_mode,
+                                'device_id': sn or (device.device_id if device else '1'),
+                                'source_ip': source_ip,
+                            }
+                            process_biometric_punch(payload, protocol='adms_push', source_ip=source_ip, device=device)
+                            inserted_count += 1
 
-        response = HttpResponse("OK\n" if inserted_count == 0 else f"OK: {inserted_count}\n", content_type='text/plain')
-        response['response_code'] = 'OK'
-        response['result'] = 'OK'
-        response['status'] = 'SUCCESS'
-        response['Connection'] = 'close'
-        return response
+            if device and inserted_count > 0:
+                device.last_punch_at = timezone.now()
+                device.save(update_fields=['last_punch_at', 'updated'])
+
+            ack_count = max(1, inserted_count) if (json_punches or len(body_text) > 0) else inserted_count
+            response_text = f"OK: {ack_count}\n" if ack_count > 0 else "OK\n"
+            response = HttpResponse(response_text, content_type='text/plain')
+
+            response['response_code'] = 'OK'
+            response['result'] = 'OK'
+            response['status'] = 'SUCCESS'
+            response['code'] = '200'
+            return response
+        except Exception as exc:
+            import logging
+            logging.getLogger('biometric').error("Error processing ADMS biometric punch: %s", exc, exc_info=True)
+            return HttpResponse("OK\n", content_type='text/plain')
 
     return HttpResponse("OK\n", content_type='text/plain')
 
@@ -403,10 +422,11 @@ def iclock_registry(request):
 def latest_events_api(request):
     """
     API endpoint for auto-refreshing biometric events and attendance in real time.
-    Returns latest event ID and event details as JSON.
+    Returns latest applied event ID and event details as JSON.
     """
     events = (
-        BiometricEventLog.objects.select_related('employee', 'manager')
+        BiometricEventLog.objects.filter(status=BiometricEventLog.STATUS_APPLIED)
+        .select_related('employee', 'manager')
         .exclude(biometric_user_id__icontains='fk_name')
         .exclude(biometric_user_id__icontains='{')
         .order_by('-id')[:20]

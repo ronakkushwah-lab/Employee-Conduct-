@@ -12,14 +12,10 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 
 # Create your models here.
-SICK = 'sick'
-CASUAL = 'casual'
-EMERGENCY = 'emergency'
+PAID = 'paid'
 
 LEAVE_TYPE = (
-    (SICK, 'Sick Leave'),
-    (CASUAL, 'Casual Leave'),
-    (EMERGENCY, 'Emergency Leave'),
+    (PAID, 'Paid Leave'),
 )
 DAYS = 30
 
@@ -30,7 +26,7 @@ class Leave(models.Model):
     startdate = models.DateField(verbose_name=_('Start Date'), help_text='leave start date is on ..', null=True,
                                  blank=False)
     enddate = models.DateField(verbose_name=_('End Date'), help_text='coming back on ...', null=True, blank=False)
-    leavetype = models.CharField(verbose_name=_('Leave Type'),choices=LEAVE_TYPE, max_length=25, default=SICK, null=True, blank=False)
+    leavetype = models.CharField(verbose_name=_('Leave Type'),choices=LEAVE_TYPE, max_length=25, default=PAID, null=True, blank=False)
     reason = models.CharField(verbose_name=_('Reason for Leave'), max_length=255,
                               help_text='add additional information for leave', null=True, blank=True)
     description = models.TextField(verbose_name=_('Description'), 
@@ -139,7 +135,7 @@ class Leave(models.Model):
             'enddate': self.enddate,
             'reason': self.reason,
             'status': self.status,
-            'leavetype': self.leavetype,
+            'leavetype': self.get_leavetype_display(),
             'leave_days': self.leave_days,
             'created': self.created,
             'manager_approved': self.manager_approved,

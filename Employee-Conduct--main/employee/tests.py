@@ -129,7 +129,7 @@ class EmployeeRoleEndToEndTests(TestCase):
         response = self.client.post(self.url('create_leave'), {
             'startdate': start.isoformat(),
             'enddate': (start + timedelta(days=1)).isoformat(),
-            'leavetype': 'casual', 'reason': 'Family event',
+            'leavetype': 'paid', 'reason': 'Family event',
             'manager_id': self.manager.id,
         })
         self.assertEqual(response.status_code, 302)
@@ -142,12 +142,12 @@ class EmployeeRoleEndToEndTests(TestCase):
         Leave.objects.create(
             user=self.employee, manager=self.manager,
             startdate=start, enddate=start + timedelta(days=2),
-            leavetype='casual', reason='Existing',
+            leavetype='paid', reason='Existing',
         )
         response = self.client.post(self.url('create_leave'), {
             'startdate': (start + timedelta(days=1)).isoformat(),
             'enddate': (start + timedelta(days=3)).isoformat(),
-            'leavetype': 'sick', 'reason': 'Overlap',
+            'leavetype': 'paid', 'reason': 'Overlap',
             'manager_id': self.manager.id,
         })
         self.assertEqual(response.status_code, 200)

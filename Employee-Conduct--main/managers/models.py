@@ -25,22 +25,26 @@ from employee.models import Employee
 
 def validate_start_time(value):
     """
-    Validate that a Entry should have a starting date & time in present
-    or Future (with 5 Minute negotation)
+    Validate that a timesheet entry start time is reasonable (e.g. not more than 1 year in the past).
     """
-    if value < timezone.now() - timedelta(minutes=5):
-        raise ValidationError(
-            "Starting Time should be in present or Future")
+    if value:
+        if timezone.is_naive(value):
+            value = timezone.make_aware(value, timezone.get_current_timezone())
+        if value < timezone.now() - timedelta(days=365):
+            raise ValidationError(
+                "Starting Time cannot be more than 1 year in the past")
 
 
 def validate_end_time(value):
     """
-    Validate that a Entry should have a ending less than 6 months
+    Validate that a timesheet entry end time is reasonable (e.g. within 6 months into future).
     """
-    print("validating end time")
-    if value > timezone.now() + timedelta(days=31 * 6):
-        raise ValidationError(
-            "Ending Time should be less than 6 months")
+    if value:
+        if timezone.is_naive(value):
+            value = timezone.make_aware(value, timezone.get_current_timezone())
+        if value > timezone.now() + timedelta(days=31 * 6):
+            raise ValidationError(
+                "Ending Time should be less than 6 months")
 
 
 User = get_user_model()
@@ -248,17 +252,33 @@ class ManagerEntry(models.Model):
 
     def clean(self):
         """
-        Raise Error when a Start time of a Entry > End time of a Entry
+        Raise Error when a Start time of a Entry >= End time of a Entry
         """
-        if self.start_time >= self.end_time:
-            raise ValidationError("Start time should be less than End Time")
+        if self.start_time and self.end_time:
+            st = self.start_time
+            et = self.end_time
+            if timezone.is_naive(st):
+                st = timezone.make_aware(st, timezone.get_current_timezone())
+            if timezone.is_naive(et):
+                et = timezone.make_aware(et, timezone.get_current_timezone())
+            if st >= et:
+                raise ValidationError("Start time should be less than End Time")
 
     @property
     def total_duration(self):
         """
-        Entry's property for the total duration alloted
+        Entry's property for the total duration allotted
         """
-        return self.end_time - self.start_time
+        if not self.start_time or not self.end_time:
+            return timedelta(seconds=0)
+        st = self.start_time
+        et = self.end_time
+        if timezone.is_naive(st):
+            st = timezone.make_aware(st, timezone.get_current_timezone())
+        if timezone.is_naive(et):
+            et = timezone.make_aware(et, timezone.get_current_timezone())
+        diff = et - st
+        return diff if diff > timedelta(seconds=0) else timedelta(seconds=0)
 
     @property
     def formatted_duration(self):
@@ -273,7 +293,13 @@ class ManagerEntry(models.Model):
         """
         Entry's property for the total duration left
         """
-        time = self.end_time - timezone.now().replace(microsecond=0)
+        if not self.end_time:
+            return timedelta(seconds=0)
+        et = self.end_time
+        if timezone.is_naive(et):
+            et = timezone.make_aware(et, timezone.get_current_timezone())
+        now = timezone.now().replace(microsecond=0)
+        time = et - now
         if time < timedelta(seconds=1):
             time = timedelta(seconds=0)
         return time
@@ -283,8 +309,24 @@ class ManagerEntry(models.Model):
         """
         Format the time left into Day-Hr-Min-Sec
         """
-        time = self.end_time + timedelta(hours=5, minutes=30)
-        return time.strftime("%m/%d/%Y %H:%M:%S")
+        if not self.end_time:
+            return ""
+        et = self.end_time
+        if timezone.is_naive(et):
+            et = timezone.make_aware(et, timezone.get_current_timezone())
+        return et.strftime("%m/%d/%Y %H:%M:%S")
+
+    def to_json(self):
+        return {
+            'id': self.id,
+            'name': self.name or '',
+            'project': self.project or '',
+            'activity': self.activity or '',
+            'start_time': self.start_time.strftime('%Y-%m-%d %H:%M') if self.start_time else '',
+            'end_time': self.end_time.strftime('%Y-%m-%d %H:%M') if self.end_time else '',
+            'total_duration': self.formatted_duration,
+            'user': str(self.user),
+        }
 
     @property
     def is_active(self):
@@ -330,11 +372,45 @@ class ManagerAttendance(models.Model):
             if total_seconds > 0:
                 hours = total_seconds // 3600
                 minutes = (total_seconds % 3600) // 60
-                return f"{hours}h {minutes}m"
-            return "0m"
+                return f"{hours:02d}.{minutes:02d}"
+            return "00.00"
         elif self.check_in and not self.check_out:
             return "In Progress"
         return "-"
+
+    @property
+    def is_short_hours(self):
+        if self.check_in and self.check_out:
+            total_seconds = int((self.check_out - self.check_in).total_seconds())
+            return 0 < total_seconds < 30600  # Less than 8.5 hours (30600 seconds)
+        return False
+
+    @property
+    def shortfall_working_hours(self):
+        if self.check_in and self.check_out:
+            total_seconds = int((self.check_out - self.check_in).total_seconds())
+            if 0 < total_seconds < 30600:
+                short_sec = 30600 - total_seconds
+                hours = short_sec // 3600
+                minutes = (short_sec % 3600) // 60
+                return f"{hours:02d}.{minutes:02d}"
+        return "00.00"
+
+    @property
+    def shortfall_human(self):
+        if self.check_in and self.check_out:
+            total_seconds = int((self.check_out - self.check_in).total_seconds())
+            if 0 < total_seconds < 30600:
+                short_sec = 30600 - total_seconds
+                hours = short_sec // 3600
+                minutes = (short_sec % 3600) // 60
+                if hours > 0 and minutes > 0:
+                    return f"{hours}h {minutes}m"
+                elif hours > 0:
+                    return f"{hours}h"
+                else:
+                    return f"{minutes}m"
+        return "0m"
 
     @property
     def working_hour(self):

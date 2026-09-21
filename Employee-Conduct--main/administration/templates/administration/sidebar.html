@@ -10,8 +10,8 @@
               <div class="simplebar-content-wrapper">
                 <div class="simplebar-content mm-active">
                   <div class="sidebar-header">
-                    <div>
-                      <img src="{% static 'asets/images/employee_conduct_logo.png' %}" class="img-fluid">
+                    <div class="d-flex align-items-center">
+                      <img src="{% static 'asets/images/eagle_in_cloud_logo_white.svg' %}?v=4" class="img-fluid logo-icon" alt="Eagle in Cloud Logo" style="width: 165px; height: auto; max-height: 42px; background: transparent;">
                     </div>
                     <div class="toggle-icon ms-auto">
                       <i class="bx bx-arrow-to-left" id="btn"></i>
@@ -221,12 +221,6 @@
                             List Manager Project
                           </a>
                         </li>
-                        <li>
-                          <a href="{% url 'All_entry' company_id=company_id company_staff_id=company_staff_id %}" class="{% if url_name == 'All_entry' %}active{% endif %}">
-                            <i class='bx bx-right-arrow-alt'></i>
-                            View Timesheet
-                          </a>
-                        </li>
                       </ul>
                     </li>
                     <li class="{% if url_name == 'client_list' or url_name == 'leads_list' or url_name == 'clients_grid' or url_name == 'clients' or url_name == 'leads' or url_name == 'editClient' or url_name == 'edit_lead' %}mm-active{% endif %}">
@@ -261,6 +255,16 @@
                         </div>
                         <div class="menu-title">
                           <span>Department</span>
+                        </div>
+                      </a>
+                    </li>
+                    <li class="{% if url_name == 'All_entry' %}mm-active{% endif %}">
+                      <a href="{% url 'All_entry' company_id=company_id company_staff_id=company_staff_id %}" class="{% if url_name == 'All_entry' %}active{% endif %}">
+                        <div class="parent-icon">
+                          <i class="bx bx-time-five"></i>
+                        </div>
+                        <div class="menu-title">
+                          <span>Timesheet</span>
                         </div>
                       </a>
                     </li>

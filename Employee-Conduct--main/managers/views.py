@@ -76,16 +76,49 @@ def _attendance_month_context(attendance_queryset, request):
         present_days.add(date_key)
         records_by_day.setdefault(date_key, record)
         working_hours = ''
+        is_short_hours = False
+        shortfall_str = '00.00'
+        shortfall_human = '0m'
+        status_label = 'Present'
+        status_class = 'present'
+
         if record.check_in and record.check_out:
-            working_hours = strfdelta(record.check_out - record.check_in, "{hours}:{minutes}")
+            total_sec = int((record.check_out - record.check_in).total_seconds())
+            if total_sec > 0:
+                hours = total_sec // 3600
+                minutes = (total_sec % 3600) // 60
+                working_hours = f"{hours:02d}.{minutes:02d}"
+                if total_sec < 30600:  # 8.5 hours
+                    is_short_hours = True
+                    status_label = 'Short Hours'
+                    status_class = 'short-hours'
+                    short_sec = 30600 - total_sec
+                    s_h = short_sec // 3600
+                    s_m = (short_sec % 3600) // 60
+                    shortfall_str = f"{s_h:02d}.{s_m:02d}"
+                    shortfall_human = f"{s_h}h {s_m}m" if s_h > 0 and s_m > 0 else (f"{s_h}h" if s_h > 0 else f"{s_m}m")
+            else:
+                working_hours = '00.00'
+                is_short_hours = True
+                status_label = 'Short Hours'
+                status_class = 'short-hours'
+                shortfall_str = '08.30'
+                shortfall_human = '8h 30m'
+        elif record.check_in and not record.check_out:
+            status_label = 'In Progress'
+            status_class = 'in-progress'
+
         table_rows.append({
             'date': local_check_in.strftime('%d %b %Y'),
             'day': local_check_in.strftime('%A'),
-            'status': 'Present',
-            'status_class': 'present',
+            'status': status_label,
+            'status_class': status_class,
             'check_in': local_check_in.strftime('%I:%M %p'),
             'check_out': local_check_out.strftime('%I:%M %p') if local_check_out else '-',
             'working_hours': working_hours or '-',
+            'is_short_hours': is_short_hours,
+            'shortfall_str': shortfall_str,
+            'shortfall_human': shortfall_human,
             'source': 'biometric' if getattr(record, 'manager_attendance_event_logs', None) else 'manual',
         })
 
@@ -95,21 +128,71 @@ def _attendance_month_context(attendance_queryset, request):
     for _ in range(sunday_offset):
         calendar_days.append(None)
 
+    present_count = 0
+    short_hours_count = 0
+    absent_count = 0
+    upcoming_count = 0
+
     for day_num in range(1, days_in_month + 1):
         current_date = datetime(selected_year, selected_month, day_num).date()
+        rec = records_by_day.get(current_date)
         if current_date in present_days:
-            status = 'present'
-            label = 'Present'
+            if rec and rec.check_in and rec.check_out:
+                sec = int((rec.check_out - rec.check_in).total_seconds())
+                h = sec // 3600
+                m = (sec % 3600) // 60
+                w_str = f"{h:02d}.{m:02d}"
+                _lci = tz.localtime(rec.check_in) if tz.is_aware(rec.check_in) else rec.check_in
+                _lco = tz.localtime(rec.check_out) if tz.is_aware(rec.check_out) else rec.check_out
+                in_str = _lci.strftime('%I:%M %p')
+                out_str = _lco.strftime('%I:%M %p')
+                if sec < 30600:
+                    status = 'short-hours'
+                    label = 'Short Hours'
+                    short_hours_count += 1
+                    s_sec = 30600 - sec
+                    s_h = s_sec // 3600
+                    s_m = (s_sec % 3600) // 60
+                    s_str = f"{s_h:02d}.{s_m:02d}"
+                    s_hum = f"{s_h}h {s_m}m" if s_h > 0 and s_m > 0 else (f"{s_h}h" if s_h > 0 else f"{s_m}m")
+                    tooltip_title = f"{current_date.strftime('%d %b %Y')}&#10;🔴 Status: Short Hours (< 8.5 hrs)&#10;⏱️ Worked: {w_str} hrs&#10;⚠️ Short by: {s_str} hrs ({s_hum} short of 8.5h)&#10;🕒 In: {in_str} | Out: {out_str}"
+                else:
+                    status = 'present'
+                    label = 'Present'
+                    present_count += 1
+                    tooltip_title = f"{current_date.strftime('%d %b %Y')}&#10;🟢 Status: Present (Target Met)&#10;⏱️ Worked: {w_str} hrs&#10;🕒 In: {in_str} | Out: {out_str}"
+            elif rec and rec.check_in and not rec.check_out:
+                status = 'present'
+                label = 'In Progress'
+                present_count += 1
+                _lci = tz.localtime(rec.check_in) if tz.is_aware(rec.check_in) else rec.check_in
+                in_str = _lci.strftime('%I:%M %p')
+                tooltip_title = f"{current_date.strftime('%d %b %Y')}&#10;🔵 Status: In Progress&#10;🕒 In: {in_str}"
+            else:
+                status = 'present'
+                label = 'Present'
+                present_count += 1
+                tooltip_title = f"{current_date.strftime('%d %b %Y')}&#10;🟢 Status: Present"
         else:
-            status = 'not-marked'
-            label = 'Not Marked'
+            if current_date <= today:
+                status = 'absent'
+                label = 'Absent'
+                absent_count += 1
+                tooltip_title = f"{current_date.strftime('%d %b %Y')}&#10;🔴 Status: Absent (No Check-In Recorded)"
+            else:
+                status = 'upcoming'
+                label = 'Upcoming'
+                upcoming_count += 1
+                tooltip_title = f"{current_date.strftime('%d %b %Y')}&#10;⚪ Upcoming"
+
         calendar_days.append({
             'day': day_num,
             'date': current_date,
             'status': status,
             'label': label,
             'is_today': current_date == today,
-            'record': records_by_day.get(current_date),
+            'record': rec,
+            'tooltip': tooltip_title,
         })
 
     while len(calendar_days) % 7 != 0:
@@ -130,7 +213,6 @@ def _attendance_month_context(attendance_queryset, request):
         next_month = 1
         next_year += 1
 
-    marked_days = len(present_days)
     return {
         'attendance_month_name': calendar.month_name[selected_month],
         'attendance_month': selected_month,
@@ -138,10 +220,10 @@ def _attendance_month_context(attendance_queryset, request):
         'attendance_calendar_weeks': calendar_weeks,
         'attendance_table_rows': table_rows,
         'attendance_summary': {
-            'present': marked_days,
-            'absent': 0,
-            'late': 0,
-            'not_marked': days_in_month - marked_days,
+            'present': present_count,
+            'short_hours': short_hours_count,
+            'absent': absent_count,
+            'upcoming': upcoming_count,
             'total_days': days_in_month,
         },
         'attendance_previous': {'month': previous_month, 'year': previous_year},
@@ -687,7 +769,7 @@ def attendance_grid_data(request,company_id, company_staff_id):
             if item.check_out:
                 _co = tz.localtime(item.check_out) if getattr(item.check_out, 'tzinfo', None) and tz.is_aware(item.check_out) else item.check_out
                 dict['check_out'] = _co.strftime("%Y-%m-%d %H:%M:%S")
-                dict['working_hours'] = strfdelta((item.check_out - item.check_in), "{hours}:{minutes}")
+                dict['working_hours'] = strfdelta((item.check_out - item.check_in), "{hours}.{minutes}")
             else:
                 dict['check_out'] = ''
                 dict['working_hours'] = ''
@@ -1234,16 +1316,55 @@ def AssignListView(request, company_id, company_staff_id):
 
 
 
+def get_manager_subordinate_employees(manager, company_id=None):
+    """
+    Recursively fetch all employees under this manager, including direct reports
+    and employees under subordinate managers in the hierarchy.
+    """
+    if not manager:
+        return Employee.objects.none()
+
+    all_managers = [manager]
+    visited_mgr_ids = {manager.id}
+    queue = [manager]
+    while queue:
+        curr_mgr = queue.pop(0)
+        sub_mgrs = Manager.objects.filter(manager_reports_to=curr_mgr)
+        if company_id:
+            sub_mgrs = sub_mgrs.filter(user__company_id=company_id)
+        for sm in sub_mgrs:
+            if sm.id not in visited_mgr_ids:
+                visited_mgr_ids.add(sm.id)
+                all_managers.append(sm)
+                queue.append(sm)
+
+    employees = Employee.objects.filter(employee_reports_to__in=all_managers)
+    if company_id:
+        employees = employees.filter(user__company_id=company_id)
+    return employees
+
+
 def EntryListView(request,company_id, company_staff_id):
     if request.method == "POST":
-        data = json.loads(request.body.decode('utf-8'))
-        entry_obj_id = data.get('id', None)
-        entry_obj = Entries.objects.get(pk=entry_obj_id)
-        return JsonResponse(entry_obj.to_json())
+        try:
+            data = json.loads(request.body.decode('utf-8'))
+            entry_obj_id = data.get('id', None)
+            entry_obj = Entries.objects.get(pk=entry_obj_id)
+            return JsonResponse(entry_obj.to_json())
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
     if company_id:
-        company_staff = CompanyStaff.objects.get(id=company_staff_id)
-        entry = Entries.objects.filter(assigned_to=company_staff.manager)
-        
+        company_staff = CompanyStaff.objects.filter(id=company_staff_id).first()
+        manager = Manager.objects.filter(user=company_staff).first() if company_staff else None
+
+        if manager:
+            subordinate_employees = get_manager_subordinate_employees(manager, company_id=company_id)
+            entry = Entries.objects.filter(
+                Q(assigned_to=manager) | Q(user__in=subordinate_employees)
+            ).distinct()
+        else:
+            entry = Entries.objects.none()
+
         # Date range filter logic
         start_date_str = request.GET.get('start_date', '')
         end_date_str = request.GET.get('end_date', '')
@@ -1259,28 +1380,30 @@ def EntryListView(request,company_id, company_staff_id):
                 entry = entry.filter(end_time__date__lte=end_date)
             except ValueError:
                 pass
-        
+
         from collections import defaultdict
         # Group by employee directly
         employee_map = defaultdict(list)
         for obj in entry:
-            employee_map[obj.user].append(obj)
+            if obj.user:
+                employee_map[obj.user].append(obj)
 
         employee_list = []
         for user, entries in employee_map.items():
             user_total = sum((obj.total_duration for obj in entries), timedelta())
             # Sort entries by project, then by start_time
-            entries.sort(key=lambda x: (str(x.project), x.start_time))
+            entries.sort(key=lambda x: (str(x.project), x.start_time if x.start_time else datetime.min))
+            email = getattr(user, 'employee_email', '') or (user.user.email if user.user else '')
             employee_list.append({
                 'user': user,
-                'email': user.user.email if user.user else '',
-                'name': f"{user.employee_first_name} {user.employee_last_name}",
+                'email': email,
+                'name': f"{user.employee_first_name} {user.employee_last_name}".strip(),
                 'total_time': format_duration(user_total),
                 'entries': entries
             })
 
         # Sort employees by email
-        employee_list.sort(key=lambda e: e['email'])
+        employee_list.sort(key=lambda e: e['email'].lower() if e['email'] else '')
 
         context = {
             'employee_list': employee_list,
@@ -1290,6 +1413,75 @@ def EntryListView(request,company_id, company_staff_id):
             'end_date': end_date_str,
         }
         return render(request, 'managers/employee-timesheet.html', context)
+    else:
+        return redirect('/')
+
+
+def approve_timesheet_entry(request, company_id, company_staff_id, id):
+    if company_id:
+        company_staff = CompanyStaff.objects.filter(id=company_staff_id).first()
+        manager = Manager.objects.filter(user=company_staff).first() if company_staff else None
+        if not manager:
+            messages.error(request, 'Manager profile not found.')
+            return redirect(f'/managers/entry-list/{company_id}/{company_staff_id}')
+
+        entry = get_object_or_404(Entries, id=id)
+        subordinates = get_manager_subordinate_employees(manager, company_id=company_id)
+        if entry.assigned_to == manager or (entry.user and entry.user in subordinates):
+            entry.approve(manager)
+            messages.success(request, f'Timesheet entry on "{entry.project}" approved successfully.')
+        else:
+            messages.error(request, 'You do not have permission to approve this entry.')
+
+        return redirect(f'/managers/entry-list/{company_id}/{company_staff_id}')
+    return redirect('/')
+
+
+def reject_timesheet_entry(request, company_id, company_staff_id, id):
+    if company_id:
+        company_staff = CompanyStaff.objects.filter(id=company_staff_id).first()
+        manager = Manager.objects.filter(user=company_staff).first() if company_staff else None
+        if not manager:
+            messages.error(request, 'Manager profile not found.')
+            return redirect(f'/managers/entry-list/{company_id}/{company_staff_id}')
+
+        entry = get_object_or_404(Entries, id=id)
+        subordinates = get_manager_subordinate_employees(manager, company_id=company_id)
+        if entry.assigned_to == manager or (entry.user and entry.user in subordinates):
+            reason = request.POST.get('rejection_reason', '').strip() if request.method == 'POST' else ''
+            entry.reject(manager, reason=reason)
+            messages.warning(request, f'Timesheet entry on "{entry.project}" was rejected.')
+        else:
+            messages.error(request, 'You do not have permission to reject this entry.')
+
+        return redirect(f'/managers/entry-list/{company_id}/{company_staff_id}')
+    return redirect('/')
+
+
+def bulk_approve_timesheet(request, company_id, company_staff_id, employee_id):
+    if company_id:
+        company_staff = CompanyStaff.objects.filter(id=company_staff_id).first()
+        manager = Manager.objects.filter(user=company_staff).first() if company_staff else None
+        if not manager:
+            messages.error(request, 'Manager profile not found.')
+            return redirect(f'/managers/entry-list/{company_id}/{company_staff_id}')
+
+        emp = get_object_or_404(Employee, id=employee_id)
+        subordinates = get_manager_subordinate_employees(manager, company_id=company_id)
+        if emp in subordinates or emp.employee_reports_to == manager:
+            pending_entries = Entries.objects.filter(
+                user=emp,
+                status=Entries.STATUS_PENDING
+            )
+            count = pending_entries.count()
+            for entry in pending_entries:
+                entry.approve(manager)
+            messages.success(request, f'Approved {count} pending timesheet entries for {emp.employee_first_name} {emp.employee_last_name}.')
+        else:
+            messages.error(request, 'You do not have permission to approve timesheets for this employee.')
+
+        return redirect(f'/managers/entry-list/{company_id}/{company_staff_id}')
+    return redirect('/')
 
 
 class EntryRemove(View):
@@ -1538,7 +1730,7 @@ def add_leave(request, company_id, company_staff_id):
                     recipient_name = f"{assigned_to.manager_first_name} {assigned_to.manager_last_name}".strip()
                     ManagerNotification.objects.create(
                         user=assigned_to,
-                        notifications=f"{applicant_name} applied for {str(leavetype).title()} leave ({startdate} to {enddate}).",
+                        notifications=f"{applicant_name} applied for {leave.get_leavetype_display()} ({startdate} to {enddate}).",
                     )
                     # Set notification flag for recipient manager
                     if getattr(assigned_to, "user", None):
@@ -1555,7 +1747,7 @@ def add_leave(request, company_id, company_staff_id):
                             "employee_id": getattr(user, "formatted_manager_id", "") or getattr(user, "manager_id", ""),
                             "employee_email": getattr(user, "manager_email", ""),
                             "employee_phone": getattr(user, "manager_phone", ""),
-                            "leave_type": (str(leavetype) or "").title(),
+                            "leave_type": leave.get_leavetype_display(),
                             "start_date": startdate,
                             "end_date": enddate,
                             "reason": reason or "N/A",

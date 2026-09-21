@@ -30,7 +30,7 @@
                   <h5 class="text-center text-uppercase">Payslip for the Month of {{ object.month|date:"F Y " }}</h5>
                   <div class="d-flex align-items-center mt-5 mb-5">
                     <div class="logo">
-                      <img src="{% static 'asets/images/employee_conduct_logo.png' %}" alt="Eagle in Cloud Logo" class="img-fluid" style="max-width: 200px; height: auto;">
+                      <img src="{% static 'asets/images/eagle_in_cloud_logo.svg' %}?v=4" alt="Eagle in Cloud Logo" class="img-fluid" style="max-width: 200px; height: auto;">
                     </div>
                     <div class="ms-auto">
                       <h6 class="mb-0 text-right">PAYSLIP #{{object.id}}</h6>
@@ -116,7 +116,6 @@
                     <table class="table table-fluid" id="myTable">
                       <thead>
                         <tr>
-                          <th>Employee</th>
                           <th>Employee ID</th>
                           <th>Email</th>
                           <th>Joining Date</th>
@@ -129,7 +128,6 @@
                       <tbody>
                           {% for item in salary  %}
                         <tr>
-                          <td>{{ item.employee.employee_first_name}} {{ item.employee.employee_last_name}}</td>
                           <td>{{ item.employee.employee_id}}</td>
                           <td>{{ item.employee.employee_email}}</td>
                           <td>{{ item.employee.employee_joining_date}}</td>
@@ -148,7 +146,7 @@
           </div>
         </div>
         <footer class="page-footer">
-          <p class="mb-0">Copyright © 2022. All right reserved.</p>
+          <p class="mb-0">Copyright © Eagle in Cloud. All rights reserved. (<a href="https://www.eagleinclouds.com" target="_blank" style="color: #FC0101; text-decoration: none; font-weight: 600;">www.eagleinclouds.com</a>)</p>
         </footer>
       </div>
     </div>

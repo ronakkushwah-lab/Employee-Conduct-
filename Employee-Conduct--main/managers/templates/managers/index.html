@@ -44,7 +44,7 @@
           </div>
 
           <!-- Manager Personal Workspace & Attendance Quick Punch Card -->
-          <div class="card radius-10 shadow-sm border-0 mb-4" style="background: #ffffff; border-left: 5px solid #0d6efd !important;">
+          <div class="card radius-10 shadow-sm border-0 mb-4" style="background: #ffffff; border-left: 5px solid #FC0101 !important;">
             <div class="card-body p-4">
               <div class="row align-items-center">
                 <!-- Left: Profile & Manager Designation Info -->
@@ -54,7 +54,7 @@
                       {% if manager.avatar_base64 or manager.manager_image %}
                         <img src="{{ manager.avatar_url }}" class="rounded-circle shadow-sm" style="width: 58px; height: 58px; object-fit: cover;" onerror="this.style.display='none';">
                       {% else %}
-                        <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm" style="width: 58px; height: 58px; background: linear-gradient(135deg, #0d6efd, #6610f2); font-size: 1.25rem;">
+                        <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm" style="width: 58px; height: 58px; background: linear-gradient(135deg, #FC0101, #B00101); font-size: 1.25rem;">
                           {{ manager.manager_first_name|first|upper }}{{ manager.manager_last_name|first|upper }}
                         </div>
                       {% endif %}
@@ -62,13 +62,13 @@
                     <div>
                       <h5 class="mb-1 fw-bold text-dark">
                         {{ manager.manager_first_name }} {{ manager.manager_last_name }}
-                        <span class="badge bg-success text-white ms-1" style="font-size: 0.72rem;">Manager</span>
+                        <span class="badge ms-1" style="background: #FFE6E6; color: #B00101; border: 1px solid #ffd1d1; font-size: 0.72rem; font-weight: 600;">Manager</span>
                       </h5>
                       <p class="mb-1 text-muted small">
                         <i class="bx bx-id-card me-1"></i><strong>Mgr ID:</strong> {{ manager.manager_id|default:"-" }} &nbsp;|&nbsp;
                         <i class="bx bx-fingerprint me-1"></i><strong>Bio ID:</strong> {{ manager.biometric_id|default:"-" }}
                       </p>
-                      <p class="mb-0 small text-primary">
+                      <p class="mb-0 small text-brand-red">
                         <i class="bx bx-briefcase me-1"></i><strong>Department:</strong> 
                         <span class="fw-semibold">{{ manager.manager_department.department_name|default:"General Management" }}</span>
                         {% if manager.manager_designation %}
@@ -184,7 +184,7 @@
                         {% for leave in pending_leaves %}
                         <tr>
                           <td>{{ leave.user.employee_first_name }} {{ leave.user.employee_last_name }}</td>
-                          <td>{{ leave.leavetype }}</td>
+                          <td>{{ leave.get_leavetype_display|default:leave.leavetype|title }}</td>
                           <td>{{ leave.startdate|date:"d M Y" }}</td>
                           <td>{{ leave.enddate|date:"d M Y" }}</td>
                           <td>
@@ -251,7 +251,7 @@
                 <input id="attendance_id" name="attendance_id" type="hidden" value="{{ attendance.id }}">
             </form>
       <footer class="page-footer">
-        <p class="mb-0">Copyright © 2022. All right reserved.</p>
+        <p class="mb-0">Copyright © Eagle in Cloud. All rights reserved. (<a href="https://www.eagleinclouds.com" target="_blank" style="color: #FC0101; text-decoration: none; font-weight: 600;">www.eagleinclouds.com</a>)</p>
       </footer>
     </div>
     

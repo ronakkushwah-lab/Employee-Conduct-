@@ -169,20 +169,26 @@
         color: #16a34a;
       }
 
-      .attendance-day.late {
-        background: #fef3c7;
-        border-color: #f59e0b;
-        color: #d97706;
+      .attendance-day.short-hours {
+        background: #fee2e2;
+        border-color: #f87171;
+        color: #dc2626;
       }
 
       .attendance-day.absent {
         background: #fee2e2;
-        border-color: #ef4444;
+        border-color: #f87171;
         color: #dc2626;
       }
 
+      .attendance-day.upcoming {
+        background: #f8fafc;
+        border-color: #e2e8f0;
+        color: #94a3b8;
+      }
+
       .attendance-day.today {
-        outline: 2px solid #2563eb;
+        outline: 2px solid #FC0101;
         outline-offset: 2px;
       }
 
@@ -191,6 +197,11 @@
         right: 0.55rem;
         bottom: 0.35rem;
         font-size: 1rem;
+      }
+
+      .attendance-day-check.short {
+        color: #dc2626;
+        font-size: 0.85rem;
       }
 
       .attendance-legend {
@@ -216,8 +227,9 @@
       }
 
       .attendance-legend-swatch.present { border-color: #16a34a; background: #dcfce7; }
+      .attendance-legend-swatch.short-hours { border-color: #ef4444; background: #fee2e2; }
       .attendance-legend-swatch.absent { border-color: #ef4444; background: #fee2e2; }
-      .attendance-legend-swatch.late { border-color: #f59e0b; background: #fef3c7; }
+      .attendance-legend-swatch.upcoming { border-color: #cbd5e1; background: #f8fafc; }
 
       .attendance-table-panel {
         display: none;
@@ -243,6 +255,21 @@
       .attendance-status-pill.present {
         background: #dcfce7;
         color: #16a34a;
+      }
+
+      .attendance-status-pill.short-hours {
+        background: #fee2e2;
+        color: #dc2626;
+      }
+
+      .attendance-status-pill.absent {
+        background: #fee2e2;
+        color: #dc2626;
+      }
+
+      .attendance-status-pill.in-progress {
+        background: #e0f2fe;
+        color: #0369a1;
       }
 
       @media (max-width: 991.98px) {
@@ -275,7 +302,6 @@
         .attendance-summary-strip {
           grid-template-columns: 1fr;
         }
-      }
     </style>
 
     <div class="attendance-view-shell">
@@ -285,10 +311,10 @@
       </div>
 
       <div class="attendance-summary-strip">
-        <div class="attendance-summary-card"><span>Present</span><strong>{{ attendance_summary.present }}</strong></div>
-        <div class="attendance-summary-card"><span>Absent</span><strong>{{ attendance_summary.absent }}</strong></div>
-        <div class="attendance-summary-card"><span>Late</span><strong>{{ attendance_summary.late }}</strong></div>
-        <div class="attendance-summary-card"><span>Not Marked</span><strong>{{ attendance_summary.not_marked }}</strong></div>
+        <div class="attendance-summary-card"><span>Present (&ge; 8.5h)</span><strong class="text-success">{{ attendance_summary.present }}</strong></div>
+        <div class="attendance-summary-card"><span>Short Hours (&lt; 8.5h)</span><strong class="text-danger">{{ attendance_summary.short_hours }}</strong></div>
+        <div class="attendance-summary-card"><span>Absent</span><strong class="text-danger">{{ attendance_summary.absent }}</strong></div>
+        <div class="attendance-summary-card"><span>Upcoming / Off</span><strong class="text-muted">{{ attendance_summary.upcoming }}</strong></div>
       </div>
 
       <section class="attendance-panel attendance-calendar-panel active" data-attendance-panel="calendar">
@@ -310,9 +336,13 @@
             {% for week in attendance_calendar_weeks %}
               {% for day in week %}
                 {% if day %}
-                  <div class="attendance-day {{ day.status }}{% if day.is_today %} today{% endif %}" title="{{ day.label }} - {{ day.date|date:'d M Y' }}">
+                  <div class="attendance-day {{ day.status }}{% if day.is_today %} today{% endif %}" title="{{ day.tooltip|safe }}">
                     {{ day.day }}
-                    {% if day.status == 'present' %}<span class="attendance-day-check">✓</span>{% endif %}
+                    {% if day.status == 'present' %}
+                      <span class="attendance-day-check">✓</span>
+                    {% elif day.status == 'short-hours' %}
+                      <span class="attendance-day-check short" title="Short Hours">⚠️</span>
+                    {% endif %}
                   </div>
                 {% else %}
                   <div class="attendance-day empty"></div>
@@ -322,10 +352,10 @@
           </div>
         </div>
         <div class="attendance-legend">
-          <span class="attendance-legend-item"><span class="attendance-legend-swatch present"></span> Present</span>
-          <span class="attendance-legend-item"><span class="attendance-legend-swatch absent"></span> Absent</span>
-          <span class="attendance-legend-item"><span class="attendance-legend-swatch late"></span> Late</span>
-          <span class="attendance-legend-item"><span class="attendance-legend-swatch"></span> Not Marked</span>
+          <span class="attendance-legend-item"><span class="attendance-legend-swatch present"></span> Present (&ge; 8.5h)</span>
+          <span class="attendance-legend-item"><span class="attendance-legend-swatch short-hours"></span> Short Hours (&lt; 8.5h)</span>
+          <span class="attendance-legend-item"><span class="attendance-legend-swatch absent"></span> Absent (No Punch)</span>
+          <span class="attendance-legend-item"><span class="attendance-legend-swatch upcoming"></span> Upcoming / Off</span>
         </div>
       </section>
 
@@ -354,7 +384,15 @@
                   <td><span class="attendance-status-pill {{ row.status_class }}">{{ row.status }}</span></td>
                   <td>{{ row.check_in }}</td>
                   <td>{{ row.check_out }}</td>
-                  <td>{{ row.working_hours }}</td>
+                  <td>
+                    {% if row.is_short_hours %}
+                      <span class="text-danger fw-bold" title="Short by {{ row.shortfall_str }} hrs ({{ row.shortfall_human }})">{{ row.working_hours }} <small class="text-danger">⚠️</small></span>
+                    {% elif row.working_hours != '-' %}
+                      <span class="text-dark fw-bold">{{ row.working_hours }}</span>
+                    {% else %}
+                      -
+                    {% endif %}
+                  </td>
                   <td>{{ row.source|title }}</td>
                 </tr>
               {% empty %}
@@ -376,7 +414,7 @@
   </form>
 
   <footer class="page-footer">
-    <p class="mb-0">Copyright © 2022. All right reserved.</p>
+    <p class="mb-0">Copyright © Eagle in Cloud. All rights reserved. (<a href="https://www.eagleinclouds.com" target="_blank" style="color: #FC0101; text-decoration: none; font-weight: 600;">www.eagleinclouds.com</a>)</p>
   </footer>
 </div>
 </div>

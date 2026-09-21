@@ -398,6 +398,47 @@ def process_biometric_punch(payload, protocol='manual', source_ip=None, device=N
             'biometric_user_id': user_id,
             'message': str(exc),
         }
+    # Deduplicate exact retransmission of identical punch timestamp
+    recent_exact_duplicate = BiometricEventLog.objects.filter(
+        biometric_user_id=user_id,
+        punch_time=punch_time,
+    ).order_by('-id').first()
+
+    if recent_exact_duplicate:
+        if device:
+            device.last_seen_at = timezone.now()
+            device.save(update_fields=['last_seen_at', 'updated'])
+        return {
+            'status': recent_exact_duplicate.status,
+            'biometric_user_id': user_id,
+            'action': 'ignored_retransmission',
+            'message': 'Duplicate identical retransmission acknowledged without re-inserting.',
+        }
+
+    # 1-Minute Duplicate Punch Prevention Cooldown (Pre-check before DB row creation)
+    # If the user has already punched within the last 60 seconds on the same day, acknowledge without creating a new DB row.
+    last_applied_event = (
+        BiometricEventLog.objects.filter(
+            biometric_user_id=user_id,
+            status=BiometricEventLog.STATUS_APPLIED,
+            punch_time__date=punch_time.date(),
+        )
+        .order_by('-punch_time', '-id')
+        .first()
+    )
+    if last_applied_event and last_applied_event.punch_time:
+        time_diff_seconds = abs((punch_time - last_applied_event.punch_time).total_seconds())
+        if time_diff_seconds < 60:
+            if device:
+                device.last_seen_at = timezone.now()
+                device.save(update_fields=['last_seen_at', 'updated'])
+            return {
+                'status': BiometricEventLog.STATUS_IGNORED,
+                'biometric_user_id': user_id,
+                'action': 'ignored_cooldown',
+                'message': f'Duplicate punch ignored (within 60-second cooldown: {int(time_diff_seconds)}s after previous punch).',
+            }
+
     employee, manager = resolve_biometric_identity(user_id)
     company = None
     if employee and employee.user:
@@ -446,30 +487,6 @@ def process_biometric_punch(payload, protocol='manual', source_ip=None, device=N
             'biometric_user_id': user_id,
             'message': event.message,
         }
-
-    # 1-Minute Duplicate Punch Prevention Cooldown
-    # If the user has already punched within the last 60 seconds on the same day, ignore the duplicate.
-    last_applied_event = (
-        BiometricEventLog.objects.filter(
-            biometric_user_id=user_id,
-            status=BiometricEventLog.STATUS_APPLIED,
-            punch_time__date=punch_time.date(),
-        )
-        .exclude(id=event.id)
-        .order_by('-punch_time', '-id')
-        .first()
-    )
-    if last_applied_event and last_applied_event.punch_time:
-        time_diff_seconds = abs((punch_time - last_applied_event.punch_time).total_seconds())
-        if time_diff_seconds < 60:
-            event.status = BiometricEventLog.STATUS_IGNORED
-            event.message = f'Duplicate punch ignored (within 60-second cooldown: {int(time_diff_seconds)}s after previous punch).'
-            event.save(update_fields=['status', 'message'])
-            return {
-                'status': event.status,
-                'biometric_user_id': user_id,
-                'message': event.message,
-            }
 
     if employee:
         attendance, action = _apply_employee_punch(employee, punch_time)

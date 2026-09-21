@@ -629,7 +629,7 @@ def hr_dashboard(request, company_id, company_staff_id):
                 total_seconds = int(time_diff.total_seconds())
                 hours = total_seconds // 3600
                 minutes = (total_seconds % 3600) // 60
-                hr_hours_num = f"{hours}h {minutes}m"
+                hr_hours_num = f"{hours:02d}.{minutes:02d}"
                 hr_is_check_in = 'Completed'
             elif hr_attendance.check_in and not hr_attendance.check_out:
                 hr_is_check_in = 'Check Out'
@@ -673,7 +673,8 @@ def hr_biometric_monitor(request, company_id, company_staff_id):
     devices = BiometricDevice.objects.filter(company=company).order_by('name', 'id')
     recent_events = (
         BiometricEventLog.objects.filter(
-            Q(company=company) | Q(device__company=company) | Q(company__isnull=True)
+            Q(company=company) | Q(device__company=company) | Q(company__isnull=True),
+            status=BiometricEventLog.STATUS_APPLIED,
         )
         .exclude(biometric_user_id__icontains='fk_name')
         .exclude(biometric_user_id__icontains='{')

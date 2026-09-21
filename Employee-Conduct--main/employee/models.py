@@ -49,22 +49,26 @@ role_choices = {
 
 def validate_start_time(value):
     """
-    Validate that a Entry should have a starting date & time in present
-    or Future (with 5 Minute negotation)
+    Validate that a timesheet entry start time is reasonable (e.g. not more than 1 year in the past).
     """
-    if value < timezone.now() - timedelta(minutes=5):
-        raise ValidationError(
-            "Starting Time should be in present or Future")
+    if value:
+        if timezone.is_naive(value):
+            value = timezone.make_aware(value, timezone.get_current_timezone())
+        if value < timezone.now() - timedelta(days=365):
+            raise ValidationError(
+                "Starting Time cannot be more than 1 year in the past")
 
 
 def validate_end_time(value):
     """
-    Validate that a Entry should have a ending less than 6 months
+    Validate that a timesheet entry end time is reasonable (e.g. within 6 months into future).
     """
-    print("validating end time")
-    if value > timezone.now() + timedelta(days=31 * 6):
-        raise ValidationError(
-            "Ending Time should be less than 6 months")
+    if value:
+        if timezone.is_naive(value):
+            value = timezone.make_aware(value, timezone.get_current_timezone())
+        if value > timezone.now() + timedelta(days=31 * 6):
+            raise ValidationError(
+                "Ending Time should be less than 6 months")
 
 
 class Department(models.Model):
@@ -306,6 +310,28 @@ class Entries(models.Model):
     blocker_name = models.CharField(max_length=500, null=True, blank=True)
     attachment = models.FileField(upload_to='timesheet_attachments/', null=True, blank=True)
 
+    STATUS_PENDING = 'pending'
+    STATUS_APPROVED = 'approved'
+    STATUS_REJECTED = 'rejected'
+
+    STATUS_CHOICES = (
+        (STATUS_PENDING, 'Pending'),
+        (STATUS_APPROVED, 'Approved'),
+        (STATUS_REJECTED, 'Rejected'),
+    )
+
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    is_approved = models.BooleanField(default=False)
+    approved_by = models.ForeignKey(
+        to='managers.Manager',
+        null=True,
+        blank=True,
+        related_name="approved_timesheet_entries",
+        on_delete=models.SET_NULL,
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
+    rejection_reason = models.TextField(null=True, blank=True)
+
     assigned_to = models.ForeignKey(
         to='managers.Manager',
         null=True,
@@ -319,17 +345,33 @@ class Entries(models.Model):
 
     def clean(self):
         """
-        Raise Error when a Start time of a Entry > End time of a Entry
+        Raise Error when a Start time of a Entry >= End time of a Entry
         """
-        if self.start_time >= self.end_time:
-            raise ValidationError("Start time should be less than End Time")
+        if self.start_time and self.end_time:
+            st = self.start_time
+            et = self.end_time
+            if timezone.is_naive(st):
+                st = timezone.make_aware(st, timezone.get_current_timezone())
+            if timezone.is_naive(et):
+                et = timezone.make_aware(et, timezone.get_current_timezone())
+            if st >= et:
+                raise ValidationError("Start time should be less than End Time")
 
     @property
     def total_duration(self):
         """
-        Entry's property for the total duration alloted
+        Entry's property for the total duration allotted
         """
-        return self.end_time - self.start_time
+        if not self.start_time or not self.end_time:
+            return timedelta(seconds=0)
+        st = self.start_time
+        et = self.end_time
+        if timezone.is_naive(st):
+            st = timezone.make_aware(st, timezone.get_current_timezone())
+        if timezone.is_naive(et):
+            et = timezone.make_aware(et, timezone.get_current_timezone())
+        diff = et - st
+        return diff if diff > timedelta(seconds=0) else timedelta(seconds=0)
 
     @property
     def formatted_duration(self):
@@ -343,7 +385,13 @@ class Entries(models.Model):
         """
         Entry's property for the total duration left
         """
-        time = self.end_time - timezone.now().replace(microsecond=0)
+        if not self.end_time:
+            return timedelta(seconds=0)
+        et = self.end_time
+        if timezone.is_naive(et):
+            et = timezone.make_aware(et, timezone.get_current_timezone())
+        now = timezone.now().replace(microsecond=0)
+        time = et - now
         if time < timedelta(seconds=1):
             time = timedelta(seconds=0)
         return time
@@ -353,8 +401,80 @@ class Entries(models.Model):
         """
         Format the time left into Day-Hr-Min-Sec
         """
-        time = self.end_time + timedelta(hours=5, minutes=30)
-        return time.strftime("%m/%d/%Y %H:%M:%S")
+        if not self.end_time:
+            return ""
+        et = self.end_time
+        if timezone.is_naive(et):
+            et = timezone.make_aware(et, timezone.get_current_timezone())
+        return et.strftime("%m/%d/%Y %H:%M:%S")
+
+    def approve(self, manager):
+        self.status = self.STATUS_APPROVED
+        self.is_approved = True
+        self.approved_by = manager
+        self.approved_at = timezone.now()
+        self.rejection_reason = None
+        self.save()
+
+    def reject(self, manager, reason=""):
+        self.status = self.STATUS_REJECTED
+        self.is_approved = False
+        self.approved_by = manager
+        self.approved_at = timezone.now()
+        self.rejection_reason = reason
+        self.save()
+
+    def to_json(self):
+        assigned_name = ''
+        if self.assigned_to:
+            assigned_name = f"{self.assigned_to.manager_first_name} {self.assigned_to.manager_last_name}".strip() or self.assigned_to.manager_email
+        
+        approved_by_name = ''
+        if self.approved_by:
+            approved_by_name = f"{self.approved_by.manager_first_name} {self.approved_by.manager_last_name}".strip() or self.approved_by.manager_email
+
+        approved_at_str = ''
+        if self.approved_at:
+            local_approved_at = timezone.localtime(self.approved_at) if timezone.is_aware(self.approved_at) else self.approved_at
+            approved_at_str = local_approved_at.strftime('%b %d, %Y %I:%M %p')
+
+        start_time_str = ''
+        if self.start_time:
+            local_st = timezone.localtime(self.start_time) if timezone.is_aware(self.start_time) else self.start_time
+            start_time_str = local_st.strftime('%Y-%m-%d %I:%M %p')
+
+        end_time_str = ''
+        if self.end_time:
+            local_et = timezone.localtime(self.end_time) if timezone.is_aware(self.end_time) else self.end_time
+            end_time_str = local_et.strftime('%Y-%m-%d %I:%M %p')
+
+        attachment_url = self.attachment.url if self.attachment else ''
+        attachment_name = os.path.basename(self.attachment.name) if self.attachment else ''
+
+        user_name = ''
+        if self.user:
+            user_name = f"{self.user.employee_first_name} {self.user.employee_last_name}".strip() or getattr(self.user, 'employee_email', '')
+
+        return {
+            'id': self.id,
+            'title': self.title or '',
+            'project': self.project or '',
+            'task': self.task or '',
+            'blocker_name': self.blocker_name or '',
+            'start_time': start_time_str,
+            'end_time': end_time_str,
+            'total_duration': self.formatted_duration,
+            'attachment_url': attachment_url,
+            'attachment_name': attachment_name,
+            'assigned_to': assigned_name,
+            'user': user_name,
+            'status': self.status,
+            'status_display': self.get_status_display(),
+            'is_approved': self.is_approved,
+            'approved_by': approved_by_name,
+            'approved_at': approved_at_str,
+            'rejection_reason': self.rejection_reason or '',
+        }
 
     @property
     def is_active(self):
@@ -370,24 +490,6 @@ class Entries(models.Model):
         td = self.time_left
         seconds = td.seconds + td.days * 24 * 3600
         return seconds
-
-    def to_json(self):
-        local_start = timezone.localtime(self.start_time) if self.start_time else None
-        local_end = timezone.localtime(self.end_time) if self.end_time else None
-
-        entry_details_dict = {
-            'id': self.id,
-            'start_time': local_start.strftime("%d %b %Y, %I:%M %p") if local_start else '',
-            'end_time': local_end.strftime("%d %b %Y, %I:%M %p") if local_end else '',
-            'task': self.task,
-            'project': self.project,
-            'blocker_name': self.blocker_name,
-            'attachment_url': self.attachment.url if self.attachment else '',
-            'attachment_name': self.attachment.name.split('/')[-1] if self.attachment else '',
-            'total_duration': self.formatted_duration,
-            'assigned_to': self.assigned_to.manager_email if self.assigned_to else ''
-        }
-        return entry_details_dict
 
 
 def pre_save_entry_handler(sender, instance, *args, **kwargs):
@@ -420,11 +522,45 @@ class Attendance(models.Model):
             if total_seconds > 0:
                 hours = total_seconds // 3600
                 minutes = (total_seconds % 3600) // 60
-                return f"{hours}h {minutes}m"
-            return "0m"
+                return f"{hours:02d}.{minutes:02d}"
+            return "00.00"
         elif self.check_in and not self.check_out:
             return "In Progress"
         return "-"
+
+    @property
+    def is_short_hours(self):
+        if self.check_in and self.check_out:
+            total_seconds = int((self.check_out - self.check_in).total_seconds())
+            return 0 < total_seconds < 30600  # Less than 8.5 hours (30600 seconds)
+        return False
+
+    @property
+    def shortfall_working_hours(self):
+        if self.check_in and self.check_out:
+            total_seconds = int((self.check_out - self.check_in).total_seconds())
+            if 0 < total_seconds < 30600:
+                short_sec = 30600 - total_seconds
+                hours = short_sec // 3600
+                minutes = (short_sec % 3600) // 60
+                return f"{hours:02d}.{minutes:02d}"
+        return "00.00"
+
+    @property
+    def shortfall_human(self):
+        if self.check_in and self.check_out:
+            total_seconds = int((self.check_out - self.check_in).total_seconds())
+            if 0 < total_seconds < 30600:
+                short_sec = 30600 - total_seconds
+                hours = short_sec // 3600
+                minutes = (short_sec % 3600) // 60
+                if hours > 0 and minutes > 0:
+                    return f"{hours}h {minutes}m"
+                elif hours > 0:
+                    return f"{hours}h"
+                else:
+                    return f"{minutes}m"
+        return "0m"
 
     @property
     def working_hour(self):

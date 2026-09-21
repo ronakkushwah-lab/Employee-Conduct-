@@ -142,16 +142,49 @@ def _attendance_month_context(attendance_queryset, request):
         present_days.add(date_key)
         records_by_day.setdefault(date_key, record)
         working_hours = ''
+        is_short_hours = False
+        shortfall_str = '00.00'
+        shortfall_human = '0m'
+        status_label = 'Present'
+        status_class = 'present'
+
         if record.check_in and record.check_out:
-            working_hours = strfdelta(record.check_out - record.check_in, "{hours}:{minutes}")
+            total_sec = int((record.check_out - record.check_in).total_seconds())
+            if total_sec > 0:
+                hours = total_sec // 3600
+                minutes = (total_sec % 3600) // 60
+                working_hours = f"{hours:02d}.{minutes:02d}"
+                if total_sec < 30600:  # 8.5 hours
+                    is_short_hours = True
+                    status_label = 'Short Hours'
+                    status_class = 'short-hours'
+                    short_sec = 30600 - total_sec
+                    s_h = short_sec // 3600
+                    s_m = (short_sec % 3600) // 60
+                    shortfall_str = f"{s_h:02d}.{s_m:02d}"
+                    shortfall_human = f"{s_h}h {s_m}m" if s_h > 0 and s_m > 0 else (f"{s_h}h" if s_h > 0 else f"{s_m}m")
+            else:
+                working_hours = '00.00'
+                is_short_hours = True
+                status_label = 'Short Hours'
+                status_class = 'short-hours'
+                shortfall_str = '08.30'
+                shortfall_human = '8h 30m'
+        elif record.check_in and not record.check_out:
+            status_label = 'In Progress'
+            status_class = 'in-progress'
+
         table_rows.append({
             'date': local_check_in.strftime('%d %b %Y'),
             'day': local_check_in.strftime('%A'),
-            'status': 'Present',
-            'status_class': 'present',
+            'status': status_label,
+            'status_class': status_class,
             'check_in': local_check_in.strftime('%I:%M %p'),
             'check_out': local_check_out.strftime('%I:%M %p') if local_check_out else '-',
             'working_hours': working_hours or '-',
+            'is_short_hours': is_short_hours,
+            'shortfall_str': shortfall_str,
+            'shortfall_human': shortfall_human,
             'source': getattr(record, 'source', '') or 'manual',
         })
 
@@ -161,21 +194,71 @@ def _attendance_month_context(attendance_queryset, request):
     for _ in range(sunday_offset):
         calendar_days.append(None)
 
+    present_count = 0
+    short_hours_count = 0
+    absent_count = 0
+    upcoming_count = 0
+
     for day_num in range(1, days_in_month + 1):
         current_date = datetime(selected_year, selected_month, day_num).date()
+        rec = records_by_day.get(current_date)
         if current_date in present_days:
-            status = 'present'
-            label = 'Present'
+            if rec and rec.check_in and rec.check_out:
+                sec = int((rec.check_out - rec.check_in).total_seconds())
+                h = sec // 3600
+                m = (sec % 3600) // 60
+                w_str = f"{h:02d}.{m:02d}"
+                _lci = timezone.localtime(rec.check_in) if timezone.is_aware(rec.check_in) else rec.check_in
+                _lco = timezone.localtime(rec.check_out) if timezone.is_aware(rec.check_out) else rec.check_out
+                in_str = _lci.strftime('%I:%M %p')
+                out_str = _lco.strftime('%I:%M %p')
+                if sec < 30600:
+                    status = 'short-hours'
+                    label = 'Short Hours'
+                    short_hours_count += 1
+                    s_sec = 30600 - sec
+                    s_h = s_sec // 3600
+                    s_m = (s_sec % 3600) // 60
+                    s_str = f"{s_h:02d}.{s_m:02d}"
+                    s_hum = f"{s_h}h {s_m}m" if s_h > 0 and s_m > 0 else (f"{s_h}h" if s_h > 0 else f"{s_m}m")
+                    tooltip_title = f"{current_date.strftime('%d %b %Y')}&#10;🔴 Status: Short Hours (< 8.5 hrs)&#10;⏱️ Worked: {w_str} hrs&#10;⚠️ Short by: {s_str} hrs ({s_hum} short of 8.5h)&#10;🕒 In: {in_str} | Out: {out_str}"
+                else:
+                    status = 'present'
+                    label = 'Present'
+                    present_count += 1
+                    tooltip_title = f"{current_date.strftime('%d %b %Y')}&#10;🟢 Status: Present (Target Met)&#10;⏱️ Worked: {w_str} hrs&#10;🕒 In: {in_str} | Out: {out_str}"
+            elif rec and rec.check_in and not rec.check_out:
+                status = 'present'
+                label = 'In Progress'
+                present_count += 1
+                _lci = timezone.localtime(rec.check_in) if timezone.is_aware(rec.check_in) else rec.check_in
+                in_str = _lci.strftime('%I:%M %p')
+                tooltip_title = f"{current_date.strftime('%d %b %Y')}&#10;🔵 Status: In Progress&#10;🕒 In: {in_str}"
+            else:
+                status = 'present'
+                label = 'Present'
+                present_count += 1
+                tooltip_title = f"{current_date.strftime('%d %b %Y')}&#10;🟢 Status: Present"
         else:
-            status = 'not-marked'
-            label = 'Not Marked'
+            if current_date <= today:
+                status = 'absent'
+                label = 'Absent'
+                absent_count += 1
+                tooltip_title = f"{current_date.strftime('%d %b %Y')}&#10;🔴 Status: Absent (No Check-In Recorded)"
+            else:
+                status = 'upcoming'
+                label = 'Upcoming'
+                upcoming_count += 1
+                tooltip_title = f"{current_date.strftime('%d %b %Y')}&#10;⚪ Upcoming"
+
         calendar_days.append({
             'day': day_num,
             'date': current_date,
             'status': status,
             'label': label,
             'is_today': current_date == today,
-            'record': records_by_day.get(current_date),
+            'record': rec,
+            'tooltip': tooltip_title,
         })
 
     while len(calendar_days) % 7 != 0:
@@ -196,7 +279,6 @@ def _attendance_month_context(attendance_queryset, request):
         next_month = 1
         next_year += 1
 
-    marked_days = len(present_days)
     return {
         'attendance_month_name': calendar.month_name[selected_month],
         'attendance_month': selected_month,
@@ -204,10 +286,10 @@ def _attendance_month_context(attendance_queryset, request):
         'attendance_calendar_weeks': calendar_weeks,
         'attendance_table_rows': table_rows,
         'attendance_summary': {
-            'present': marked_days,
-            'absent': 0,
-            'late': 0,
-            'not_marked': days_in_month - marked_days,
+            'present': present_count,
+            'short_hours': short_hours_count,
+            'absent': absent_count,
+            'upcoming': upcoming_count,
             'total_days': days_in_month,
         },
         'attendance_previous': {'month': previous_month, 'year': previous_year},
@@ -986,9 +1068,9 @@ def attendance_grid_data(request,company_id, company_staff_id):
                         if item.check_in and item.check_out:
                             time_diff = item.check_out - item.check_in
                             if time_diff.total_seconds() >= 0:
-                                dict['working_hours'] = strfdelta(time_diff, "{hours}:{minutes}")
+                                dict['working_hours'] = strfdelta(time_diff, "{hours}.{minutes}")
                             else:
-                                dict['working_hours'] = '0:0'
+                                dict['working_hours'] = '00.00'
                         else:
                             dict['working_hours'] = ''
                     except Exception as e:
@@ -1002,7 +1084,7 @@ def attendance_grid_data(request,company_id, company_staff_id):
                     dict['check_in'] = str(item.check_in) if item.check_in else ''
                     dict['check_out'] = str(item.check_out) if item.check_out else ''
                     if item.check_out and item.check_in:
-                        dict['working_hours'] = strfdelta((item.check_out - item.check_in), "{hours}:{minutes}")
+                        dict['working_hours'] = strfdelta((item.check_out - item.check_in), "{hours}.{minutes}")
                     else:
                         dict['working_hours'] = ''
                 except Exception:
@@ -1474,6 +1556,9 @@ class EntryRemove(View):
             try:
                 _, employee = _employee_account(company_id, company_staff_id)
                 entry = Entries.objects.get(id=id, user=employee)
+                if entry.status == Entries.STATUS_APPROVED or entry.is_approved:
+                    messages.error(request, 'Approved timesheet entries cannot be deleted.')
+                    return redirect(f'/employee/entries-detail/{company_id}/{company_staff_id}')
                 entry.delete()
                 messages.success(request, 'Entry deleted successfully.')
             except Entries.DoesNotExist:
@@ -1492,14 +1577,14 @@ class documents(generic.CreateView):
 
 
 def create_entry(request, company_id, company_staff_id):
+    from django.utils.dateparse import parse_datetime
     company_staff = CompanyStaff.objects.get(id=company_staff_id, company_id=company_id)
     emp = Employee.objects.get(user=company_staff)
 
-    # 1. Admin-assigned projects
+    # 1. Admin-assigned projects (specifically assigned to emp or general unassigned projects for this company)
     admin_tasks = Task.objects.filter(
-        assigned_to=emp,
         company_id=company_id
-    )
+    ).filter(Q(assigned_to=emp) | Q(assigned_to__isnull=True))
 
     # 2. Manager-assigned projects
     manager_tasks = MTask.objects.filter(
@@ -1528,7 +1613,11 @@ def create_entry(request, company_id, company_staff_id):
             'display_title': f"{mt.title} (Manager: {mgr_name})",
         })
 
-    assigned_manager = [emp.employee_reports_to] if (emp and emp.employee_reports_to) else []
+    if emp and emp.employee_reports_to:
+        assigned_manager = [emp.employee_reports_to]
+    else:
+        assigned_manager = list(Manager.objects.filter(user__company_id=company_id, user__is_active=True).order_by('manager_first_name'))
+
     context = {
         'assigned': assigned_manager,
         'assigned_projects': assigned_projects,
@@ -1539,23 +1628,49 @@ def create_entry(request, company_id, company_staff_id):
     if company_id:
         if request.method == "POST":
             try:
-                start_time = request.POST.get("start_time")
-                end_time = request.POST.get("end_time")
+                start_time_raw = request.POST.get("start_time")
+                end_time_raw = request.POST.get("end_time")
                 project_id = request.POST.get("project")
+                custom_project = request.POST.get("custom_project", "").strip()
                 task = request.POST.get("task")
                 blocker_name = request.POST.get("blocker_name")
                 attachment = request.FILES.get("attachment")
                 assign_id = request.POST.get("manager_id") or (str(emp.employee_reports_to.id) if emp and emp.employee_reports_to else None)
 
-                if not all([start_time, end_time, project_id, task, assign_id]):
-                    messages.error(request, 'All required fields must be filled.')
+                if not all([start_time_raw, end_time_raw, task]):
+                    messages.error(request, 'Start time, End time, and Task are required.')
                     return render(request, 'employee/create-timesheet.html', context)
 
-                # Look up project title from either Task (Admin) or MTask (Manager)
+                # Parse and make datetimes timezone-aware
+                start_time = parse_datetime(start_time_raw)
+                if not start_time:
+                    try:
+                        start_time = datetime.strptime(start_time_raw, '%Y-%m-%dT%H:%M')
+                    except Exception:
+                        pass
+                if start_time and timezone.is_naive(start_time):
+                    start_time = timezone.make_aware(start_time, timezone.get_current_timezone())
+
+                end_time = parse_datetime(end_time_raw)
+                if not end_time:
+                    try:
+                        end_time = datetime.strptime(end_time_raw, '%Y-%m-%dT%H:%M')
+                    except Exception:
+                        pass
+                if end_time and timezone.is_naive(end_time):
+                    end_time = timezone.make_aware(end_time, timezone.get_current_timezone())
+
+                if not start_time or not end_time:
+                    messages.error(request, 'Invalid start or end date/time format.')
+                    return render(request, 'employee/create-timesheet.html', context)
+
+                # Look up project title from either Task (Admin) or MTask (Manager) or custom entry
                 project_title = None
-                if str(project_id).startswith("admin_"):
+                if project_id == "custom" and custom_project:
+                    project_title = custom_project
+                elif str(project_id).startswith("admin_"):
                     raw_tid = str(project_id).replace("admin_", "")
-                    p_obj = Task.objects.filter(id=raw_tid, assigned_to=emp, company_id=company_id).first()
+                    p_obj = Task.objects.filter(id=raw_tid, company_id=company_id).filter(Q(assigned_to=emp) | Q(assigned_to__isnull=True)).first()
                     if p_obj:
                         project_title = p_obj.title
                 elif str(project_id).startswith("manager_"):
@@ -1566,9 +1681,9 @@ def create_entry(request, company_id, company_staff_id):
                     ).first()
                     if p_obj:
                         project_title = p_obj.title
-                else:
-                    # Fallback if raw numeric ID was sent
-                    p_obj = Task.objects.filter(id=project_id, assigned_to=emp, company_id=company_id).first()
+                elif project_id:
+                    # Fallback if raw ID or direct text was sent
+                    p_obj = Task.objects.filter(id=project_id, company_id=company_id).first()
                     if not p_obj:
                         p_obj = MTask.objects.filter(
                             id=project_id, assigned_to=emp,
@@ -1576,17 +1691,25 @@ def create_entry(request, company_id, company_staff_id):
                         ).first()
                     if p_obj:
                         project_title = p_obj.title
+                    else:
+                        project_title = str(project_id).strip()
+                elif custom_project:
+                    project_title = custom_project
 
                 if not project_title:
-                    messages.error(request, 'Selected project is not assigned to you.')
+                    messages.error(request, 'Please select or specify a project.')
                     return render(request, 'employee/create-timesheet.html', context)
 
-                try:
-                    assigned_to = Manager.objects.get(id=assign_id, user__company_id=company_id)
-                    if assigned_to.id != emp.employee_reports_to_id:
-                        raise Manager.DoesNotExist
-                except Manager.DoesNotExist:
-                    messages.error(request, 'Selected manager not found.')
+                assigned_to = None
+                if assign_id:
+                    assigned_to = Manager.objects.filter(id=assign_id, user__company_id=company_id).first()
+                if not assigned_to and emp and emp.employee_reports_to:
+                    assigned_to = emp.employee_reports_to
+                if not assigned_to:
+                    assigned_to = Manager.objects.filter(user__company_id=company_id, user__is_active=True).first()
+
+                if not assigned_to:
+                    messages.error(request, 'No manager available to assign this timesheet. Please contact administrator.')
                     return render(request, 'employee/create-timesheet.html', context)
 
                 if attachment:

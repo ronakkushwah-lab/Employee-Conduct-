@@ -37,7 +37,7 @@
                       <tbody>
                        	{% for leave in leave_list %}
                         <tr>
-                          <td>{{ leave.leavetype}}</td>
+                          <td>{{ leave.get_leavetype_display|default:leave.leavetype|title }}</td>
                           <td>{{ leave.leave_days}}</td>
                           {% if leave.status == 'rejected' %}
                             <td><span class="status-badge status-rejected">REJECTED</span></td>
@@ -58,7 +58,7 @@
           </div>
         </div>
         <footer class="page-footer">
-          <p class="mb-0">Copyright © 2022. All right reserved.</p>
+          <p class="mb-0">Copyright © Eagle in Cloud. All rights reserved. (<a href="https://www.eagleinclouds.com" target="_blank" style="color: #FC0101; text-decoration: none; font-weight: 600;">www.eagleinclouds.com</a>)</p>
         </footer>
       </div>
     </div>

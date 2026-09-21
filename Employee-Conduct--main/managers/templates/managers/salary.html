@@ -117,7 +117,6 @@
                     <table class="table table-fluid table-hover" id="myTable">
                       <thead>
                         <tr>
-                          <th>Manger</th>
                           <th>Manager ID</th>
                           <th>Email</th>
                           <th>Join Date</th>
@@ -130,7 +129,6 @@
                       <tbody>
                       {% for item in salary  %}
                         <tr>
-                          <td>{{ item.manager.manager_first_name}} {{ item.manager.manager_last_name}}</td>
                           <td>{{ item.manager.manager_id}}</td>
                           <td>{{ item.manager.manager_email}}</td>
                           <td>{{ item.manager.manager_joining_date}}</td>
@@ -149,7 +147,7 @@
           </div>
         </div>
         <footer class="page-footer">
-          <p class="mb-0">Copyright © 2022. All right reserved.</p>
+          <p class="mb-0">Copyright © Eagle in Cloud. All rights reserved. (<a href="https://www.eagleinclouds.com" target="_blank" style="color: #FC0101; text-decoration: none; font-weight: 600;">www.eagleinclouds.com</a>)</p>
         </footer>
       </div>
     </div>

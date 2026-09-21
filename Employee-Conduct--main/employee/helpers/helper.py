@@ -8,71 +8,30 @@ from django.utils.html import escape
 from django.contrib import messages
 
 
-def strfdelta(tdelta, fmt):
+def strfdelta(tdelta, fmt="{hours}.{minutes}"):
     if not tdelta or not isinstance(tdelta, timedelta):
         return ''
     try:
-        # Handle total seconds including days
         total_seconds = int(tdelta.total_seconds())
         hours, rem = divmod(abs(total_seconds), 3600)
         minutes, seconds = divmod(rem, 60)
         
-        # Build dictionary with all possible keys
         d = {
-            "hours": hours,
-            "minutes": minutes,
-            "seconds": seconds
+            "hours": f"{hours:02d}",
+            "minutes": f"{minutes:02d}",
+            "seconds": f"{seconds:02d}"
         }
         
-        # Extract keys from format string
         try:
             keys_in_fmt = re.findall(r'\{(\w+)\}', fmt)
-            # Only use keys that are in the format string
-            filtered_d = {}
-            for key in keys_in_fmt:
-                if key in d:
-                    filtered_d[key] = d[key]
-            
-            # Try formatting with filtered dictionary
+            filtered_d = {key: d[key] for key in keys_in_fmt if key in d}
             if filtered_d:
-                try:
-                    # Escape any literal braces in format string that aren't placeholders
-                    safe_fmt = fmt
-                    result = safe_fmt.format(**filtered_d)
-                    return result
-                except (KeyError, ValueError) as format_err:
-                    # If format still fails, use simple format
-                    pass
-            else:
-                # No valid keys found, use simple format
-                if 'hours' in fmt.lower() and 'minutes' in fmt.lower():
-                    if 'seconds' in fmt.lower():
-                        return "{:d}:{:02d}:{:02d}".format(hours, minutes, seconds)
-                    else:
-                        return "{:d}:{:02d}".format(hours, minutes)
-                else:
-                    return "{:d}:{:02d}".format(hours, minutes)
-        except (KeyError, ValueError, IndexError) as format_error:
-            # If format fails, return simple representation
-            try:
-                if 'seconds' in fmt.lower():
-                    return "{:d}:{:02d}:{:02d}".format(hours, minutes, seconds)
-                else:
-                    return "{:d}:{:02d}".format(hours, minutes)
-            except:
-                return str(tdelta)
-    except (ValueError, AttributeError, TypeError, Exception) as e:
-        # Fallback to simple string representation
-        try:
-            if isinstance(tdelta, timedelta):
-                total_seconds = int(tdelta.total_seconds())
-                hours = total_seconds // 3600
-                minutes = (total_seconds % 3600) // 60
-                return "{:d}:{:02d}".format(hours, minutes)
-            else:
-                return ''
-        except:
-            return ''
+                return fmt.format(**filtered_d)
+            return f"{hours:02d}.{minutes:02d}"
+        except Exception:
+            return f"{hours:02d}.{minutes:02d}"
+    except Exception:
+        return ''
 
 
 def show_message_once(request, message, message_type='error', session_key='message_shown'):

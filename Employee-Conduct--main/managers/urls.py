@@ -69,6 +69,9 @@ urlpatterns = [
     path('assign/list/<int:company_id>/<int:company_staff_id>', views.AssignListView, name='assign-list'),
 
     path('entry-list/<int:company_id>/<int:company_staff_id>', views.EntryListView, name='entry-list'),
+    path('timesheet/approve/<int:company_id>/<int:company_staff_id>/<int:id>/', views.approve_timesheet_entry, name='manager_approve_timesheet'),
+    path('timesheet/reject/<int:company_id>/<int:company_staff_id>/<int:id>/', views.reject_timesheet_entry, name='manager_reject_timesheet'),
+    path('timesheet/bulk-approve/<int:company_id>/<int:company_staff_id>/<int:employee_id>/', views.bulk_approve_timesheet, name='manager_bulk_approve_timesheet'),
     path('entry_remove/<id>', views.EntryRemove.as_view(), name='entry_removes'),
 
 
