@@ -285,50 +285,53 @@ def iclock_cdata(request):
                 # Fall back to standard ADMS text parser
                 body_text_clean = body_text.replace('\x00', '')
                 if body_text_clean:
+                    import logging
+                    logging.getLogger('biometric').info("ADMS cdata POST from %s: %s", source_ip, body_text_clean[:200])
                     lines = [l.strip() for l in body_text_clean.split('\n') if l.strip()]
                     for line in lines:
                         user_id = ''
                         punch_time_str = str(timezone.now())
                         verify_mode = ''
-                        # Handle key-value style (e.g. PIN=101\tTime=...)
+                        # 1. Key-value style: PIN=101\tTime=2026-09-28 19:30:00
                         if '=' in line:
                             kv = {}
                             for item in line.replace('\t', ' ').split():
                                 if '=' in item:
                                     k, v = item.split('=', 1)
                                     kv[k.upper()] = v
-                            user_id = kv.get('PIN') or kv.get('USERID') or kv.get('USER_ID') or kv.get('ENROLLNUMBER')
-                            punch_time_str = kv.get('TIME') or kv.get('PUNCHTIME') or kv.get('DATETIME') or str(timezone.now())
-                            verify_mode = kv.get('STATUS') or kv.get('VERIFY') or ''
+                            user_id = kv.get('PIN') or kv.get('USERID') or kv.get('USER_ID') or kv.get('ENROLLNUMBER') or kv.get('CARD') or ''
+                            punch_time_str = kv.get('TIME') or kv.get('PUNCHTIME') or kv.get('DATETIME') or kv.get('CHECKTIME') or str(timezone.now())
+                            verify_mode = kv.get('STATUS') or kv.get('VERIFY') or kv.get('VERIFYMODE') or ''
+                        # 2. Tab-separated: 4\t2026-09-28 19:30:00\t1\t33 or 4\t2026-09-28\t19:30:00\t1
                         elif '\t' in line:
-                            # Tab separated: user_id \t date \t time \t verify_mode OR user_id \t punch_time \t verify_mode
                             parts = [p.strip() for p in line.split('\t') if p.strip()]
                             user_id = parts[0] if len(parts) > 0 else ''
                             if len(parts) >= 3 and (':' in parts[2] or (len(parts[2]) == 8 and parts[2].isdigit())):
                                 punch_time_str = f"{parts[1]} {parts[2]}"
                                 verify_mode = parts[3] if len(parts) > 3 else ''
-                            else:
-                                punch_time_str = parts[1] if len(parts) > 1 else str(timezone.now())
+                            elif len(parts) >= 2:
+                                punch_time_str = parts[1]
                                 verify_mode = parts[2] if len(parts) > 2 else ''
+                        # 3. Comma-separated: 4,2026-09-28 19:30:00,1
                         elif ',' in line:
-                            # Comma separated
                             parts = [p.strip() for p in line.split(',') if p.strip()]
                             user_id = parts[0] if len(parts) > 0 else ''
                             punch_time_str = parts[1] if len(parts) > 1 else str(timezone.now())
                             verify_mode = parts[2] if len(parts) > 2 else ''
+                        # 4. Space-separated: "4 2026-09-28 19:30:00 1 33" or "4 20260928193000 1 33" or "4 2026-09-28 19:30:00"
                         else:
-                            # Space separated: "101 2026-08-25 13:10:00 1 1"
                             parts = line.split()
                             if len(parts) >= 3 and ('-' in parts[1] or '/' in parts[1]) and ':' in parts[2]:
                                 user_id = parts[0]
                                 punch_time_str = f"{parts[1]} {parts[2]}"
                                 verify_mode = parts[3] if len(parts) > 3 else ''
-                            elif len(parts) >= 2 and ('-' in parts[1] or '/' in parts[1] or ':' in parts[1]):
+                            elif len(parts) >= 2:
                                 user_id = parts[0]
                                 punch_time_str = parts[1]
                                 verify_mode = parts[2] if len(parts) > 2 else ''
-                            else:
-                                continue
+                            elif len(parts) == 1:
+                                user_id = parts[0]
+                                punch_time_str = str(timezone.now())
 
                         if _is_valid_biometric_user_id(user_id):
                             payload = {
@@ -366,7 +369,7 @@ def iclock_cdata(request):
 def iclock_getrequest(request):
     """
     Standard ZKTeco / eSSL / Realtime ADMS command polling endpoint for /iclock/getrequest.
-    Sends DATA QUERY ATTLOG so the machine dumps all stored attendance logs.
+    Returns OK so the device operates in real-time streaming mode without hanging on query loops.
     """
     sn = (request.GET.get('SN') or request.GET.get('sn') or '').strip().replace('\x00', '')
     if sn:
@@ -381,9 +384,7 @@ def iclock_getrequest(request):
             device.last_seen_at = timezone.now()
             device.save(update_fields=['last_seen_at', 'updated'])
 
-    # Send command to machine to upload all stored logs
-    cmd = "C:1:DATA QUERY ATTLOG\n"
-    return HttpResponse(cmd, content_type='text/plain')
+    return HttpResponse("OK\n", content_type='text/plain')
 
 
 @csrf_exempt
