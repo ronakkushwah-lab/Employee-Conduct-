@@ -255,11 +255,24 @@ def iclock_cdata(request):
             # Try to parse as JSON Push Protocol (Secureye / ZK Cloud Push)
             json_data = _extract_json_from_body(body_text)
 
+            # Try to parse as XML Push Protocol (Realtime RS30 / BioMax XML Push)
+            if json_data is None and '<Message' in body_text:
+                try:
+                    from .services import parse_tcp_xml_payload, normalize_tcp_xml_payload
+                    xml_payload = parse_tcp_xml_payload(body_text)
+                    normalized = normalize_tcp_xml_payload(xml_payload)
+                    uid = normalized.get('user_id') or normalized.get('UserID')
+                    if uid and _is_valid_biometric_user_id(uid):
+                        process_biometric_punch(normalized, protocol='tcp_xml_push', source_ip=source_ip, device=device)
+                        inserted_count += 1
+                except Exception as exc:
+                    logging.getLogger('biometric').error("Error parsing XML push: %s", exc)
+
             # Non-attendance table requests (OPERLOG, BIODATA, USER, TEMPLATE, etc.) should only skip if body has no punch data
             is_attendance_table = not table or table in (
                 'ATTLOG', 'ATTLOG_OLD', 'PUNCH', 'RTLOG', 'GLOG', 'REALTIME', 'ATT_LOG', 'LOG', 'TRANSACTION', 'DATA', 'RT_LOG'
             )
-            if not is_attendance_table and json_data is None and not any(ch.isdigit() for ch in body_text):
+            if not is_attendance_table and json_data is None and '<Message' not in body_text and not any(ch.isdigit() for ch in body_text):
                 response = HttpResponse("OK\n", content_type='text/plain')
                 response['response_code'] = 'OK'
                 response['result'] = 'OK'
@@ -459,3 +472,32 @@ def latest_events_api(request):
         'count': len(data),
         'events': data,
     })
+
+
+@csrf_exempt
+def root_router_view(request):
+    """
+    Intelligently routes requests to '/' or '//':
+    - If it is from a biometric machine (contains machine headers, XML, JSON, or ADMS parameters) -> routes to iclock_cdata / push
+    - Otherwise (normal browser GET / POST login) -> routes to standard Login view
+    """
+    is_biometric = False
+    if request.GET.get('SN') or request.GET.get('sn') or request.GET.get('table') or request.GET.get('options'):
+        is_biometric = True
+    elif request.method == 'POST':
+        content_type = request.META.get('CONTENT_TYPE', '')
+        if 'application/x-www-form-urlencoded' in content_type and 'username' in request.POST:
+            is_biometric = False
+        else:
+            body_sample = request.body[:500].decode('utf-8', errors='ignore')
+            if '<Message' in body_sample or '{' in body_sample or any(kw in body_sample.upper() for kw in ('PIN=', 'USERID', 'ATTLOG', 'VERIFY')) or any(c.isdigit() for c in body_sample):
+                is_biometric = True
+            elif 'HTTP/1.0' in request.META.get('SERVER_PROTOCOL', '') and not request.POST:
+                is_biometric = True
+
+    if is_biometric:
+        return iclock_cdata(request)
+
+    from account.views import Login
+    return Login.as_view()(request)
+
