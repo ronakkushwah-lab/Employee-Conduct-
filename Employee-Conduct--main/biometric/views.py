@@ -373,7 +373,8 @@ def iclock_cdata(request):
 @csrf_exempt
 def iclock_getrequest(request):
     """
-    Standard ZKTeco / eSSL ADMS command polling endpoint for /iclock/getrequest.
+    Standard ZKTeco / eSSL / Realtime ADMS command polling endpoint for /iclock/getrequest.
+    Sends DATA QUERY ATTLOG so the machine dumps all stored attendance logs.
     """
     sn = (request.GET.get('SN') or request.GET.get('sn') or '').strip().replace('\x00', '')
     if sn:
@@ -388,7 +389,9 @@ def iclock_getrequest(request):
             device.last_seen_at = timezone.now()
             device.save(update_fields=['last_seen_at', 'updated'])
 
-    return HttpResponse("OK\n", content_type='text/plain')
+    # Send command to machine to upload all stored logs
+    cmd = "C:1:DATA QUERY ATTLOG\n"
+    return HttpResponse(cmd, content_type='text/plain')
 
 
 @csrf_exempt
