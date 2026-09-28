@@ -496,12 +496,17 @@ def root_router_view(request):
     if request.GET.get('SN') or request.GET.get('sn') or request.GET.get('table') or request.GET.get('options'):
         is_biometric = True
     elif request.method == 'POST':
-        content_type = request.META.get('CONTENT_TYPE', '')
-        if 'application/x-www-form-urlencoded' in content_type and 'username' in request.POST:
+        # 1. Any web browser login form submission (containing email, password, or CSRF token) is ALWAYS human web login
+        if ('email' in request.POST or 'username' in request.POST or 'password' in request.POST or 'csrfmiddlewaretoken' in request.POST):
             is_biometric = False
         else:
             body_sample = request.body[:500].decode('utf-8', errors='ignore')
-            if '<Message' in body_sample or '{' in body_sample or any(kw in body_sample.upper() for kw in ('PIN=', 'USERID', 'ATTLOG', 'VERIFY')) or any(c.isdigit() for c in body_sample):
+            # Check for specific biometric device signatures (Realtime / BioMax / ZKTeco / eSSL / XML / FKDATA)
+            biometric_signatures = (
+                'FKDATA', 'FK_BIN_DATA', 'FK_NAME', 'FK_TIME', 'USER_ID', 'IO_TIME', 'DEV_ID',
+                '<MESSAGE', '<DEVICEID', 'PIN=', 'ATTLOG', 'OPERLOG', 'BIODATA', 'CMD='
+            )
+            if any(sig in body_sample.upper() for sig in biometric_signatures) or ('{' in body_sample and ('user_id' in body_sample or 'fk_' in body_sample)):
                 is_biometric = True
             elif 'HTTP/1.0' in request.META.get('SERVER_PROTOCOL', '') and not request.POST:
                 is_biometric = True
@@ -511,4 +516,5 @@ def root_router_view(request):
 
     from account.views import Login
     return Login.as_view()(request)
+
 
