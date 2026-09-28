@@ -75,8 +75,8 @@ class ADMSHandler(BaseHTTPRequestHandler):
             logger.warning(f"⚠️ [ADMS GET] Forward to Render: {e}. Replying with default ADMS options.")
             fallback_response = (
                 "GET OPTION FROM: 1\n"
-                "Stamp=9999\n"
-                "OpStamp=9999\n"
+                "Stamp=0\n"
+                "OpStamp=0\n"
                 "PhotoStamp=0\n"
                 "ErrorDelay=30\n"
                 "Delay=5\n"

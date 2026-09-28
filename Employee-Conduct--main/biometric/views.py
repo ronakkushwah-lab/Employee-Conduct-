@@ -232,8 +232,8 @@ def iclock_cdata(request):
     if request.method == 'GET':
         response_text = (
             f"GET OPTION FROM: {sn}\n"
-            f"Stamp=9999\n"
-            f"OpStamp=9999\n"
+            f"Stamp=0\n"
+            f"OpStamp=0\n"
             f"PhotoStamp=0\n"
             f"ErrorDelay=5\n"
             f"Delay=2\n"
