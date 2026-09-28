@@ -250,6 +250,7 @@ def iclock_cdata(request):
     if request.method == 'POST':
         try:
             body_text = request.body.decode('utf-8', errors='ignore')
+            print(f">>> [BIOMETRIC POST] Path={request.path}, Table={table}, SN={sn}, Body={repr(body_text[:300])}", flush=True)
             inserted_count = 0
 
             # Try to parse as JSON Push Protocol (Secureye / ZK Cloud Push)
@@ -360,6 +361,21 @@ def iclock_cdata(request):
             if device and inserted_count > 0:
                 device.last_punch_at = timezone.now()
                 device.save(update_fields=['last_punch_at', 'updated'])
+
+            if json_data is not None:
+                resp_payload = {
+                    'response_code': 'OK',
+                    'result': 'OK',
+                    'status': 'SUCCESS',
+                    'ret': 'OK',
+                    'count': max(1, inserted_count),
+                }
+                response = JsonResponse(resp_payload)
+                response['response_code'] = 'OK'
+                response['result'] = 'OK'
+                response['status'] = 'SUCCESS'
+                response['code'] = '200'
+                return response
 
             ack_count = max(1, inserted_count) if (json_punches or len(body_text) > 0) else inserted_count
             response_text = f"OK: {ack_count}\n" if ack_count > 0 else "OK\n"
