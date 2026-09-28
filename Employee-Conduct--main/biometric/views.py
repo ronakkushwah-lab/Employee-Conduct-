@@ -363,14 +363,9 @@ def iclock_cdata(request):
                 device.save(update_fields=['last_punch_at', 'updated'])
 
             if json_data is not None:
-                resp_payload = {
-                    'response_code': 'OK',
-                    'result': 'OK',
-                    'status': 'SUCCESS',
-                    'ret': 'OK',
-                    'count': max(1, inserted_count),
-                }
-                response = JsonResponse(resp_payload)
+                response = HttpResponse('', content_type='text/plain')
+                response['Content-Length'] = '0'
+                response['Cache-Control'] = 'no-store'
                 response['response_code'] = 'OK'
                 response['result'] = 'OK'
                 response['status'] = 'SUCCESS'

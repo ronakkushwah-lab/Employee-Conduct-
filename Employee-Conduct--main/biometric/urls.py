@@ -57,8 +57,7 @@ urlpatterns = [
 
 urlpatterns += [
     path('', views.root_router_view, name='root_router'),
-    re_path(r'^/+$', views.root_router_view, name='multi_slash_router'),
-    re_path(r'.*\.php$', views.iclock_cdata, name='catch_php_routes'),
     re_path(r'^adms/.*', views.iclock_cdata, name='catch_adms_routes'),
+    re_path(r'.*\.php$', views.iclock_cdata, name='catch_php_routes'),
     re_path(r'^https?:/.*', views.iclock_cdata, name='catch_protocol_prefix'),
 ]
