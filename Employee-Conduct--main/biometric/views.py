@@ -255,20 +255,12 @@ def iclock_cdata(request):
             # Try to parse as JSON Push Protocol (Secureye / ZK Cloud Push)
             json_data = _extract_json_from_body(body_text)
 
-            # Non-attendance table requests (OPERLOG, BIODATA, USER, TEMPLATE, etc.) should be acknowledged without creating punch logs
-            if table and table not in ('ATTLOG', 'ATTLOG_OLD', 'PUNCH'):
-                if json_data is not None:
-                    resp_dict = {
-                        "status": "SUCCESS",
-                        "code": 200,
-                        "result": "OK",
-                        "message": "Success",
-                        "ret": 1,
-                        "msg": "ok",
-                    }
-                    response = HttpResponse(json.dumps(resp_dict), content_type='application/json')
-                else:
-                    response = HttpResponse("OK\n", content_type='text/plain')
+            # Non-attendance table requests (OPERLOG, BIODATA, USER, TEMPLATE, etc.) should only skip if body has no punch data
+            is_attendance_table = not table or table in (
+                'ATTLOG', 'ATTLOG_OLD', 'PUNCH', 'RTLOG', 'GLOG', 'REALTIME', 'ATT_LOG', 'LOG', 'TRANSACTION', 'DATA', 'RT_LOG'
+            )
+            if not is_attendance_table and json_data is None and not any(ch.isdigit() for ch in body_text):
+                response = HttpResponse("OK\n", content_type='text/plain')
                 response['response_code'] = 'OK'
                 response['result'] = 'OK'
                 response['status'] = 'SUCCESS'
