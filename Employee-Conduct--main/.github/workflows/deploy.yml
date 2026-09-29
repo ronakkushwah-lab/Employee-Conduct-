@@ -11,7 +11,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: SSH into EC2 and Deploy
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Copy Repository Files to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          source: "."
+          target: "/home/ec2-user/employeeconduct"
+          rm: false
+
+      - name: Execute Remote Deployment Script on EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -19,26 +33,23 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           script: |
-            echo "Starting deployment of main branch to EC2..."
+            echo "=== Starting Automated EC2 Deployment ==="
             cd /home/ec2-user/employeeconduct
             
-            # Fetch latest changes and switch to main
-            git fetch origin main
-            git checkout main
-            git pull origin main
-            
-            # Activate Python virtual environment and update packages
+            # 1. Activate Python environment
             source venv/bin/activate
+            
+            # 2. Install any new dependencies
             pip install -r requirements.txt --quiet
             
-            # Run database migrations
+            # 3. Apply database migrations
             python manage.py migrate --noinput
             
-            # Restart only Employee Conduct process on port 8001
+            # 4. Safely restart only Employee Conduct on Port 8001
             sudo fuser -k 8001/tcp || true
             nohup python -u manage.py runserver 0.0.0.0:8001 > django.log 2>&1 &
             
-            # Verify port 8001 is active
+            # 5. Verify server is listening
             sleep 3
             sudo lsof -i :8001
-            echo "Deployment to EC2 Port 8001 completed successfully!"
+            echo "=== Deployment to EC2 Port 8001 Completed Successfully ==="
