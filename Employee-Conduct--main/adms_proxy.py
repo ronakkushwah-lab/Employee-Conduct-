@@ -4,7 +4,7 @@ import socket
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import requests
 
-RENDER_BASE_URL = os.getenv('RENDER_URL', 'https://employee-conduct-mcak.onrender.com').rstrip('/')
+CLOUD_BASE_URL = os.getenv('BIOMETRIC_SERVER_URL', os.getenv('CLOUD_URL', 'http://50.19.21.0:8001')).rstrip('/')
 LOCAL_PORT = int(os.getenv('ADMS_LOCAL_PORT', '8080'))
 
 def get_laptop_ip():
@@ -30,10 +30,10 @@ class ADMSProxyHandler(BaseHTTPRequestHandler):
         return clean
 
     def do_GET(self):
-        target_url = f"{RENDER_BASE_URL}{self._normalize_path(self.path)}"
+        target_url = f"{CLOUD_BASE_URL}{self._normalize_path(self.path)}"
         headers = {
             'User-Agent': 'ADMS-Proxy',
-            'Referer': f"{RENDER_BASE_URL}/",
+            'Referer': f"{CLOUD_BASE_URL}/",
         }
         try:
             print(f"[ADMS IN] GET {self.path}")
@@ -55,10 +55,10 @@ class ADMSProxyHandler(BaseHTTPRequestHandler):
     def do_POST(self):
         content_length = int(self.headers.get('Content-Length', 0))
         body = self.rfile.read(content_length) if content_length > 0 else b''
-        target_url = f"{RENDER_BASE_URL}{self._normalize_path(self.path)}"
+        target_url = f"{CLOUD_BASE_URL}{self._normalize_path(self.path)}"
         headers = {
             'Content-Type': 'text/plain',
-            'Referer': f"{RENDER_BASE_URL}/",
+            'Referer': f"{CLOUD_BASE_URL}/",
             'User-Agent': 'ADMS-Proxy',
         }
         try:
@@ -88,7 +88,7 @@ def run():
     print("=" * 65)
     print(f" Laptop Local IP Address : {laptop_ip}")
     print(f" Listening on Port       : {LOCAL_PORT}")
-    print(f" Forwarding to Cloud     : {RENDER_BASE_URL}")
+    print(f" Forwarding to Cloud     : {CLOUD_BASE_URL}")
     print("-" * 65)
     print(f" ON YOUR BIOMETRIC MACHINE:")
     print(f"   1. Menu -> Comm. -> Cloud Server / ADMS")

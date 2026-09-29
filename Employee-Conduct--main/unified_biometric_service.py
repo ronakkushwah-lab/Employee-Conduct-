@@ -10,7 +10,7 @@ from datetime import datetime
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import requests
 
-RENDER_CLOUD_URL = os.getenv('RENDER_URL', 'https://employee-conduct-mcak.onrender.com').rstrip('/')
+CLOUD_SERVER_URL = os.getenv('BIOMETRIC_SERVER_URL', os.getenv('CLOUD_URL', 'http://50.19.21.0:8001')).rstrip('/')
 DEFAULT_DEVICE_ID = os.getenv('BIOMETRIC_DEVICE_ID', '1')
 
 logging.basicConfig(
@@ -60,10 +60,10 @@ class ADMSHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         norm_path = self._normalize_path(self.path)
-        target_url = f"{RENDER_CLOUD_URL}{norm_path}"
+        target_url = f"{CLOUD_SERVER_URL}{norm_path}"
         client_ip = self.client_address[0]
         try:
-            resp = requests.get(target_url, headers={'User-Agent': 'ADMS-Proxy', 'Referer': f"{RENDER_CLOUD_URL}/"}, timeout=8)
+            resp = requests.get(target_url, headers={'User-Agent': 'ADMS-Proxy', 'Referer': f"{CLOUD_SERVER_URL}/"}, timeout=8)
             self.send_response(resp.status_code)
             for k, v in resp.headers.items():
                 if k.lower() in ('content-type', 'content-length'):
@@ -72,7 +72,7 @@ class ADMSHandler(BaseHTTPRequestHandler):
             self.wfile.write(resp.content)
             logger.info(f"🟢 [ADMS CONNECTED] Machine at {client_ip} sent handshake -> {self.path} (HTTP {resp.status_code})")
         except Exception as e:
-            logger.warning(f"⚠️ [ADMS GET] Forward to Render: {e}. Replying with default ADMS options.")
+            logger.warning(f"⚠️ [ADMS GET] Forward to Cloud Server ({CLOUD_SERVER_URL}): {e}. Replying with default ADMS options.")
             fallback_response = (
                 "GET OPTION FROM: 1\n"
                 "Stamp=0\n"
@@ -98,7 +98,7 @@ class ADMSHandler(BaseHTTPRequestHandler):
         content_length = int(self.headers.get('Content-Length', 0))
         body = self.rfile.read(content_length) if content_length > 0 else b''
         norm_path = self._normalize_path(self.path)
-        target_url = f"{RENDER_CLOUD_URL}{norm_path}"
+        target_url = f"{CLOUD_SERVER_URL}{norm_path}"
         client_ip = self.client_address[0]
 
         body_decoded = body.decode('utf-8', errors='ignore').strip()
@@ -108,7 +108,7 @@ class ADMSHandler(BaseHTTPRequestHandler):
             logger.info(f"   ↳ Punch Data: {l}")
 
         try:
-            resp = requests.post(target_url, data=body, headers={'Content-Type': 'text/plain', 'Referer': f"{RENDER_CLOUD_URL}/", 'User-Agent': 'ADMS-Proxy'}, timeout=10)
+            resp = requests.post(target_url, data=body, headers={'Content-Type': 'text/plain', 'Referer': f"{CLOUD_SERVER_URL}/", 'User-Agent': 'ADMS-Proxy'}, timeout=10)
             self.send_response(resp.status_code)
             for k, v in resp.headers.items():
                 if k.lower() in ('content-type', 'content-length'):
@@ -116,9 +116,9 @@ class ADMSHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(resp.content)
             cloud_result = resp.text.strip()
-            logger.info(f"✅ [RENDER SYNC SUCCESS] Cloud Response: {cloud_result} (HTTP {resp.status_code})")
+            logger.info(f"✅ [CLOUD SYNC SUCCESS] Server Response: {cloud_result} (HTTP {resp.status_code})")
         except Exception as e:
-            logger.error(f"❌ [RENDER SYNC FAILED] Forwarding to Render failed: {e}")
+            logger.error(f"❌ [CLOUD SYNC FAILED] Forwarding to Server ({CLOUD_SERVER_URL}) failed: {e}")
             self.send_response(200)
             self.send_header('Content-Type', 'text/plain')
             self.end_headers()
@@ -220,19 +220,19 @@ def handle_tcp_client(client, addr):
                         'verify_mode': str(body_json.get('verify_mode') or 1),
                     }
                     try:
-                        resp = requests.post(f"{RENDER_CLOUD_URL}/api/attendance/biometric-punch/", json=payload, timeout=8)
-                        logger.info(f"✅ [RENDER SYNC SUCCESS] Cloud Response: {resp.text.strip()} (HTTP {resp.status_code})")
+                        resp = requests.post(f"{CLOUD_SERVER_URL}/api/attendance/biometric-punch/", json=payload, timeout=8)
+                        logger.info(f"✅ [CLOUD SYNC SUCCESS] Server Response: {resp.text.strip()} (HTTP {resp.status_code})")
                     except Exception as err:
-                        logger.error(f"❌ [RENDER SYNC ERROR] {err}")
+                        logger.error(f"❌ [CLOUD SYNC ERROR] {err}")
                 else:
                     logger.info(f"ℹ️ [SECUREYE HEARTBEAT/DEVICE EVENT] Dev: {dev_id}, Data: {body_json}")
         else:
             # XML Push
             client.sendall(b"<Response><Status>OK</Status></Response>\r\n")
             try:
-                url = f"{RENDER_CLOUD_URL}/api/attendance/http-push/"
+                url = f"{CLOUD_SERVER_URL}/api/attendance/http-push/"
                 resp = requests.post(url, data=data, timeout=8)
-                logger.info(f"✅ [XML-PUSH SYNCED] Saved to Render Cloud: {resp.text.strip()}")
+                logger.info(f"✅ [XML-PUSH SYNCED] Saved to Cloud Server: {resp.text.strip()}")
             except Exception as e:
                 logger.error(f"XML-push forward error: {e}")
     except Exception as exc:
@@ -282,10 +282,10 @@ def run_pyzk_auto_scanner():
                                     'device_id': DEFAULT_DEVICE_ID,
                                     'verify_mode': str(getattr(r, 'status', 1)),
                                 }
-                                url = f"{RENDER_CLOUD_URL}/api/attendance/biometric-punch/"
+                                url = f"{CLOUD_SERVER_URL}/api/attendance/biometric-punch/"
                                 resp = requests.post(url, json=payload, timeout=5)
                                 last_synced_time = r.timestamp
-                                logger.info(f"✅ [PYZK SYNC SUCCESS] Render Cloud: {resp.text.strip()}")
+                                logger.info(f"✅ [PYZK SYNC SUCCESS] Cloud Server: {resp.text.strip()}")
                         conn.disconnect()
                         break
                     except Exception:
@@ -301,13 +301,13 @@ def main():
     primary_ip = local_ips[0]
 
     print("\n" + "=" * 72)
-    print("   HRMS SECUREYE & MULTI-BRAND LIVE BIOMETRIC DAEMON -> RENDER")
+    print("   HRMS SECUREYE & MULTI-BRAND LIVE BIOMETRIC DAEMON -> CLOUD SERVER")
     print("=" * 72)
     print(f"  [1] Your Laptop Wi-Fi IP Address : {primary_ip}")
     if len(local_ips) > 1:
         print(f"      Alternative Local IPs        : {', '.join(local_ips[1:])}")
     print(f"  [2] Active Listening Ports       : 5005 (Secureye), 8080, 80")
-    print(f"  [3] Render Cloud Destination     : {RENDER_CLOUD_URL}")
+    print(f"  [3] Cloud Server Destination     : {CLOUD_SERVER_URL}")
     print("-" * 72)
     print("  ON YOUR SECUREYE BIOMETRIC MACHINE MENU:")
     print(f"   Step 1: Press Menu -> Network (or Comm.) -> Server (or Push Server)")
