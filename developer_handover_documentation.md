@@ -26,10 +26,11 @@ graph TD
 
 ### Infrastructure & Hosting
 - **Server:** AWS EC2 Instance (`50.19.21.0`, Amazon Linux, user: `ec2-user`)
+- **Live Production URL (SSL):** `https://eagleinclouds.com/hrms/`
 - **Port Mapping:**
-  - `Port 8001`: Django HRMS Application (`/home/ec2-user/employeeconduct`)
-  - `Port 3001`: Next.js Main Website (`eagleincloud_next`)
-  - `Ports 80 / 443`: Nginx reverse proxy
+  - `Port 8001`: Django HRMS Application (`/home/ec2-user/employeeconduct` -> `https://eagleinclouds.com/hrms/`)
+  - `Port 3000`: Next.js Main Website (`https://eagleinclouds.com/`)
+  - `Ports 80 / 443`: Nginx reverse proxy with automated SSL (Let's Encrypt Certbot)
 - **Version Control & CI/CD:**
   - Active branches: `main` (production deployment via GitHub Actions `.github/workflows/deploy.yml`) and `employee_conduct_v2` (active development branch).
   - SSH Deployment Secret: `EMP_CON`
