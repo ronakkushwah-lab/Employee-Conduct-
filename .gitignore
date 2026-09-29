@@ -12,6 +12,13 @@
 .env.*
 !.env.example
 local_settings.py
+*.pem
+*.ppk
+
+# Database Backups & Dumps
+*.sql
+neon_backup_*
+
 
 # Python
 __pycache__/
