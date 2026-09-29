@@ -1441,6 +1441,7 @@ def ChangePassword(request):
                 # 1. Update CompanyStaff password
                 if company_staff:
                     company_staff.password = make_password(new_pas)
+                    company_staff.password_changed_at = timezone.now()
                     company_staff.save()
 
                 # 2. Update Django User password if exists

@@ -381,6 +381,15 @@ class Login(View):
                         messages.info(request, "Incorrect Email or Password")
                         return HttpResponseRedirect('/')
 
+                    # Check 60-day (2-month) password expiration policy
+                    if company_staff.is_password_expired(expiry_days=60):
+                        request.session['company_staff_id'] = company_staff.id
+                        request.session['password_expired'] = True
+                        return redirect('expired_password_change')
+
+                    # Password is valid and within 60 days
+                    if 'password_expired' in request.session:
+                        del request.session['password_expired']
                     company_staff.is_authenticated = True
                     company_staff.save()
                     request.session['company_staff_id'] = company_staff.id
@@ -475,6 +484,7 @@ def forgotpass(request):
 
         user = get_object_or_404(CompanyStaff, email=email)
         user.password = make_password(password)
+        user.password_changed_at = timezone.now()
         user.save()
 
         from django.contrib.auth.models import User as DjangoUser
@@ -566,6 +576,7 @@ def reset_password_confirm(request, uidb64, token):
                     'email': user.email
                 })
             user.password = make_password(password)
+            user.password_changed_at = timezone.now()
             user.save()
 
             from django.contrib.auth.models import User as DjangoUser
@@ -581,6 +592,91 @@ def reset_password_confirm(request, uidb64, token):
         return render(request, 'account/password_reset_confirm.html', {'validlink': True, 'email': user.email})
     else:
         return render(request, 'account/password_reset_confirm.html', {'validlink': False})
+
+
+def expired_password_change(request):
+    """
+    Forces user to change password after 60 days (2-month expiration policy).
+    Once updated, password_changed_at is reset to now and user is routed to their dashboard.
+    """
+    company_staff_id = request.session.get('company_staff_id')
+    if not company_staff_id:
+        return redirect('/')
+
+    staff = get_object_or_404(CompanyStaff, id=company_staff_id)
+
+    if request.method == 'POST':
+        old_password = request.POST.get('old_password', '').strip()
+        new_password = request.POST.get('new_password', '').strip()
+        confirm_password = request.POST.get('confirm_password', '').strip()
+
+        # 1. Validate old password
+        if not check_password(old_password, staff.password):
+            messages.error(request, 'Current password entered is incorrect.')
+            return render(request, 'account/expired_password.html', {'staff': staff})
+
+        # 2. Validate new password match
+        if new_password != confirm_password:
+            messages.error(request, 'New password and confirm password do not match.')
+            return render(request, 'account/expired_password.html', {'staff': staff})
+
+        # 3. Validate new password length
+        if len(new_password) < 6:
+            messages.error(request, 'New password must be at least 6 characters long.')
+            return render(request, 'account/expired_password.html', {'staff': staff})
+
+        # 4. Prevent reusing the same password
+        if old_password == new_password:
+            messages.error(request, 'New password cannot be identical to your expired password.')
+            return render(request, 'account/expired_password.html', {'staff': staff})
+
+        # Update CompanyStaff
+        staff.password = make_password(new_password)
+        staff.password_changed_at = timezone.now()
+        staff.is_authenticated = True
+        staff.save()
+
+        # Update Django User model if exists
+        if staff.email:
+            from django.contrib.auth.models import User as DjangoUser
+            dj_user = DjangoUser.objects.filter(email=staff.email).first()
+            if dj_user:
+                dj_user.set_password(new_password)
+                dj_user.save()
+
+        # Clear expired flag in session
+        if 'password_expired' in request.session:
+            del request.session['password_expired']
+        request.session['company_staff_id'] = staff.id
+        request.session["new_notification"] = getattr(staff, 'new_notification', False)
+
+        sweetify.success(request, 'Password Updated Successfully', text='Your password has been renewed for the next 60 days.', timer=4000)
+        messages.success(request, 'Password updated successfully!')
+
+        # Route directly to user's dashboard based on role
+        role = getattr(staff, 'role', None) or Login._role_from_flags(staff)
+        is_hr_user = role == CompanyStaff.ROLE_HR or getattr(staff, 'is_hr', False)
+
+        if role == CompanyStaff.ROLE_SUPERADMIN:
+            return HttpResponseRedirect('/superadmin/')
+        if (role == CompanyStaff.ROLE_ADMIN or staff.is_company_admin) and staff.company_id:
+            return HttpResponseRedirect(reverse('admin_dashboard', kwargs={
+                'company_id': staff.company_id,
+                'company_staff_id': staff.pk,
+            }))
+        if is_hr_user and staff.company_id:
+            return HttpResponseRedirect(reverse('hr_dashboard', kwargs={
+                'company_id': staff.company_id,
+                'company_staff_id': staff.pk,
+            }))
+        if (role == CompanyStaff.ROLE_MANAGER or staff.is_manager) and staff.company_id:
+            return HttpResponseRedirect(f"/managers/dashboard/{staff.company_id}/{staff.pk}/")
+        if (role == CompanyStaff.ROLE_EMPLOYEE or staff.is_employee) and staff.company_id:
+            return HttpResponseRedirect(f"/employee/employee_dashboard/{staff.company_id}/{staff.pk}/")
+
+        return HttpResponseRedirect('/')
+
+    return render(request, 'account/expired_password.html', {'staff': staff})
 
 
 def hr_dashboard(request, company_id, company_staff_id):

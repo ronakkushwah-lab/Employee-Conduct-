@@ -2091,6 +2091,7 @@ def ChangePassword(request,company_id, company_staff_id):
             check=check_password(password, user.password)
             if check == True:
                 user.password=make_password(new_pas)
+                user.password_changed_at = timezone.now()
                 user.save()
 
                 from django.contrib.auth.models import User as DjangoUser

@@ -102,6 +102,7 @@ class CompanyStaff(models.Model):
     company = models.ForeignKey(Company,on_delete=models.CASCADE, null=True,blank=True)
     email = models.EmailField(_('email address'),null=True,blank=True)
     password = models.CharField(max_length=255, null=True, blank=True)
+    password_changed_at = models.DateTimeField(default=timezone.now, null=True, blank=True)
     role = models.CharField(
         _('role'),
         max_length=20,
@@ -132,6 +133,19 @@ class CompanyStaff(models.Model):
             return True
 
         return False
+
+    def is_password_expired(self, expiry_days=60):
+        """Check if password is older than expiry_days (default 60 days / 2 months)."""
+        if not self.password_changed_at:
+            return False
+        return timezone.now() > (self.password_changed_at + timezone.timedelta(days=expiry_days))
+
+    def days_until_password_expiry(self, expiry_days=60):
+        """Returns number of days remaining until password expires."""
+        if not self.password_changed_at:
+            return expiry_days
+        delta = (self.password_changed_at + timezone.timedelta(days=expiry_days)) - timezone.now()
+        return max(0, delta.days)
 
     def save(self, *args, **kwargs):
         # Keep role in sync with legacy flags when role is not explicitly set
