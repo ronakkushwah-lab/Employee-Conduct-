@@ -379,7 +379,7 @@ class Login(View):
                     flag = check_password(password, company_staff.password)
                     if not flag:
                         messages.info(request, "Incorrect Email or Password")
-                        return HttpResponseRedirect('/')
+                        return HttpResponseRedirect('/hrms/')
 
                     # Check 60-day (2-month) password expiration policy
                     if company_staff.is_password_expired(expiry_days=60):
@@ -487,7 +487,7 @@ def forgotpass(request):
             dj_user.set_password(password)
             dj_user.save()
 
-        return HttpResponseRedirect('/')
+        return HttpResponseRedirect('/hrms/')
 
     return render(request, "account/forgot_pass.html", context)
 
@@ -581,7 +581,7 @@ def reset_password_confirm(request, uidb64, token):
 
             sweetify.success(request, 'Password Reset Successful', text='Your password has been changed. Please sign in.', persistent='OK')
             messages.success(request, "Your password has been reset successfully! Please sign in with your new password.")
-            return redirect('/')
+            return redirect('/hrms/')
 
         return render(request, 'account/password_reset_confirm.html', {'validlink': True, 'email': user.email})
     else:
@@ -595,7 +595,7 @@ def expired_password_change(request):
     """
     company_staff_id = request.session.get('company_staff_id')
     if not company_staff_id:
-        return redirect('/')
+        return redirect('/hrms/')
 
     staff = get_object_or_404(CompanyStaff, id=company_staff_id)
 
