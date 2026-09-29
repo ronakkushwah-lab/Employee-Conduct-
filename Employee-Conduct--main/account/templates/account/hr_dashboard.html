@@ -92,7 +92,7 @@
                     <div class="col-4">
                       <div class="p-2 rounded bg-light">
                         <span class="text-muted d-block small mb-1">Worked</span>
-                        <strong class="text-success small">{{ hr_hours_num|default:"0h 0m" }}</strong>
+                        <strong class="text-success small time-spend-today">{{ hr_hours_num|default:"0h 0m" }}</strong>
                       </div>
                     </div>
                   </div>
@@ -112,6 +112,9 @@
                         {{ hr_is_check_in }}
                       </button>
                     </form>
+                  {% endif %}
+                  {% if hr_attendance.check_in and hr_is_check_in != 'Completed' %}
+                    <span id="check_in_time" style="display:none;">{{ hr_attendance.check_in|date:"c" }}</span>
                   {% endif %}
                   <div class="d-flex justify-content-center justify-content-md-end gap-2 mt-1">
                     <a href="{% url 'attendance' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-outline-secondary btn-xs small py-1 px-2" style="font-size: 0.78rem;" title="View Monthly Attendance Calendar">
@@ -281,6 +284,29 @@
         var p = document.getElementById('preloader');
         if (p) p.style.display = 'none';
       }, 300);
+
+      // Live Elapsed Worked Time Counter
+      $(document).ready(function() {
+        var checkInElem = document.getElementById("check_in_time");
+        if (checkInElem) {
+          var checkInStr = checkInElem.textContent.trim();
+          if (checkInStr) {
+            var checkInTime = new Date(checkInStr);
+            function updateTimer() {
+              var now = new Date();
+              var diffMs = now - checkInTime;
+              if (diffMs < 0) diffMs = 0;
+              var diffSecs = Math.floor(diffMs / 1000);
+              var hours = Math.floor(diffSecs / 3600);
+              var minutes = Math.floor((diffSecs % 3600) / 60);
+              var formattedTime = hours + "h " + minutes + "m";
+              $(".time-spend-today").text(formattedTime);
+            }
+            updateTimer();
+            setInterval(updateTimer, 1000);
+          }
+        }
+      });
 
       (function() {
         let lastKnownEventId = null;

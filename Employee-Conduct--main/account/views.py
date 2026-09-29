@@ -694,6 +694,8 @@ def hr_dashboard(request, company_id, company_staff_id):
 
     # Personal HR Employee profile & Reporting Manager
     hr_employee = Employee.objects.filter(user=staff).first()
+    if not hr_employee and staff.email:
+        hr_employee = Employee.objects.filter(employee_email=staff.email).first()
     hr_manager = hr_employee.employee_reports_to if hr_employee else None
     hr_attendance = None
     hr_is_check_in = 'Check In'
@@ -705,18 +707,23 @@ def hr_dashboard(request, company_id, company_staff_id):
             employee=hr_employee,
             check_in__gte=today_start,
             check_in__lte=today_end
-        ).first()
+        ).order_by('-id').first()
 
         if hr_attendance:
             if hr_attendance.check_out and hr_attendance.check_in:
                 time_diff = hr_attendance.check_out - hr_attendance.check_in
-                total_seconds = int(time_diff.total_seconds())
+                total_seconds = max(0, int(time_diff.total_seconds()))
                 hours = total_seconds // 3600
                 minutes = (total_seconds % 3600) // 60
-                hr_hours_num = f"{hours:02d}.{minutes:02d}"
+                hr_hours_num = f"{hours}h {minutes}m"
                 hr_is_check_in = 'Completed'
             elif hr_attendance.check_in and not hr_attendance.check_out:
                 hr_is_check_in = 'Check Out'
+                time_diff = timezone.now() - hr_attendance.check_in
+                total_seconds = max(0, int(time_diff.total_seconds()))
+                hours = total_seconds // 3600
+                minutes = (total_seconds % 3600) // 60
+                hr_hours_num = f"{hours}h {minutes}m"
 
     is_admin = bool(staff and (staff.is_company_admin or staff.role in [CompanyStaff.ROLE_ADMIN, CompanyStaff.ROLE_SUPERADMIN]))
 
