@@ -17,9 +17,9 @@ jobs:
       - name: Copy Repository Files to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
+          host: 50.19.21.0
+          username: ec2-user
+          key: ${{ secrets.EMP_CON }}
           port: 22
           source: "."
           target: "/home/ec2-user/employeeconduct"
@@ -28,9 +28,9 @@ jobs:
       - name: Execute Remote Deployment Script on EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
+          host: 50.19.21.0
+          username: ec2-user
+          key: ${{ secrets.EMP_CON }}
           port: 22
           script: |
             echo "=== Starting Automated EC2 Deployment ==="
