@@ -121,6 +121,10 @@
     gradientStroke7.addColorStop(0, ' #00b09b');
     gradientStroke7.addColorStop(0.5, '#96c93d');
 
+    var empCount = Number("{{ employee_count|default:0 }}");
+    var clientCount = Number("{{ clients_count|default:0 }}");
+    var projCount = Number("{{ projects_count|default:0 }}");
+
     var myChart = new Chart(ctx, {
       type: 'pie',
       data: {
@@ -136,18 +140,18 @@
                 gradientStroke6,
                 gradientStroke7
             ],
-    		data: [{{ employee_count }}, {{ clients_count  }},{{ projects_count }}],
-            }]
+            data: [empCount, clientCount, projCount],
+        }]
+      },
+      options: {
+        maintainAspectRatio: false,
+        legend: {
+            display: false
         },
-        options: {
-            maintainAspectRatio: false,
-            legend: {
-                display: false
-            },
-            tooltips: {
-    			displayColors:false
-            }
+        tooltips: {
+            displayColors: false
         }
+      }
     });
 });
                     </script>
