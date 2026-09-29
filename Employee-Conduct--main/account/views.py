@@ -399,39 +399,33 @@ class Login(View):
 
                     # Smart auto-routing based on role - redirect directly to portal dashboards
                     if role == CompanyStaff.ROLE_SUPERADMIN:
-                        return HttpResponseRedirect('/superadmin/')
+                        return HttpResponseRedirect('/hrms/superadmin/')
                     if (role == CompanyStaff.ROLE_ADMIN or company_staff.is_company_admin) and company_staff.company_id:
-                        return HttpResponseRedirect(reverse('admin_dashboard', kwargs={
-                            'company_id': company_staff.company_id,
-                            'company_staff_id': company_staff.pk,
-                        }))
+                        return HttpResponseRedirect(f"/hrms/dashboard/admin/{company_staff.company_id}/{company_staff.pk}/")
                     if is_hr_user and company_staff.company_id:
-                        return HttpResponseRedirect(reverse('hr_dashboard', kwargs={
-                            'company_id': company_staff.company_id,
-                            'company_staff_id': company_staff.pk,
-                        }))
+                        return HttpResponseRedirect(f"/hrms/dashboard/hr/{company_staff.company_id}/{company_staff.pk}/")
                     if (role == CompanyStaff.ROLE_MANAGER or company_staff.is_manager) and company_staff.company_id:
-                        return HttpResponseRedirect(f"/managers/dashboard/{company_staff.company_id}/{company_staff.pk}/")
+                        return HttpResponseRedirect(f"/hrms/managers/dashboard/{company_staff.company_id}/{company_staff.pk}/")
                     if (role == CompanyStaff.ROLE_EMPLOYEE or company_staff.is_employee) and company_staff.company_id:
-                        return HttpResponseRedirect(f"/employee/employee_dashboard/{company_staff.company_id}/{company_staff.pk}/")
+                        return HttpResponseRedirect(f"/hrms/employee/employee_dashboard/{company_staff.company_id}/{company_staff.pk}/")
 
                     # Fallbacks
                     if company_staff.is_company_admin and company_staff.company_id:
-                        return HttpResponseRedirect(f'/administration/index/{company_staff.company_id}/{company_staff.pk}/')
+                        return HttpResponseRedirect(f"/hrms/administration/index/{company_staff.company_id}/{company_staff.pk}/")
                     if company_staff.is_manager and company_staff.company_id:
-                        return HttpResponseRedirect(f"/managers/dashboard/{company_staff.company_id}/{company_staff.pk}/")
+                        return HttpResponseRedirect(f"/hrms/managers/dashboard/{company_staff.company_id}/{company_staff.pk}/")
                     if company_staff.is_employee and company_staff.company_id:
-                        return HttpResponseRedirect(f"/employee/employee_dashboard/{company_staff.company_id}/{company_staff.pk}/")
-                    return HttpResponseRedirect('/')
+                        return HttpResponseRedirect(f"/hrms/employee/employee_dashboard/{company_staff.company_id}/{company_staff.pk}/")
+                    return HttpResponseRedirect('/hrms/')
                 else:
                     messages.error(request, "Your account is inactive. Please contact your administrator.")
-                    return HttpResponseRedirect('/')
+                    return HttpResponseRedirect('/hrms/')
             else:
                 messages.info(request, "Incorrect Email or Password")
-                return HttpResponseRedirect('/')
+                return HttpResponseRedirect('/hrms/')
         except Exception as e:
             messages.error(request, f"Login error: {str(e)}")
-            return HttpResponseRedirect('/')
+            return HttpResponseRedirect('/hrms/')
 
     @staticmethod
     def _role_from_flags(company_staff):
@@ -458,7 +452,7 @@ class Login(View):
 
 def superadmin_dashboard(request):
     """Dashboard for superadmin role - redirect directly to superadmin panel."""
-    return HttpResponseRedirect('/superadmin/')
+    return HttpResponseRedirect('/hrms/superadmin/')
 
 
 def admin_dashboard(request, company_id, company_staff_id):
@@ -468,12 +462,12 @@ def admin_dashboard(request, company_id, company_staff_id):
 
 def manager_dashboard(request, company_id, company_staff_id):
     """Dashboard for manager role - redirect directly to manager portal."""
-    return HttpResponseRedirect(f'/managers/dashboard/{company_id}/{company_staff_id}/')
+    return HttpResponseRedirect(f'/hrms/managers/dashboard/{company_id}/{company_staff_id}/')
 
 
 def employee_dashboard(request, company_id, company_staff_id):
     """Dashboard for employee role - redirect directly to employee panel."""
-    return HttpResponseRedirect(f'/employee/employee_dashboard/{company_id}/{company_staff_id}/')
+    return HttpResponseRedirect(f'/hrms/employee/employee_dashboard/{company_id}/{company_staff_id}/')
 
 
 def forgotpass(request):
@@ -658,23 +652,17 @@ def expired_password_change(request):
         is_hr_user = role == CompanyStaff.ROLE_HR or getattr(staff, 'is_hr', False)
 
         if role == CompanyStaff.ROLE_SUPERADMIN:
-            return HttpResponseRedirect('/superadmin/')
+            return HttpResponseRedirect('/hrms/superadmin/')
         if (role == CompanyStaff.ROLE_ADMIN or staff.is_company_admin) and staff.company_id:
-            return HttpResponseRedirect(reverse('admin_dashboard', kwargs={
-                'company_id': staff.company_id,
-                'company_staff_id': staff.pk,
-            }))
+            return HttpResponseRedirect(f"/hrms/dashboard/admin/{staff.company_id}/{staff.pk}/")
         if is_hr_user and staff.company_id:
-            return HttpResponseRedirect(reverse('hr_dashboard', kwargs={
-                'company_id': staff.company_id,
-                'company_staff_id': staff.pk,
-            }))
+            return HttpResponseRedirect(f"/hrms/dashboard/hr/{staff.company_id}/{staff.pk}/")
         if (role == CompanyStaff.ROLE_MANAGER or staff.is_manager) and staff.company_id:
-            return HttpResponseRedirect(f"/managers/dashboard/{staff.company_id}/{staff.pk}/")
+            return HttpResponseRedirect(f"/hrms/managers/dashboard/{staff.company_id}/{staff.pk}/")
         if (role == CompanyStaff.ROLE_EMPLOYEE or staff.is_employee) and staff.company_id:
-            return HttpResponseRedirect(f"/employee/employee_dashboard/{staff.company_id}/{staff.pk}/")
+            return HttpResponseRedirect(f"/hrms/employee/employee_dashboard/{staff.company_id}/{staff.pk}/")
 
-        return HttpResponseRedirect('/')
+        return HttpResponseRedirect('/hrms/')
 
     return render(request, 'account/expired_password.html', {'staff': staff})
 
