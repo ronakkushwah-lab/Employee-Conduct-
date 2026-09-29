@@ -15,6 +15,9 @@ from django.conf import settings
 urlpatterns = [
     # path('',views.SignInView.as_view(),name='signin'),
     path('', views.Login.as_view(), name='signin'),
+    path('login/', views.Login.as_view(), name='login'),
+    path('account/login/', views.Login.as_view(), name='account_login'),
+    path('account/logout/', views.LogoutView.as_view(), name='account_logout'),
     # Role-based dashboards
     path('dashboard/superadmin/', views.superadmin_dashboard, name='superadmin_dashboard'),
     path('dashboard/admin/<int:company_id>/<int:company_staff_id>/', views.admin_dashboard, name='admin_dashboard'),

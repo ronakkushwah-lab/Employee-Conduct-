@@ -202,7 +202,7 @@ USE_I18N = True
 USE_L10N = True
 USE_TZ = True
 
-LOGIN_URL = '/hrms/account/login/'
+LOGIN_URL = '/hrms/'
 LOGOUT_REDIRECT_URL = '/hrms/'
 
 # STATIC_URL = '/static/'
