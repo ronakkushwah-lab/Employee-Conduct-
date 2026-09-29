@@ -121,6 +121,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'biometric.middleware.NormalizeDoubleSlashMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'account.middleware.HttpsDomainRedirectMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',

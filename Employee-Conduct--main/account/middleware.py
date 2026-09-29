@@ -1,7 +1,55 @@
+from django.http import HttpResponseRedirect
 from django.shortcuts import redirect
 from django.utils.deprecation import MiddlewareMixin
 
 from .models import CompanyStaff
+
+
+class HttpsDomainRedirectMiddleware(MiddlewareMixin):
+    """
+    If a user accesses the site via raw IP / AWS hostname (e.g. 50.19.21.0:8001 or ec2-*.amazonaws.com:8001),
+    automatically redirect their browser to the canonical secure domain https://eagleinclouds.com/hrms/.
+
+    Exemptions:
+    - Biometric hardware attendance pushes (/iclock/, /cdata/, /push/, etc.)
+    - Localhost testing (localhost, 127.0.0.1)
+    """
+    EXEMPT_PREFIXES = ('/iclock', '/cdata', '/push', '/api/device', '/static/', '/media/')
+
+    def process_request(self, request):
+        host = request.get_host().lower().split(':')[0]
+        path = request.path or '/'
+
+        # Only redirect for raw public IP or AWS public DNS
+        is_direct_ip_or_aws = (
+            'amazonaws.com' in host
+            or host == '50.19.21.0'
+            or host == '65.0.32.183'
+        )
+
+        if not is_direct_ip_or_aws:
+            return None
+
+        # Do not redirect biometric machine pushes or static assets
+        if any(path.startswith(prefix) for prefix in self.EXEMPT_PREFIXES):
+            return None
+
+        # If it's a POST/PUT/DELETE request (e.g. hardware push), don't redirect
+        if request.method not in ('GET', 'HEAD'):
+            return None
+
+        # Build clean target URL on https://eagleinclouds.com
+        if path.startswith('/hrms'):
+            target_url = f'https://eagleinclouds.com{path}'
+        else:
+            clean_path = path if path != '/' else ''
+            target_url = f'https://eagleinclouds.com/hrms{clean_path}/' if not clean_path.endswith('/') else f'https://eagleinclouds.com/hrms{clean_path}'
+
+        if request.META.get('QUERY_STRING'):
+            target_url = f"{target_url}?{request.META['QUERY_STRING']}"
+
+        return HttpResponseRedirect(target_url)
+
 
 
 class SessionSecurityMiddleware(MiddlewareMixin):
