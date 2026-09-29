@@ -101,7 +101,7 @@ class CompanyStaff(models.Model):
     id = models.AutoField(primary_key=True)
     company = models.ForeignKey(Company,on_delete=models.CASCADE, null=True,blank=True)
     email = models.EmailField(_('email address'),null=True,blank=True)
-    password = models.CharField(max_length=100,null=True,blank=True)
+    password = models.CharField(max_length=255, null=True, blank=True)
     role = models.CharField(
         _('role'),
         max_length=20,

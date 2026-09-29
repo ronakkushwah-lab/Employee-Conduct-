@@ -1416,25 +1416,51 @@ class LeadManage(UpdateView):
 
 
 def ChangePassword(request):
-    if request.user.is_authenticated:
-        if request.method == 'POST':
-            current = request.POST["cpwd"]
-            new_pas = request.POST["npwd"]
+    company_staff_id = request.session.get('company_staff_id')
+    company_staff = None
+    if company_staff_id:
+        company_staff = CompanyStaff.objects.filter(id=company_staff_id).first()
 
-            user = User.objects.get(id=request.user.id)
-            un = user.email
-            check = user.check_password(current)
-            if check == True:
-                user.set_password(new_pas)
-                user.save()
-                update_session_auth_hash(request, user)
-                messages.success(request, 'Password changed Successfully')
-                user = User.objects.get(email=un)
-                login(request, user)
+    if request.user.is_authenticated or company_staff:
+        if request.method == 'POST':
+            current = request.POST.get("cpwd", "")
+            new_pas = request.POST.get("npwd", "")
+
+            if not current or not new_pas:
+                messages.error(request, 'Please fill in all password fields.')
+                return render(request, "administration/setting_change_password.html")
+
+            # Validate current password against CompanyStaff or User
+            valid_pass = False
+            if company_staff and company_staff.password:
+                valid_pass = check_password(current, company_staff.password)
+            elif request.user.is_authenticated:
+                valid_pass = request.user.check_password(current)
+
+            if valid_pass:
+                # 1. Update CompanyStaff password
+                if company_staff:
+                    company_staff.password = make_password(new_pas)
+                    company_staff.save()
+
+                # 2. Update Django User password if exists
+                user_email = company_staff.email if company_staff else request.user.email
+                if user_email:
+                    dj_user = User.objects.filter(email=user_email).first()
+                    if dj_user:
+                        dj_user.set_password(new_pas)
+                        dj_user.save()
+
+                if request.user.is_authenticated:
+                    from django.contrib.auth import update_session_auth_hash
+                    update_session_auth_hash(request, request.user)
+
+                messages.success(request, 'Password changed successfully.')
             else:
                 messages.error(request, 'Incorrect Current Password')
 
         return render(request, "administration/setting_change_password.html")
+    return redirect('/')
 
 
 def All_entry(request,company_id, company_staff_id):
