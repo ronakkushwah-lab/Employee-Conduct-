@@ -34,12 +34,16 @@ DEBUG = os.environ.get('DJANGO_DEBUG', 'true').lower() in {'1', 'true', 'yes'}
 ALLOWED_HOSTS = [
     host.strip() for host in os.environ.get(
         'DJANGO_ALLOWED_HOSTS',
-        'localhost,127.0.0.1,hrms.eagleinclouds.com,50.19.21.0,*.amazonaws.com,*',
+        'localhost,127.0.0.1,eagleinclouds.com,www.eagleinclouds.com,hrms.eagleinclouds.com,50.19.21.0,*.amazonaws.com,*',
     ).split(',') if host.strip()
 ]
 
 # CSRF Trusted Origins for domain, ngrok and other external origins
 CSRF_TRUSTED_ORIGINS = [
+    'https://eagleinclouds.com',
+    'http://eagleinclouds.com',
+    'https://www.eagleinclouds.com',
+    'http://www.eagleinclouds.com',
     'https://hrms.eagleinclouds.com',
     'http://hrms.eagleinclouds.com',
     'https://*.eagleinclouds.com',
@@ -58,6 +62,9 @@ CSRF_TRUSTED_ORIGINS = [
     'https://*.ngrok-free.dev',
     'https://*.ngrok.io',
 ]
+
+LOGIN_URL = '/'
+LOGIN_REDIRECT_URL = '/'
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 USE_X_FORWARDED_HOST = True
@@ -194,8 +201,8 @@ USE_I18N = True
 USE_L10N = True
 USE_TZ = True
 
-LOGIN_URL = '/'
-LOGOUT_REDIRECT_URL = '/'
+LOGIN_URL = '/hrms/account/login/'
+LOGOUT_REDIRECT_URL = '/hrms/'
 
 # STATIC_URL = '/static/'
 # # STATIC_ROOT = os.path.join('static')

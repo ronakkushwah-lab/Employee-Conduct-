@@ -44,16 +44,17 @@
 
 
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
 from django.views.generic import RedirectView
 from django.conf import settings
 from django.conf.urls.static import static
+from django.views.static import serve
 
-urlpatterns = [
+core_urlpatterns = [
     path('', include('biometric.urls')),
-    path('admin/', admin.site.urls),
+    path('django-admin/', admin.site.urls),
     path('', include('account.urls')),
-    path('administration', RedirectView.as_view(url='/administration/', permanent=True)),
+    path('administration', RedirectView.as_view(url='administration/', permanent=False)),
     path('administration/', include('administration.urls')),
     path('management/', include('management.urls')),
     path('employee/', include('employee.urls')),
@@ -64,9 +65,8 @@ urlpatterns = [
     path('managerpayroll/', include('managerpayroll.urls')),
 ]
 
-from django.views.static import serve
-from django.urls import re_path
-
-urlpatterns += [
+urlpatterns = list(core_urlpatterns) + [
+    path('hrms/', include(core_urlpatterns)),
     re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+    re_path(r'^hrms/media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
 ]
