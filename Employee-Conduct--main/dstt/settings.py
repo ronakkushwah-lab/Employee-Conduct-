@@ -34,18 +34,16 @@ DEBUG = os.environ.get('DJANGO_DEBUG', 'true').lower() in {'1', 'true', 'yes'}
 ALLOWED_HOSTS = [
     host.strip() for host in os.environ.get(
         'DJANGO_ALLOWED_HOSTS',
-        'localhost,127.0.0.1,employee-conduct-mcak.onrender.com,65.0.32.183,50.19.21.0,*.amazonaws.com,*',
+        'localhost,127.0.0.1,hrms.eagleinclouds.com,50.19.21.0,*.amazonaws.com,*',
     ).split(',') if host.strip()
 ]
 
-# CSRF Trusted Origins for Render, ngrok and other external domains
+# CSRF Trusted Origins for domain, ngrok and other external origins
 CSRF_TRUSTED_ORIGINS = [
-    'https://employee-conduct-mcak.onrender.com',
-    'http://employee-conduct-mcak.onrender.com',
-    'https://*.onrender.com',
-    'http://*.onrender.com',
-    'http://65.0.32.183',
-    'https://65.0.32.183',
+    'https://hrms.eagleinclouds.com',
+    'http://hrms.eagleinclouds.com',
+    'https://*.eagleinclouds.com',
+    'http://*.eagleinclouds.com',
     'http://50.19.21.0',
     'https://50.19.21.0',
     'http://50.19.21.0:8001',
@@ -54,7 +52,8 @@ CSRF_TRUSTED_ORIGINS = [
     'https://*.amazonaws.com',
     'http://localhost:8000',
     'http://127.0.0.1:8000',
-    'https://maryetta-semiacademical-eufemia.ngrok-free.dev',
+    'http://localhost:8001',
+    'http://127.0.0.1:8001',
     'https://*.ngrok-free.app',
     'https://*.ngrok-free.dev',
     'https://*.ngrok.io',
