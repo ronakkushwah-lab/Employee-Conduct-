@@ -487,8 +487,8 @@ def forgotpass(request):
         user.password_changed_at = timezone.now()
         user.save()
 
-        from django.contrib.auth.models import User as DjangoUser
-        dj_user = DjangoUser.objects.filter(email=user.email).first()
+        from account.models import User as AccountUser
+        dj_user = AccountUser.objects.filter(email=user.email).first()
         if dj_user:
             dj_user.set_password(password)
             dj_user.save()
@@ -579,8 +579,8 @@ def reset_password_confirm(request, uidb64, token):
             user.password_changed_at = timezone.now()
             user.save()
 
-            from django.contrib.auth.models import User as DjangoUser
-            dj_user = DjangoUser.objects.filter(email=user.email).first()
+            from account.models import User as AccountUser
+            dj_user = AccountUser.objects.filter(email=user.email).first()
             if dj_user:
                 dj_user.set_password(password)
                 dj_user.save()
@@ -638,8 +638,8 @@ def expired_password_change(request):
 
         # Update Django User model if exists
         if staff.email:
-            from django.contrib.auth.models import User as DjangoUser
-            dj_user = DjangoUser.objects.filter(email=staff.email).first()
+            from account.models import User as AccountUser
+            dj_user = AccountUser.objects.filter(email=staff.email).first()
             if dj_user:
                 dj_user.set_password(new_password)
                 dj_user.save()
