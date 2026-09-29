@@ -1781,10 +1781,15 @@ def create_mresignation(request, company_id, company_staff_id):
 
         if request.method == "POST":
             startdate = request.POST.get("startdate")
-            reason = request.POST.get("reason")
+            reason = (request.POST.get("reason") or "").strip()
             assigned_too_id = request.POST.get("assigned_too")
             if not current_manager:
                 messages.error(request, 'Manager profile not found.')
+                return render(request, "managers/apply-resignation.html", {
+                    'company_id': company_id, 'company_staff_id': company_staff_id, 'managers': managers_list,
+                })
+            if not startdate or not reason:
+                messages.error(request, 'Date of Resignation and Reason are mandatory.')
                 return render(request, "managers/apply-resignation.html", {
                     'company_id': company_id, 'company_staff_id': company_staff_id, 'managers': managers_list,
                 })

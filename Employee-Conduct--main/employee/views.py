@@ -1914,11 +1914,11 @@ def create_resign(request,company_id, company_staff_id):
         if request.method == "POST":
             try:
                 startdate = request.POST.get("startdate")
-                reason = request.POST.get("reason")
+                reason = (request.POST.get("reason") or "").strip()
                 assign = request.POST.get("manager_id") or (str(emp.employee_reports_to.id) if emp and emp.employee_reports_to else None)
 
-                if not all([startdate, reason, assign]):
-                    messages.error(request, 'All required fields must be filled.')
+                if not startdate or not reason or not assign:
+                    messages.error(request, 'Date of Resignation, Reporting Manager, and Reason for Resignation are mandatory.')
                     return render(request,"employee/apply-resignation.html",{
                         'rassigned': assigned_manager,
                         'company_id':company_id, 
