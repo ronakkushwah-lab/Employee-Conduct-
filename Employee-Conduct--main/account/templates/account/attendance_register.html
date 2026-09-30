@@ -470,33 +470,43 @@
   </div>
 </div>
 
-{% include "administration/footer.html" %}
+    <script src="{% static '/asets/js/bootstrap.bundle.min.js' %}"></script>
+    <script src="{% static '/asets/js/jquery.min.js' %}"></script>
+    <script src="{% static '/asets/plugins/simplebar/js/simplebar.min.js' %}"></script>
+    <script src="{% static '/asets/plugins/metismenu/js/metisMenu.min.js' %}"></script>
+    <script src="{% static '/asets/plugins/perfect-scrollbar/js/perfect-scrollbar.js' %}"></script>
+    <script src="{% static '/asets/js/app.js' %}"></script>
+    <script src="{% static '/asets/js/script.js' %}"></script>
 
-<script>
-  // Instant Real-Time Client Search Filter for the Matrix Table
-  function filterMatrixTable() {
-    var input = document.getElementById("matrixSearchInput");
-    var filter = input.value.toLowerCase().trim();
-    var rows = document.querySelectorAll("#attendanceMatrixTable tbody tr.matrix-row");
+    <script>
+      // Instant Real-Time Client Search Filter for the Matrix Table
+      function filterMatrixTable() {
+        var input = document.getElementById("matrixSearchInput");
+        var filter = input.value.toLowerCase().trim();
+        var rows = document.querySelectorAll("#attendanceMatrixTable tbody tr.matrix-row");
 
-    rows.forEach(function(row) {
-      var empName = row.getAttribute("data-empname") || "";
-      var empId = row.getAttribute("data-empid") || "";
-      var bioId = row.getAttribute("data-bioid") || "";
+        rows.forEach(function(row) {
+          var empName = row.getAttribute("data-empname") || "";
+          var empId = row.getAttribute("data-empid") || "";
+          var bioId = row.getAttribute("data-bioid") || "";
 
-      if (empName.includes(filter) || empId.includes(filter) || bioId.includes(filter)) {
-        row.style.display = "";
-      } else {
-        row.style.display = "none";
+          if (empName.includes(filter) || empId.includes(filter) || bioId.includes(filter)) {
+            row.style.display = "";
+          } else {
+            row.style.display = "none";
+          }
+        });
       }
-    });
-  }
 
-  // Initialize Bootstrap Tooltips
-  document.addEventListener("DOMContentLoaded", function() {
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    tooltipTriggerList.map(function (tooltipTriggerEl) {
-      return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
-  });
-</script>
+      // Initialize Bootstrap Tooltips
+      document.addEventListener("DOMContentLoaded", function() {
+        if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+          var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+          tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+          });
+        }
+      });
+    </script>
+  </body>
+</html>
