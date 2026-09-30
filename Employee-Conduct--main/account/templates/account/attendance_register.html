@@ -4,7 +4,7 @@
 {% include "administration/topbar.html" %}
 
 <style>
-  /* Attendance Register Matrix Styling */
+  /* Attendance Register Styling */
   .attendance-matrix-container {
     background: #ffffff;
     border-radius: 12px;
@@ -38,6 +38,11 @@
     font-size: 0.78rem;
     white-space: nowrap;
   }
+  .matrix-table thead th.th-weekend {
+    background: #243B6B;
+    color: #93c5fd;
+    border-color: #3b5998;
+  }
   .matrix-table thead th.th-sticky-1 {
     position: sticky;
     left: 0;
@@ -65,86 +70,122 @@
   .matrix-table tbody td.td-sticky-1 {
     position: sticky;
     left: 0;
-    background: #ffffff;
     z-index: 5;
+    background: #ffffff;
     font-weight: 600;
     color: #64748b;
-    border-right: 1px solid #e2e8f0;
   }
   .matrix-table tbody td.td-sticky-2 {
     position: sticky;
     left: 45px;
-    background: #ffffff;
     z-index: 5;
+    background: #ffffff;
     text-align: left;
-    padding-left: 12px;
-    border-right: 2px solid #cbd5e1;
-    white-space: nowrap;
+    padding-left: 10px;
   }
   .matrix-table tbody tr:hover td {
-    background-color: #f8fafc;
+    background-color: #f1f5f9;
   }
   .matrix-table tbody tr:hover td.td-sticky-1,
   .matrix-table tbody tr:hover td.td-sticky-2 {
-    background-color: #f1f5f9;
+    background-color: #e2e8f0;
   }
 
   /* Status Badges */
   .att-badge {
     display: inline-block;
-    width: 26px;
-    height: 26px;
-    line-height: 26px;
+    width: 24px;
+    height: 24px;
+    line-height: 24px;
     border-radius: 6px;
-    font-weight: 700;
     font-size: 0.72rem;
+    font-weight: 700;
     text-align: center;
     cursor: default;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    transition: transform 0.15s ease;
   }
   .att-badge:hover {
-    transform: scale(1.18);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    z-index: 2;
+    transform: scale(1.15);
+  }
+  .badge-present {
+    background: #dcfce7;
+    color: #15803d;
+    border: 1px solid #bbf7d0;
+  }
+  .badge-absent {
+    background: #fee2e2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+  }
+  .badge-late {
+    background: #fef3c7;
+    color: #b45309;
+    border: 1px solid #fde68a;
+  }
+  .badge-halfday {
+    background: #ffedd5;
+    color: #c2410c;
+    border: 1px solid #fed7aa;
+  }
+  .badge-leave {
+    background: #f3e8ff;
+    color: #7e22ce;
+    border: 1px solid #e9d5ff;
+  }
+  .badge-holiday {
+    background: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #bae6fd;
+  }
+  .badge-future {
+    background: #f8fafc;
+    color: #cbd5e1;
+    border: 1px solid #f1f5f9;
   }
 
-  .badge-present { background-color: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
-  .badge-absent { background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
-  .badge-late { background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
-  .badge-holiday { background-color: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
-  .badge-leave { background-color: #f3e8ff; color: #6b21a8; border: 1px solid #e9d5ff; }
-  .badge-halfday { background-color: #ffedd5; color: #9a3412; border: 1px solid #fed7aa; }
-  .badge-future { background-color: #f8fafc; color: #94a3b8; border: 1px dashed #cbd5e1; font-weight: normal; }
+  /* Summary Badge Columns */
+  .col-summary-present { background: #f0fdf4; color: #166534; font-weight: 700; }
+  .col-summary-absent  { background: #fef2f2; color: #991b1b; font-weight: 700; }
+  .col-summary-late    { background: #fffbeb; color: #92400e; font-weight: 700; }
+  .col-summary-leave   { background: #faf5ff; color: #6b21a8; font-weight: 700; }
+  .col-summary-payable { background: #eff6ff; color: #1e40af; font-weight: 800; }
 
-  /* Sunday / Weekend Column Highlight */
-  .col-sunday-th { background: #0f172a !important; color: #93c5fd !important; }
-  .col-sunday-td { background-color: #f8fafc; }
-  .col-today-th { background: #1d4ed8 !important; color: #ffffff !important; border: 2px solid #60a5fa !important; }
-
-  /* KPI Summary Card Styling */
-  .kpi-card {
-    border-radius: 12px;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    border: none;
+  /* KPI Interactive Stat Cards */
+  .kpi-card-interactive {
+    border-radius: 10px;
+    border: 2px solid transparent;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    text-decoration: none !important;
+    display: block;
   }
-  .kpi-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+  .kpi-card-interactive:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+  }
+  .kpi-card-interactive.active-kpi {
+    border-color: #1B2A4A;
+    box-shadow: 0 4px 14px rgba(27, 42, 74, 0.18);
   }
 
-  /* Period Pill Filter */
+  /* Period Switcher Pills */
   .period-pill {
-    padding: 6px 18px;
-    font-size: 0.82rem;
-    font-weight: 600;
+    padding: 6px 14px;
+    font-size: 0.78rem;
+    font-weight: 700;
     border-radius: 20px;
-    border: 1px solid #cbd5e1;
-    background: #ffffff;
     color: #475569;
+    background: #f1f5f9;
     text-decoration: none;
-    transition: all 0.2s;
+    transition: all 0.2s ease;
+    border: 1px solid #cbd5e1;
+    display: inline-block;
   }
-  .period-pill:hover, .period-pill.active {
+  .period-pill:hover {
+    background: #e2e8f0;
+    color: #1e293b;
+  }
+  .period-pill.active {
     background: #1B2A4A;
     color: #ffffff;
     border-color: #1B2A4A;
@@ -156,11 +197,11 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    font-size: 0.78rem;
+    font-size: 0.76rem;
     font-weight: 600;
     color: #475569;
     background: #f8fafc;
-    padding: 4px 10px;
+    padding: 3px 8px;
     border-radius: 6px;
     border: 1px solid #e2e8f0;
   }
@@ -178,10 +219,13 @@
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
       <div>
         <h4 class="mb-1 fw-bold text-dark">
-          <i class='bx bx-calendar-check text-primary me-2'></i> Monthly Attendance Register
+          <i class='bx bx-calendar-check text-primary me-2'></i> 
+          {% if period == 'daily' %}Daily Attendance Roster
+          {% elif period == 'yearly' %}Annual Attendance Summary
+          {% else %}Monthly Attendance Register Matrix{% endif %}
         </h4>
         <small class="text-muted">
-          Comprehensive employee attendance matrix, punch history, and automated payroll calculations
+          Comprehensive employee punch tracking, Saturday & Sunday weekly offs, approved leaves, and payroll records
         </small>
       </div>
       <div class="d-flex gap-2 mt-2 mt-md-0">
@@ -201,112 +245,146 @@
           
           <!-- Period Filter Pills -->
           <div class="col-12 col-lg-3">
-            <label class="form-label text-muted small fw-bold mb-2">PERIOD FILTER</label>
+            <label class="form-label text-muted small fw-bold mb-2">VIEW MODE</label>
             <div class="d-flex gap-1">
-              <a href="?period=daily&month={{ current_month }}&year={{ current_year }}&dept={{ dept_id }}&status={{ status_filter }}" class="period-pill {% if period == 'daily' %}active{% endif %}">DAILY</a>
+              <a href="?period=daily&date={{ selected_date_str }}&dept={{ dept_id }}&status={{ status_filter }}" class="period-pill {% if period == 'daily' %}active{% endif %}">DAILY</a>
               <a href="?period=monthly&month={{ current_month }}&year={{ current_year }}&dept={{ dept_id }}&status={{ status_filter }}" class="period-pill {% if period == 'monthly' or not period %}active{% endif %}">MONTHLY</a>
-              <a href="?period=yearly&month={{ current_month }}&year={{ current_year }}&dept={{ dept_id }}&status={{ status_filter }}" class="period-pill {% if period == 'yearly' %}active{% endif %}">YEARLY</a>
+              <a href="?period=yearly&year={{ current_year }}&dept={{ dept_id }}&status={{ status_filter }}" class="period-pill {% if period == 'yearly' %}active{% endif %}">YEARLY</a>
             </div>
             <input type="hidden" name="period" value="{{ period|default:'monthly' }}">
           </div>
 
-          <!-- Month Selector -->
-          <div class="col-6 col-md-3 col-lg-2">
-            <label class="form-label text-muted small fw-bold mb-1">MONTH</label>
-            <select name="month" class="form-select form-select-sm rounded-3 fw-semibold" onchange="document.getElementById('attendanceFilterForm').submit();">
-              {% for m_num, m_name in months_list %}
-                <option value="{{ m_num }}" {% if m_num == current_month %}selected{% endif %}>{{ m_name }}</option>
-              {% endfor %}
-            </select>
-          </div>
+          <!-- Dynamic Date / Month / Year Inputs -->
+          {% if period == 'daily' %}
+            <div class="col-12 col-md-4 col-lg-3">
+              <label class="form-label text-muted small fw-bold mb-1">SELECT DATE</label>
+              <input type="date" name="date" value="{{ selected_date_str }}" class="form-control form-control-sm rounded-3 fw-semibold" onchange="document.getElementById('attendanceFilterForm').submit();">
+            </div>
+          {% elif period == 'yearly' %}
+            <div class="col-6 col-md-3 col-lg-2">
+              <label class="form-label text-muted small fw-bold mb-1">YEAR</label>
+              <select name="year" class="form-select form-select-sm rounded-3 fw-semibold" onchange="document.getElementById('attendanceFilterForm').submit();">
+                {% for y in years_list %}
+                  <option value="{{ y }}" {% if y == current_year %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          {% else %}
+            <!-- Month Selector -->
+            <div class="col-6 col-md-3 col-lg-2">
+              <label class="form-label text-muted small fw-bold mb-1">MONTH</label>
+              <select name="month" class="form-select form-select-sm rounded-3 fw-semibold" onchange="document.getElementById('attendanceFilterForm').submit();">
+                {% for m_num, m_name in months_list %}
+                  <option value="{{ m_num }}" {% if m_num == current_month %}selected{% endif %}>{{ m_name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <!-- Year Selector -->
+            <div class="col-6 col-md-3 col-lg-2">
+              <label class="form-label text-muted small fw-bold mb-1">YEAR</label>
+              <select name="year" class="form-select form-select-sm rounded-3 fw-semibold" onchange="document.getElementById('attendanceFilterForm').submit();">
+                {% for y in years_list %}
+                  <option value="{{ y }}" {% if y == current_year %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          {% endif %}
 
-          <!-- Year Selector -->
-          <div class="col-6 col-md-3 col-lg-2">
-            <label class="form-label text-muted small fw-bold mb-1">YEAR</label>
-            <select name="year" class="form-select form-select-sm rounded-3 fw-semibold" onchange="document.getElementById('attendanceFilterForm').submit();">
-              {% for y in years_list %}
-                <option value="{{ y }}" {% if y == current_year %}selected{% endif %}>{{ y }}</option>
-              {% endfor %}
-            </select>
-          </div>
-
-          <!-- Department Filter -->
+          <!-- Department Selector -->
           <div class="col-6 col-md-3 col-lg-2">
             <label class="form-label text-muted small fw-bold mb-1">DEPARTMENT</label>
-            <select name="dept" class="form-select form-select-sm rounded-3" onchange="document.getElementById('attendanceFilterForm').submit();">
-              <option value="all" {% if dept_id == 'all' or not dept_id %}selected{% endif %}>All Departments</option>
-              {% for d in departments %}
-                <option value="{{ d.id }}" {% if dept_id == d.id|stringformat:"s" %}selected{% endif %}>{{ d.department_name }}</option>
+            <select name="dept" class="form-select form-select-sm rounded-3 fw-semibold" onchange="document.getElementById('attendanceFilterForm').submit();">
+              <option value="all" {% if dept_id == 'all' %}selected{% endif %}>All Departments</option>
+              {% for dept in departments %}
+                <option value="{{ dept.id }}" {% if dept_id|stringformat:"s" == dept.id|stringformat:"s" %}selected{% endif %}>{{ dept.department_name }}</option>
               {% endfor %}
             </select>
           </div>
 
-          <!-- Status Filter -->
-          <div class="col-6 col-md-3 col-lg-1">
+          <!-- Status Filter Dropdown -->
+          <div class="col-6 col-md-3 col-lg-2">
             <label class="form-label text-muted small fw-bold mb-1">STATUS</label>
-            <select name="status" class="form-select form-select-sm rounded-3" onchange="document.getElementById('attendanceFilterForm').submit();">
-              <option value="all" {% if status_filter == 'all' or not status_filter %}selected{% endif %}>All</option>
+            <select name="status" class="form-select form-select-sm rounded-3 fw-semibold" onchange="document.getElementById('attendanceFilterForm').submit();">
+              <option value="all" {% if status_filter == 'all' or not status_filter %}selected{% endif %}>All Statuses</option>
               <option value="present" {% if status_filter == 'present' %}selected{% endif %}>Present</option>
               <option value="absent" {% if status_filter == 'absent' %}selected{% endif %}>Absent</option>
               <option value="late" {% if status_filter == 'late' %}selected{% endif %}>Late</option>
-              <option value="leave" {% if status_filter == 'leave' %}selected{% endif %}>Leave</option>
+              <option value="leave" {% if status_filter == 'leave' %}selected{% endif %}>On Leave</option>
             </select>
           </div>
 
-          <!-- Action Buttons: Export & Print -->
-          <div class="col-12 col-lg-2 d-flex gap-1 justify-content-lg-end">
-            <a href="{% url 'export_attendance_register' company_id=company_id company_staff_id=company_staff_id %}?format=excel&month={{ current_month }}&year={{ current_year }}&dept={{ dept_id }}&status={{ status_filter }}&q={{ search_query }}" class="btn btn-sm btn-success rounded-3 fw-semibold px-2 py-1 shadow-sm" title="Export Formatted Excel Spreadsheet">
-              <i class='bx bx-file me-1'></i> Excel
+          <!-- Export Actions -->
+          <div class="col-12 col-lg-auto ms-auto d-flex gap-2">
+            <a href="{% if is_admin %}{% url 'admin_attendance_register_export' company_id=company_id company_staff_id=company_staff_id %}{% else %}{% url 'hr_attendance_register_export' company_id=company_id company_staff_id=company_staff_id %}{% endif %}?period={{ period }}&date={{ selected_date_str }}&month={{ current_month }}&year={{ current_year }}&dept={{ dept_id }}&status={{ status_filter }}&format=excel" class="btn btn-sm btn-success rounded-3 px-3 shadow-sm fw-semibold">
+              <i class='bx bx-spreadsheet me-1'></i> Excel (.xlsx)
             </a>
-            <a href="{% url 'export_attendance_register' company_id=company_id company_staff_id=company_staff_id %}?format=csv&month={{ current_month }}&year={{ current_year }}&dept={{ dept_id }}&status={{ status_filter }}&q={{ search_query }}" class="btn btn-sm btn-outline-secondary rounded-3 fw-semibold px-2 py-1" title="Download CSV">
-              <i class='bx bx-download me-1'></i> CSV
+            <a href="{% if is_admin %}{% url 'admin_attendance_register_export' company_id=company_id company_staff_id=company_staff_id %}{% else %}{% url 'hr_attendance_register_export' company_id=company_id company_staff_id=company_staff_id %}{% endif %}?period={{ period }}&date={{ selected_date_str }}&month={{ current_month }}&year={{ current_year }}&dept={{ dept_id }}&status={{ status_filter }}&format=csv" class="btn btn-sm btn-outline-secondary rounded-3 px-2 shadow-sm" title="Download CSV">
+              <i class='bx bx-file'></i> CSV
             </a>
-            <button type="button" onclick="window.print()" class="btn btn-sm btn-outline-dark rounded-3 px-2 py-1" title="Print Register">
+            <button type="button" class="btn btn-sm btn-outline-dark rounded-3 px-2 shadow-sm" onclick="window.print();" title="Print View">
               <i class='bx bx-printer'></i>
             </button>
           </div>
+
         </form>
 
-        <!-- Quick Live Search Box -->
-        <div class="mt-3 pt-3 border-top d-flex justify-content-between align-items-center">
-          <div class="input-group input-group-sm" style="max-width: 380px;">
-            <span class="input-group-text bg-light border-end-0"><i class='bx bx-search'></i></span>
-            <input type="text" id="matrixSearchInput" class="form-control bg-light border-start-0" placeholder="Filter employee by name, Emp ID, or Bio ID..." onkeyup="filterMatrixTable();" value="{{ search_query }}">
+        <!-- Search Bar -->
+        <div class="row mt-3 pt-2 border-top">
+          <div class="col-12 col-md-6 col-lg-4">
+            <div class="input-group input-group-sm">
+              <span class="input-group-text bg-white border-end-0 text-muted"><i class='bx bx-search'></i></span>
+              <input type="text" id="matrixSearchInput" class="form-control border-start-0 ps-0" placeholder="Filter employee by name, Emp ID, or Bio ID..." onkeyup="filterMatrixTable();">
+            </div>
           </div>
-          <div class="small text-muted">
-            Showing <strong class="text-dark">{{ kpi.filtered_employees }}</strong> of {{ kpi.total_employees }} Employees for <strong>{{ current_month_name }} {{ current_year }}</strong>
+          <div class="col-12 col-md-6 col-lg-8 text-md-end text-muted small mt-2 mt-md-0 d-flex align-items-center justify-content-md-end gap-2">
+            <span>Showing <strong class="text-dark">{{ kpi.filtered_employees|default:kpi.total_employees }}</strong> of {{ kpi.total_employees }} Employees</span>
+            <span class="badge bg-light text-dark border">Sat & Sun: Weekly Off</span>
           </div>
         </div>
+
       </div>
     </div>
 
-    <!-- Top KPI Stats Summary Cards (Matching Reference Image) -->
-    <div class="row row-cols-2 row-cols-md-3 row-cols-lg-6 g-3 mb-4">
+    <!-- Weekend Notification (if Daily mode on Sat/Sun) -->
+    {% if period == 'daily' and is_weekend_day %}
+      <div class="alert alert-info py-2 px-3 radius-10 mb-3 small d-flex align-items-center">
+        <i class='bx bx-info-circle fs-5 me-2'></i>
+        <span><strong>Weekend Off Notice:</strong> {{ selected_date|date:"l, d F Y" }} is a standard Weekly Off (Saturday/Sunday). Staff without punches are marked as Weekend Off (H) and not counted as absent.</span>
+      </div>
+    {% endif %}
+
+    <!-- Interactive KPI Summary Cards (Click to Filter) -->
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-6 g-3 mb-4">
+      
       <!-- Total Employees -->
       <div class="col">
-        <div class="card kpi-card bg-white shadow-sm border-0 h-100 p-3">
-          <div class="d-flex align-items-center justify-content-between">
-            <div>
-              <span class="text-muted d-block small fw-bold">EMPLOYEES</span>
-              <h3 class="mb-0 fw-bold text-dark mt-1">{{ kpi.total_employees }}</h3>
-            </div>
-            <div class="p-2 rounded-circle" style="background: #eef2ff; color: #4f46e5; font-size: 1.4rem;">
-              <i class='bx bxs-user-detail'></i>
+        <a href="?period={{ period }}&date={{ selected_date_str }}&month={{ current_month }}&year={{ current_year }}&dept={{ dept_id }}&status=all" class="card radius-10 border-0 shadow-sm mb-0 kpi-card-interactive {% if status_filter == 'all' or not status_filter %}active-kpi{% endif %}">
+          <div class="card-body p-3">
+            <div class="d-flex align-items-center justify-content-between">
+              <div>
+                <p class="mb-1 text-muted small fw-bold">EMPLOYEES</p>
+                <h4 class="mb-0 fw-bold text-dark">{{ kpi.total_employees|default:0 }}</h4>
+              </div>
+              <div class="widgets-icons bg-light-primary text-primary rounded-circle p-2">
+                <i class='bx bxs-user-detail fs-4'></i>
+              </div>
             </div>
           </div>
-        </div>
+        </a>
       </div>
 
-      <!-- Total Working Records -->
+      <!-- Total Logs -->
       <div class="col">
-        <div class="card kpi-card bg-white shadow-sm border-0 h-100 p-3">
-          <div class="d-flex align-items-center justify-content-between">
-            <div>
-              <span class="text-muted d-block small fw-bold">TOTAL LOGS</span>
-              <h3 class="mb-0 fw-bold text-primary mt-1">{{ kpi.total_records }}</h3>
-            </div>
-            <div class="p-2 rounded-circle" style="background: #e0f2fe; color: #0284c7; font-size: 1.4rem;">
-              <i class='bx bx-bar-chart-alt-2'></i>
+        <div class="card radius-10 border-0 shadow-sm mb-0">
+          <div class="card-body p-3">
+            <div class="d-flex align-items-center justify-content-between">
+              <div>
+                <p class="mb-1 text-muted small fw-bold">TOTAL LOGS</p>
+                <h4 class="mb-0 fw-bold text-primary">{{ kpi.total_records|default:0 }}</h4>
+              </div>
+              <div class="widgets-icons bg-light-info text-info rounded-circle p-2">
+                <i class='bx bx-bar-chart-alt-2 fs-4'></i>
+              </div>
             </div>
           </div>
         </div>
@@ -314,174 +392,368 @@
 
       <!-- Present -->
       <div class="col">
-        <div class="card kpi-card bg-white shadow-sm border-0 h-100 p-3">
-          <div class="d-flex align-items-center justify-content-between">
-            <div>
-              <span class="text-muted d-block small fw-bold text-success">PRESENT</span>
-              <h3 class="mb-0 fw-bold text-success mt-1">{{ kpi.present }}</h3>
-            </div>
-            <div class="p-2 rounded-circle" style="background: #dcfce7; color: #16a34a; font-size: 1.4rem;">
-              <i class='bx bx-user-check'></i>
+        <a href="?period={{ period }}&date={{ selected_date_str }}&month={{ current_month }}&year={{ current_year }}&dept={{ dept_id }}&status=present" class="card radius-10 border-0 shadow-sm mb-0 kpi-card-interactive {% if status_filter == 'present' %}active-kpi{% endif %}">
+          <div class="card-body p-3">
+            <div class="d-flex align-items-center justify-content-between">
+              <div>
+                <p class="mb-1 text-muted small fw-bold text-success">PRESENT</p>
+                <h4 class="mb-0 fw-bold text-success">{{ kpi.present|default:0 }}</h4>
+              </div>
+              <div class="widgets-icons bg-light-success text-success rounded-circle p-2">
+                <i class='bx bx-user-check fs-4'></i>
+              </div>
             </div>
           </div>
-        </div>
+        </a>
       </div>
 
       <!-- Absent -->
       <div class="col">
-        <div class="card kpi-card bg-white shadow-sm border-0 h-100 p-3">
-          <div class="d-flex align-items-center justify-content-between">
-            <div>
-              <span class="text-muted d-block small fw-bold text-danger">ABSENT</span>
-              <h3 class="mb-0 fw-bold text-danger mt-1">{{ kpi.absent }}</h3>
-            </div>
-            <div class="p-2 rounded-circle" style="background: #fee2e2; color: #dc2626; font-size: 1.4rem;">
-              <i class='bx bx-user-x'></i>
+        <a href="?period={{ period }}&date={{ selected_date_str }}&month={{ current_month }}&year={{ current_year }}&dept={{ dept_id }}&status=absent" class="card radius-10 border-0 shadow-sm mb-0 kpi-card-interactive {% if status_filter == 'absent' %}active-kpi{% endif %}">
+          <div class="card-body p-3">
+            <div class="d-flex align-items-center justify-content-between">
+              <div>
+                <p class="mb-1 text-muted small fw-bold text-danger">ABSENT</p>
+                <h4 class="mb-0 fw-bold text-danger">{{ kpi.absent|default:0 }}</h4>
+              </div>
+              <div class="widgets-icons bg-light-danger text-danger rounded-circle p-2">
+                <i class='bx bx-user-x fs-4'></i>
+              </div>
             </div>
           </div>
-        </div>
+        </a>
       </div>
 
-      <!-- Late Arrivals -->
+      <!-- Late -->
       <div class="col">
-        <div class="card kpi-card bg-white shadow-sm border-0 h-100 p-3">
-          <div class="d-flex align-items-center justify-content-between">
-            <div>
-              <span class="text-muted d-block small fw-bold text-warning">LATE</span>
-              <h3 class="mb-0 fw-bold text-warning mt-1">{{ kpi.late }}</h3>
-            </div>
-            <div class="p-2 rounded-circle" style="background: #fef3c7; color: #d97706; font-size: 1.4rem;">
-              <i class='bx bx-time-five'></i>
+        <a href="?period={{ period }}&date={{ selected_date_str }}&month={{ current_month }}&year={{ current_year }}&dept={{ dept_id }}&status=late" class="card radius-10 border-0 shadow-sm mb-0 kpi-card-interactive {% if status_filter == 'late' %}active-kpi{% endif %}">
+          <div class="card-body p-3">
+            <div class="d-flex align-items-center justify-content-between">
+              <div>
+                <p class="mb-1 text-muted small fw-bold text-warning">LATE</p>
+                <h4 class="mb-0 fw-bold text-warning">{{ kpi.late|default:0 }}</h4>
+              </div>
+              <div class="widgets-icons bg-light-warning text-warning rounded-circle p-2">
+                <i class='bx bx-time fs-4'></i>
+              </div>
             </div>
           </div>
-        </div>
+        </a>
       </div>
 
-      <!-- Approved Leaves -->
+      <!-- On Leave -->
       <div class="col">
-        <div class="card kpi-card bg-white shadow-sm border-0 h-100 p-3">
-          <div class="d-flex align-items-center justify-content-between">
-            <div>
-              <span class="text-muted d-block small fw-bold" style="color: #9333ea;">ON LEAVE</span>
-              <h3 class="mb-0 fw-bold mt-1" style="color: #9333ea;">{{ kpi.leave }}</h3>
-            </div>
-            <div class="p-2 rounded-circle" style="background: #f3e8ff; color: #9333ea; font-size: 1.4rem;">
-              <i class='bx bx-sun'></i>
+        <a href="?period={{ period }}&date={{ selected_date_str }}&month={{ current_month }}&year={{ current_year }}&dept={{ dept_id }}&status=leave" class="card radius-10 border-0 shadow-sm mb-0 kpi-card-interactive {% if status_filter == 'leave' %}active-kpi{% endif %}">
+          <div class="card-body p-3">
+            <div class="d-flex align-items-center justify-content-between">
+              <div>
+                <p class="mb-1 text-muted small fw-bold" style="color: #7e22ce;">ON LEAVE</p>
+                <h4 class="mb-0 fw-bold" style="color: #7e22ce;">{{ kpi.leave|default:0 }}</h4>
+              </div>
+              <div class="widgets-icons rounded-circle p-2" style="background: #f3e8ff; color: #7e22ce;">
+                <i class='bx bx-sun fs-4'></i>
+              </div>
             </div>
           </div>
-        </div>
+        </a>
       </div>
+
     </div>
 
-    <!-- Monthly Attendance Register Matrix Card -->
-    <div class="attendance-matrix-container mb-4">
-      <div class="p-3 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
-        <div>
-          <h5 class="mb-1 fw-bold text-dark">
-            <i class='bx bx-table text-primary me-1'></i> Monthly Attendance Register
-          </h5>
-          <small class="text-muted">{{ current_month_name }} {{ current_year }} &bull; {{ kpi.filtered_employees }} Employees</small>
+    <!-- =================================================================== -->
+    <!-- VIEW 1: DAILY ATTENDANCE ROSTER TABLE -->
+    <!-- =================================================================== -->
+    {% if period == 'daily' %}
+      <div class="attendance-matrix-container mb-4">
+        <div class="p-3 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
+          <div>
+            <h6 class="mb-0 fw-bold text-dark"><i class='bx bx-list-check text-primary me-1'></i> Daily Attendance Roster: {{ selected_date|date:"l, d F Y" }}</h6>
+            <small class="text-muted">Detailed check-in, check-out, and worked duration</small>
+          </div>
+          <div class="d-flex flex-wrap gap-2">
+            <span class="legend-item"><span class="att-badge badge-present">P</span> Present</span>
+            <span class="legend-item"><span class="att-badge badge-absent">A</span> Absent</span>
+            <span class="legend-item"><span class="att-badge badge-late">L</span> Late (>10:15)</span>
+            <span class="legend-item"><span class="att-badge badge-halfday">HD</span> Half Day</span>
+            <span class="legend-item"><span class="att-badge badge-holiday">H</span> Weekend / Holiday</span>
+            <span class="legend-item"><span class="att-badge badge-leave">LV</span> Leave</span>
+          </div>
         </div>
 
-        <!-- Legend Badges Bar -->
-        <div class="d-flex flex-wrap gap-2">
-          <span class="legend-item"><span class="att-badge badge-present" style="width:18px;height:18px;line-height:18px;">P</span> Present</span>
-          <span class="legend-item"><span class="att-badge badge-absent" style="width:18px;height:18px;line-height:18px;">A</span> Absent</span>
-          <span class="legend-item"><span class="att-badge badge-late" style="width:18px;height:18px;line-height:18px;">L</span> Late</span>
-          <span class="legend-item"><span class="att-badge badge-holiday" style="width:18px;height:18px;line-height:18px;">H</span> Holiday</span>
-          <span class="legend-item"><span class="att-badge badge-leave" style="width:18px;height:18px;line-height:18px;">LV</span> Leave</span>
-          <span class="legend-item"><span class="att-badge badge-halfday" style="width:18px;height:18px;line-height:18px;">HD</span> Half Day</span>
-          <span class="legend-item"><span class="att-badge badge-future" style="width:18px;height:18px;line-height:18px;">-</span> Future</span>
-        </div>
-      </div>
-
-      <!-- Matrix Table Scroll Wrapper -->
-      <div class="matrix-table-wrapper">
-        <table class="table matrix-table" id="attendanceMatrixTable">
-          <thead>
-            <tr>
-              <th class="th-sticky-1">#</th>
-              <th class="th-sticky-2">EMPLOYEE NAME</th>
-              <th style="min-width: 90px; text-align: center;">EMP ID</th>
-              <th style="min-width: 75px; text-align: center;">BIO ID</th>
-              
-              <!-- Days Header 1 to N -->
-              {% for dm in days_meta %}
-                <th style="min-width: 32px;" class="{% if dm.is_today %}col-today-th{% elif dm.is_sunday %}col-sunday-th{% endif %}" title="{{ dm.date|date:'l, d F Y' }}">
-                  <div>{{ dm.day }}</div>
-                  <div style="font-size: 0.65rem; opacity: 0.85;">{{ dm.weekday_name|slice:":1" }}</div>
-                </th>
-              {% endfor %}
-
-              <!-- Summary Columns -->
-              <th style="min-width: 38px; background: #065f46;" title="Total Present Days">P</th>
-              <th style="min-width: 38px; background: #991b1b;" title="Total Absent Days">A</th>
-              <th style="min-width: 38px; background: #92400e;" title="Total Late Days">L</th>
-              <th style="min-width: 38px; background: #0369a1;" title="Total Holidays / Sundays">H</th>
-              <th style="min-width: 38px; background: #6b21a8;" title="Total Approved Leaves">LV</th>
-              <th style="min-width: 60px; background: #166534;" title="Total Payable Days (P + H + LV)">PAYABLE</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for row in matrix_rows %}
-              <tr class="matrix-row" data-empname="{{ row.employee.get_full_name|lower }}" data-empid="{{ row.employee.employee_id|lower }}" data-bioid="{{ row.employee.biometric_id|default:''|lower }}">
-                <td class="td-sticky-1">{{ row.index }}</td>
-                <td class="td-sticky-2">
-                  <div class="d-flex align-items-center">
-                    <img src="{{ row.employee.avatar_url }}" alt="avatar" class="rounded-circle me-2" style="width: 28px; height: 28px; object-fit: cover; border: 1px solid #cbd5e1;">
-                    <div>
-                      <strong class="text-dark d-block" style="font-size: 0.82rem; line-height: 1.2;">{{ row.employee.get_full_name }}</strong>
-                      <small class="text-muted" style="font-size: 0.7rem;">{{ row.employee.employee_department.department_name|default:"General" }}</small>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0" id="attendanceMatrixTable">
+            <thead class="table-dark" style="background: #1B2A4A;">
+              <tr>
+                <th class="text-center" style="width: 50px;">#</th>
+                <th>EMPLOYEE</th>
+                <th>EMP ID</th>
+                <th>BIO ID</th>
+                <th>DEPARTMENT</th>
+                <th class="text-center">CHECK IN</th>
+                <th class="text-center">CHECK OUT</th>
+                <th class="text-center">WORKED</th>
+                <th class="text-center">STATUS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in daily_rows %}
+                <tr class="matrix-row" data-empname="{{ row.employee.employee_first_name|lower }} {{ row.employee.employee_last_name|lower }}" data-empid="{{ row.employee.employee_id|lower }}" data-bioid="{{ row.employee.biometric_id|default:''|lower }}">
+                  <td class="text-center fw-bold text-muted">{{ row.index }}</td>
+                  <td>
+                    <div class="d-flex align-items-center">
+                      <div class="avatar-box me-2">
+                        {% if row.employee.avatar_base64 or row.employee.employee_image %}
+                          <img src="{{ row.employee.avatar_url }}" class="rounded-circle shadow-sm" style="width: 32px; height: 32px; object-fit: cover;" onerror="this.onerror=null; this.src='{% if row.employee.employee_gender|lower == 'female' %}{% static 'asets/images/dummy-woman.png' %}{% else %}{% static 'asets/images/dummy-man.png' %}{% endif %}';">
+                        {% else %}
+                          <img src="{% if row.employee.employee_gender|lower == 'female' %}{% static 'asets/images/dummy-woman.png' %}{% else %}{% static 'asets/images/dummy-man.png' %}{% endif %}" class="rounded-circle shadow-sm" style="width: 32px; height: 32px; object-fit: cover;">
+                        {% endif %}
+                      </div>
+                      <div>
+                        <div class="fw-bold text-dark">{{ row.employee.employee_first_name }} {{ row.employee.employee_last_name }}</div>
+                        <small class="text-muted">{{ row.employee.employee_designation.designation_name|default:'Staff' }}</small>
+                      </div>
                     </div>
-                  </div>
-                </td>
-                <td class="text-center"><span class="badge bg-light text-dark border">{{ row.employee.formatted_employee_id }}</span></td>
-                <td class="text-center text-muted small">{{ row.employee.biometric_id|default:"-" }}</td>
-
-                <!-- Days 1 to N Status Badges -->
-                {% for d in row.days %}
-                  <td class="{% if d.is_sunday %}col-sunday-td{% endif %}" title="{{ d.title }}">
-                    <span class="att-badge {{ d.class }}" data-bs-toggle="tooltip" data-bs-placement="top" title="Day {{ d.day }}: {{ d.title }} {% if d.worked != '-' %}| Worked: {{ d.worked }}{% endif %}">
-                      {{ d.status }}
+                  </td>
+                  <td><span class="badge bg-light text-dark border font-monospace">{{ row.employee.formatted_employee_id|default:row.employee.employee_id }}</span></td>
+                  <td><span class="text-muted fw-bold">{{ row.employee.biometric_id|default:'-' }}</span></td>
+                  <td>{{ row.employee.employee_department.department_name|default:'-' }}</td>
+                  <td class="text-center fw-bold {% if row.status_code == 'L' %}text-warning{% elif row.status_code == 'P' %}text-success{% else %}text-muted{% endif %}">{{ row.check_in }}</td>
+                  <td class="text-center fw-bold text-dark">{{ row.check_out }}</td>
+                  <td class="text-center fw-bold text-primary">{{ row.worked }}</td>
+                  <td class="text-center">
+                    <span class="att-badge {{ row.status_class }} px-2 py-1" style="width: auto; min-width: 65px;" title="{{ row.status_label }}">
+                      {{ row.status_label }}
                     </span>
                   </td>
-                {% endfor %}
-
-                <!-- Summary Values -->
-                <td class="fw-bold text-success" style="background-color: #f0fdf4;">{{ row.total_present }}</td>
-                <td class="fw-bold text-danger" style="background-color: #fef2f2;">{{ row.total_absent }}</td>
-                <td class="fw-bold text-warning" style="background-color: #fffbeb;">{{ row.total_late }}</td>
-                <td class="fw-bold text-info" style="background-color: #f0f9ff;">{{ row.total_holiday }}</td>
-                <td class="fw-bold" style="color: #9333ea; background-color: #faf5ff;">{{ row.total_leave }}</td>
-                <td class="fw-bold text-dark text-center" style="background-color: #dcfce7; font-size: 0.88rem;">{{ row.total_payable }}</td>
-              </tr>
-            {% empty %}
-              <tr>
-                <td colspan="{{ days_meta|length|add:10 }}" class="text-center py-5 text-muted">
-                  <i class='bx bx-info-circle fs-2 d-block mb-2 text-secondary'></i>
-                  No employee attendance records found matching the current filters.
-                </td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="9" class="text-center py-4 text-muted">
+                    <i class='bx bx-folder-open fs-2 d-block mb-1'></i>
+                    No attendance records match the selected filter.
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+
+    <!-- =================================================================== -->
+    <!-- VIEW 2: YEARLY ROLLUP TABLE -->
+    <!-- =================================================================== -->
+    {% elif period == 'yearly' %}
+      <div class="attendance-matrix-container mb-4">
+        <div class="p-3 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
+          <div>
+            <h6 class="mb-0 fw-bold text-dark"><i class='bx bx-calendar-alt text-primary me-1'></i> Annual Attendance Rollup: {{ current_year }}</h6>
+            <small class="text-muted">12-month summary breakdown of present days and payable counts</small>
+          </div>
+        </div>
+
+        <div class="matrix-table-wrapper">
+          <table class="matrix-table" id="attendanceMatrixTable">
+            <thead>
+              <tr>
+                <th class="th-sticky-1">#</th>
+                <th class="th-sticky-2">EMPLOYEE NAME</th>
+                <th>EMP ID</th>
+                <th>DEPARTMENT</th>
+                <th>JAN</th>
+                <th>FEB</th>
+                <th>MAR</th>
+                <th>APR</th>
+                <th>MAY</th>
+                <th>JUN</th>
+                <th>JUL</th>
+                <th>AUG</th>
+                <th>SEP</th>
+                <th>OCT</th>
+                <th>NOV</th>
+                <th>DEC</th>
+                <th class="col-summary-present">ANNUAL PRESENT</th>
+                <th class="col-summary-absent">ANNUAL ABSENT</th>
+                <th class="col-summary-leave">ANNUAL LEAVES</th>
+                <th class="col-summary-payable">PAYABLE DAYS</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in yearly_rows %}
+                <tr class="matrix-row" data-empname="{{ row.employee.employee_first_name|lower }} {{ row.employee.employee_last_name|lower }}" data-empid="{{ row.employee.employee_id|lower }}" data-bioid="{{ row.employee.biometric_id|default:''|lower }}">
+                  <td class="td-sticky-1 text-center">{{ row.index }}</td>
+                  <td class="td-sticky-2">
+                    <div class="d-flex align-items-center">
+                      <div class="avatar-box me-2">
+                        {% if row.employee.avatar_base64 or row.employee.employee_image %}
+                          <img src="{{ row.employee.avatar_url }}" class="rounded-circle shadow-sm" style="width: 26px; height: 26px; object-fit: cover;" onerror="this.onerror=null; this.src='{% if row.employee.employee_gender|lower == 'female' %}{% static 'asets/images/dummy-woman.png' %}{% else %}{% static 'asets/images/dummy-man.png' %}{% endif %}';">
+                        {% else %}
+                          <img src="{% if row.employee.employee_gender|lower == 'female' %}{% static 'asets/images/dummy-woman.png' %}{% else %}{% static 'asets/images/dummy-man.png' %}{% endif %}" class="rounded-circle shadow-sm" style="width: 26px; height: 26px; object-fit: cover;">
+                        {% endif %}
+                      </div>
+                      <div>
+                        <div class="fw-bold text-dark">{{ row.employee.employee_first_name }} {{ row.employee.employee_last_name }}</div>
+                        <small class="text-muted" style="font-size: 0.70rem;">{{ row.employee.employee_designation.designation_name|default:'Staff' }}</small>
+                      </div>
+                    </div>
+                  </td>
+                  <td><span class="badge bg-light text-dark border font-monospace">{{ row.employee.formatted_employee_id|default:row.employee.employee_id }}</span></td>
+                  <td>{{ row.employee.employee_department.department_name|default:'-' }}</td>
+                  {% for m in row.months %}
+                    <td class="text-center {% if m.is_future %}text-muted{% elif m.present > 0 %}fw-bold text-success{% endif %}">
+                      {% if m.is_future %}-{% else %}{{ m.present }}{% endif %}
+                    </td>
+                  {% endfor %}
+                  <td class="col-summary-present text-center">{{ row.annual_present }}</td>
+                  <td class="col-summary-absent text-center">{{ row.annual_absent }}</td>
+                  <td class="col-summary-leave text-center">{{ row.annual_leaves }}</td>
+                  <td class="col-summary-payable text-center">{{ row.annual_payable }}</td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="19" class="text-center py-4 text-muted">No records found.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    <!-- =================================================================== -->
+    <!-- VIEW 3: FULL MONTHLY REGISTER MATRIX (1 TO 31 WITH SAT & SUN OFF) -->
+    <!-- =================================================================== -->
+    {% else %}
+      <div class="attendance-matrix-container mb-4">
+        
+        <!-- Matrix Top Info & Color Legend -->
+        <div class="p-3 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
+          <div>
+            <h6 class="mb-0 fw-bold text-dark">
+              <i class='bx bx-grid-alt text-primary me-1'></i> Monthly Attendance Matrix
+            </h6>
+            <small class="text-muted">{{ current_month_name }} {{ current_year }} &bull; {{ kpi.filtered_employees }} Employees &bull; <span class="text-primary fw-semibold">Saturday & Sunday are Weekend Off</span></small>
+          </div>
+          <div class="d-flex flex-wrap gap-2">
+            <span class="legend-item"><span class="att-badge badge-present">P</span> Present</span>
+            <span class="legend-item"><span class="att-badge badge-absent">A</span> Absent</span>
+            <span class="legend-item"><span class="att-badge badge-late">L</span> Late</span>
+            <span class="legend-item"><span class="att-badge badge-holiday">H</span> Weekend Off (Sat/Sun)</span>
+            <span class="legend-item"><span class="att-badge badge-leave">LV</span> Leave</span>
+            <span class="legend-item"><span class="att-badge badge-halfday">HD</span> Half Day</span>
+            <span class="legend-item"><span class="att-badge badge-future">-</span> Future</span>
+          </div>
+        </div>
+
+        <!-- Scrollable Matrix Table -->
+        <div class="matrix-table-wrapper">
+          <table class="matrix-table" id="attendanceMatrixTable">
+            <thead>
+              <tr>
+                <th class="th-sticky-1">#</th>
+                <th class="th-sticky-2">EMPLOYEE NAME</th>
+                <th>EMP ID</th>
+                <th>BIO ID</th>
+                {% for dm in days_meta %}
+                  <th class="{% if dm.is_weekend %}th-weekend{% endif %}" title="{{ dm.date|date:'l, d F Y' }}{% if dm.is_weekend %} (Weekend Off){% endif %}">
+                    <div>{{ dm.day }}</div>
+                    <div style="font-size: 0.68rem; opacity: 0.85;">{{ dm.weekday_name|slice:":1" }}</div>
+                  </th>
+                {% endfor %}
+                <th class="col-summary-present" title="Total Present Days">P</th>
+                <th class="col-summary-absent" title="Total Absent Days">A</th>
+                <th class="col-summary-late" title="Total Late Days">L</th>
+                <th class="col-summary-payable" title="Weekend Offs & Holidays">H</th>
+                <th class="col-summary-leave" title="Approved Leaves">LV</th>
+                <th class="col-summary-payable" title="Total Payable Days for Payroll">PAYABLE</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in matrix_rows %}
+                <tr class="matrix-row" data-empname="{{ row.employee.employee_first_name|lower }} {{ row.employee.employee_last_name|lower }}" data-empid="{{ row.employee.employee_id|lower }}" data-bioid="{{ row.employee.biometric_id|default:''|lower }}">
+                  
+                  <!-- Sticky Column 1: Index -->
+                  <td class="td-sticky-1">{{ row.index }}</td>
+                  
+                  <!-- Sticky Column 2: Employee Profile -->
+                  <td class="td-sticky-2">
+                    <div class="d-flex align-items-center">
+                      <div class="avatar-box me-2">
+                        {% if row.employee.avatar_base64 or row.employee.employee_image %}
+                          <img src="{{ row.employee.avatar_url }}" class="rounded-circle shadow-sm" style="width: 28px; height: 28px; object-fit: cover;" onerror="this.onerror=null; this.src='{% if row.employee.employee_gender|lower == 'female' %}{% static 'asets/images/dummy-woman.png' %}{% else %}{% static 'asets/images/dummy-man.png' %}{% endif %}';">
+                        {% else %}
+                          <img src="{% if row.employee.employee_gender|lower == 'female' %}{% static 'asets/images/dummy-woman.png' %}{% else %}{% static 'asets/images/dummy-man.png' %}{% endif %}" class="rounded-circle shadow-sm" style="width: 28px; height: 28px; object-fit: cover;">
+                        {% endif %}
+                      </div>
+                      <div>
+                        <div class="fw-bold text-dark">{{ row.employee.employee_first_name }} {{ row.employee.employee_last_name }}</div>
+                        <small class="text-muted" style="font-size: 0.70rem;">{{ row.employee.employee_department.department_name|default:'-' }}</small>
+                      </div>
+                    </div>
+                  </td>
+
+                  <!-- Emp ID & Biometric ID -->
+                  <td><span class="badge bg-light text-dark border font-monospace" style="font-size: 0.70rem;">{{ row.employee.formatted_employee_id|default:row.employee.employee_id }}</span></td>
+                  <td><span class="text-muted fw-bold" style="font-size: 0.72rem;">{{ row.employee.biometric_id|default:'-' }}</span></td>
+
+                  <!-- 1 to 31 Daily Badges -->
+                  {% for d in row.days %}
+                    <td class="{% if d.is_weekend %}bg-light{% endif %}" title="{{ d.title }}">
+                      <span class="att-badge {{ d.class }}" data-bs-toggle="tooltip" data-bs-placement="top" title="{{ d.title }}">
+                        {{ d.status }}
+                      </span>
+                    </td>
+                  {% endfor %}
+
+                  <!-- Summary Columns -->
+                  <td class="col-summary-present">{{ row.total_present }}</td>
+                  <td class="col-summary-absent">{{ row.total_absent }}</td>
+                  <td class="col-summary-late">{{ row.total_late }}</td>
+                  <td class="col-summary-payable">{{ row.total_holiday }}</td>
+                  <td class="col-summary-leave">{{ row.total_leave }}</td>
+                  <td class="col-summary-payable">{{ row.total_payable }}</td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="45" class="text-center py-5 text-muted">
+                    <i class='bx bx-calendar-x fs-1 d-block mb-2'></i>
+                    No employees found matching the current filter.
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    {% endif %}
+
   </div>
 </div>
+</div> <!-- Close .wrapper opened in header.html -->
 
-    <script src="{% static '/asets/js/bootstrap.bundle.min.js' %}"></script>
-    <script src="{% static '/asets/js/jquery.min.js' %}"></script>
-    <script src="{% static '/asets/plugins/simplebar/js/simplebar.min.js' %}"></script>
-    <script src="{% static '/asets/plugins/metismenu/js/metisMenu.min.js' %}"></script>
-    <script src="{% static '/asets/plugins/perfect-scrollbar/js/perfect-scrollbar.js' %}"></script>
-    <script src="{% static '/asets/js/app.js' %}"></script>
+    <!-- Scripts (Standard HRMS Setup) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/simplebar@latest/dist/simplebar.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/metisMenu/3.0.7/metisMenu.min.js"></script>
+    <script src="https://unpkg.com/boxicons@2.1.2/dist/boxicons.js"></script>
+    <script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/js/all.min.js"></script>
+    <script src="{% static '/asets/js/jquery.sparkline.min.js' %}"></script>
     <script src="{% static '/asets/js/script.js' %}"></script>
 
     <script>
-      // Instant Real-Time Client Search Filter for the Matrix Table
+      // Instantly dismiss preloader once DOM is ready
+      $(document).ready(function() {
+        $('#preloader').fadeOut(200);
+      });
+      window.addEventListener('load', function() {
+        var p = document.getElementById('preloader');
+        if (p) p.style.display = 'none';
+      });
+
+      // Instant Real-Time Client Search Filter
       function filterMatrixTable() {
         var input = document.getElementById("matrixSearchInput");
+        if (!input) return;
         var filter = input.value.toLowerCase().trim();
         var rows = document.querySelectorAll("#attendanceMatrixTable tbody tr.matrix-row");
 

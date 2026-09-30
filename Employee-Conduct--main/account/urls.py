@@ -23,7 +23,7 @@ urlpatterns = [
     path('dashboard/admin/<int:company_id>/<int:company_staff_id>/', views.admin_dashboard, name='admin_dashboard'),
     path('dashboard/admin/<int:company_id>/<int:company_staff_id>/profile/', views.hr_profile_view, name='admin_profile'),
     path('dashboard/admin/<int:company_id>/<int:company_staff_id>/attendance_register/', views.monthly_attendance_register, name='admin_attendance_register'),
-    path('dashboard/admin/<int:company_id>/<int:company_staff_id>/attendance_register/export/', views.export_attendance_register, name='admin_export_attendance_register'),
+    path('dashboard/admin/<int:company_id>/<int:company_staff_id>/attendance_register/export/', views.export_attendance_register, name='admin_attendance_register_export'),
     path('dashboard/manager/<int:company_id>/<int:company_staff_id>/', views.manager_dashboard, name='manager_dashboard'),
     path('dashboard/hr/<int:company_id>/<int:company_staff_id>/', views.hr_dashboard, name='hr_dashboard'),
     path('dashboard/hr/<int:company_id>/<int:company_staff_id>/profile/', views.hr_profile_view, name='hr_profile'),
@@ -31,7 +31,8 @@ urlpatterns = [
     path('dashboard/hr/<int:company_id>/<int:company_staff_id>/remove_image/', views.remove_hr_profile_image, name='remove_hr_profile_image'),
     path('dashboard/hr/<int:company_id>/<int:company_staff_id>/biometric/', views.hr_biometric_monitor, name='hr_biometric_monitor'),
     path('dashboard/hr/<int:company_id>/<int:company_staff_id>/attendance_register/', views.monthly_attendance_register, name='hr_attendance_register'),
-    path('dashboard/hr/<int:company_id>/<int:company_staff_id>/attendance_register/export/', views.export_attendance_register, name='export_attendance_register'),
+    path('dashboard/hr/<int:company_id>/<int:company_staff_id>/attendance_register/export/', views.export_attendance_register, name='hr_attendance_register_export'),
+    path('dashboard/hr/<int:company_id>/<int:company_staff_id>/attendance_register/export_legacy/', views.export_attendance_register, name='export_attendance_register'),
     # Simple landing dashboard for employee role (after login)
     path(
         'dashboard/employee/<int:company_id>/<int:company_staff_id>/',
