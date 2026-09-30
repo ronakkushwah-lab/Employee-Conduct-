@@ -1502,11 +1502,38 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
                 tot_a += 1
                 kpi_absent += 1
 
+            # When a specific status filter is active, only show matching day cells and blank out non-matching cells
+            display_status = cell_status
+            display_class = cell_class
+            display_title = cell_title
+
+            if status_filter == 'present':
+                if cell_status not in ['P', 'L', 'HD']:
+                    display_status = '-'
+                    display_class = 'badge-future'
+                    display_title = f"{cell_title} (Filtered out)"
+            elif status_filter == 'absent':
+                if cell_status != 'A':
+                    display_status = '-'
+                    display_class = 'badge-future'
+                    display_title = f"{cell_title} (Filtered out)"
+            elif status_filter == 'late':
+                if cell_status != 'L':
+                    display_status = '-'
+                    display_class = 'badge-future'
+                    display_title = f"{cell_title} (Filtered out)"
+            elif status_filter == 'leave':
+                if cell_status != 'LV':
+                    display_status = '-'
+                    display_class = 'badge-future'
+                    display_title = f"{cell_title} (Filtered out)"
+
             emp_days.append({
                 'day': d,
-                'status': cell_status,
-                'class': cell_class,
-                'title': cell_title,
+                'status': display_status,
+                'raw_status': cell_status,
+                'class': display_class,
+                'title': display_title,
                 'check_in': check_in_str,
                 'check_out': check_out_str,
                 'worked': worked_str,
