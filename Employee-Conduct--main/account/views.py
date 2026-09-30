@@ -962,5 +962,548 @@ def remove_hr_profile_image(request, company_id, company_staff_id):
         return JsonResponse({'error': str(e)}, status=500)
 
 
+# ==============================================================================
+# MONTHLY ATTENDANCE REGISTER MATRIX & EXPORT ENGINE (HR & ADMIN)
+# ==============================================================================
+
+def _get_attendance_register_data(company, month, year, dept_id=None, status_filter='all', search_query=None):
+    import calendar
+    from datetime import datetime, date, time
+    from django.db.models import Q
+    from administration.models import holiday
+    from leave.models import Leave
+
+    today = timezone.localdate()
+    current_tz = timezone.get_current_timezone()
+    num_days = calendar.monthrange(year, month)[1]
+
+    # Days metadata list
+    days_meta = []
+    for d in range(1, num_days + 1):
+        d_date = date(year, month, d)
+        days_meta.append({
+            'day': d,
+            'date': d_date,
+            'weekday_name': d_date.strftime('%a'),
+            'is_sunday': d_date.weekday() == 6,
+            'is_today': d_date == today,
+            'is_future': d_date > today,
+        })
+
+    # Query employees in company
+    emp_qs = Employee.objects.filter(
+        Q(user__company=company) | Q(user__isnull=True)
+    ).select_related('employee_department', 'user').order_by('employee_first_name', 'employee_last_name')
+
+    if dept_id and str(dept_id).lower() != 'all':
+        emp_qs = emp_qs.filter(employee_department_id=dept_id)
+
+    if search_query:
+        sq = search_query.strip()
+        emp_qs = emp_qs.filter(
+            Q(employee_first_name__icontains=sq) |
+            Q(employee_last_name__icontains=sq) |
+            Q(employee_id__icontains=sq) |
+            Q(biometric_id__icontains=sq) |
+            Q(employee_email__icontains=sq)
+        )
+
+    employees = list(emp_qs)
+
+    # Date range for queries
+    month_start = timezone.make_aware(datetime(year, month, 1, 0, 0, 0), current_tz)
+    month_end = timezone.make_aware(datetime(year, month, num_days, 23, 59, 59, 999999), current_tz)
+
+    # Fetch attendance punches in bulk
+    attendance_qs = Attendance.objects.filter(
+        employee__in=employees,
+        check_in__gte=month_start,
+        check_in__lte=month_end
+    ).order_by('check_in')
+
+    attendance_map = {}
+    for att in attendance_qs:
+        emp_id = att.employee_id
+        if emp_id not in attendance_map:
+            attendance_map[emp_id] = {}
+        day_num = timezone.localtime(att.check_in).day
+        if day_num not in attendance_map[emp_id]:
+            attendance_map[emp_id][day_num] = []
+        attendance_map[emp_id][day_num].append(att)
+
+    # Fetch approved leaves
+    leave_qs = Leave.objects.filter(
+        user__in=employees,
+        status__in=['approved', 'Approved'],
+        startdate__lte=month_end.date(),
+        enddate__gte=month_start.date()
+    )
+    leave_map = {}
+    for l in leave_qs:
+        emp_id = l.user_id
+        if emp_id not in leave_map:
+            leave_map[emp_id] = set()
+        if l.startdate and l.enddate:
+            cur_d = max(l.startdate, month_start.date())
+            end_d = min(l.enddate, month_end.date())
+            while cur_d <= end_d:
+                leave_map[emp_id].add(cur_d)
+                cur_d += timezone.timedelta(days=1)
+
+    # Fetch official holidays for this company/month
+    holiday_dates = set()
+    for h in holiday.objects.filter(company=company):
+        try:
+            import dateutil.parser
+            h_dt = dateutil.parser.parse(str(h.date)).date()
+            if h_dt.year == year and h_dt.month == month:
+                holiday_dates.add(h_dt)
+        except Exception:
+            pass
+
+    # Build matrix rows
+    matrix_rows = []
+    kpi_present = 0
+    kpi_absent = 0
+    kpi_late = 0
+    kpi_leave = 0
+    kpi_total_records = 0
+
+    for idx, emp in enumerate(employees, start=1):
+        emp_days = []
+        tot_p = 0
+        tot_a = 0
+        tot_l = 0
+        tot_h = 0
+        tot_lv = 0
+        tot_hd = 0
+
+        for dm in days_meta:
+            d = dm['day']
+            d_date = dm['date']
+            is_future = dm['is_future']
+            is_sunday = dm['is_sunday']
+            is_holiday = is_sunday or (d_date in holiday_dates)
+            is_on_leave = d_date in leave_map.get(emp.id, set())
+            punches = attendance_map.get(emp.id, {}).get(d, [])
+
+            cell_status = '-'
+            cell_class = 'badge-future'
+            cell_title = 'No Record'
+            check_in_str = '--:--'
+            check_out_str = '--:--'
+            worked_str = '-'
+
+            if is_future:
+                cell_status = '-'
+                cell_class = 'badge-future'
+                cell_title = 'Future Date'
+            elif punches:
+                first_punch = punches[0]
+                last_punch = punches[-1]
+                ci_local = timezone.localtime(first_punch.check_in)
+                check_in_str = ci_local.strftime('%I:%M %p')
+
+                if last_punch.check_out:
+                    co_local = timezone.localtime(last_punch.check_out)
+                    check_out_str = co_local.strftime('%I:%M %p')
+                    diff_sec = int((co_local - ci_local).total_seconds())
+                    if diff_sec > 0:
+                        worked_str = f"{diff_sec // 3600}h {(diff_sec % 3600) // 60}m"
+                elif first_punch.check_in:
+                    worked_str = "In Progress"
+
+                # Late arrival (checked in after 10:15 AM)
+                is_late = ci_local.time() > time(10, 15)
+                # Half day (< 4.5 hours)
+                is_half_day = False
+                if last_punch.check_out:
+                    diff_sec = int((timezone.localtime(last_punch.check_out) - ci_local).total_seconds())
+                    if 0 < diff_sec < 16200:
+                        is_half_day = True
+
+                if is_half_day:
+                    cell_status = 'HD'
+                    cell_class = 'badge-halfday'
+                    cell_title = f"Half Day ({check_in_str} - {check_out_str})"
+                    tot_hd += 1
+                    tot_p += 1
+                    kpi_present += 1
+                elif is_late:
+                    cell_status = 'L'
+                    cell_class = 'badge-late'
+                    cell_title = f"Late ({check_in_str})"
+                    tot_l += 1
+                    tot_p += 1
+                    kpi_late += 1
+                    kpi_present += 1
+                else:
+                    cell_status = 'P'
+                    cell_class = 'badge-present'
+                    cell_title = f"Present ({check_in_str} - {check_out_str})"
+                    tot_p += 1
+                    kpi_present += 1
+                kpi_total_records += 1
+            elif is_on_leave:
+                cell_status = 'LV'
+                cell_class = 'badge-leave'
+                cell_title = "Approved Leave"
+                tot_lv += 1
+                kpi_leave += 1
+                kpi_total_records += 1
+            elif is_holiday:
+                cell_status = 'H'
+                cell_class = 'badge-holiday'
+                cell_title = "Sunday / Holiday"
+                tot_h += 1
+            else:
+                cell_status = 'A'
+                cell_class = 'badge-absent'
+                cell_title = "Absent"
+                tot_a += 1
+                kpi_absent += 1
+                kpi_total_records += 1
+
+            emp_days.append({
+                'day': d,
+                'status': cell_status,
+                'class': cell_class,
+                'title': cell_title,
+                'check_in': check_in_str,
+                'check_out': check_out_str,
+                'worked': worked_str,
+                'is_sunday': is_sunday,
+                'is_today': dm['is_today'],
+            })
+
+        tot_payable = tot_p + tot_h + tot_lv
+
+        # Status filtering
+        include_emp = True
+        if status_filter == 'present' and tot_p == 0:
+            include_emp = False
+        elif status_filter == 'absent' and tot_a == 0:
+            include_emp = False
+        elif status_filter == 'late' and tot_l == 0:
+            include_emp = False
+        elif status_filter == 'leave' and tot_lv == 0:
+            include_emp = False
+
+        if include_emp:
+            matrix_rows.append({
+                'index': idx,
+                'employee': emp,
+                'days': emp_days,
+                'total_present': tot_p,
+                'total_absent': tot_a,
+                'total_late': tot_l,
+                'total_holiday': tot_h,
+                'total_leave': tot_lv,
+                'total_halfday': tot_hd,
+                'total_payable': tot_payable,
+            })
+
+    departments = Department.objects.filter(company=company).order_by('department_name')
+
+    return {
+        'num_days': num_days,
+        'days_meta': days_meta,
+        'matrix_rows': matrix_rows,
+        'departments': departments,
+        'kpi': {
+            'total_employees': len(employees),
+            'filtered_employees': len(matrix_rows),
+            'total_records': kpi_total_records,
+            'present': kpi_present,
+            'absent': kpi_absent,
+            'late': kpi_late,
+            'leave': kpi_leave,
+        }
+    }
+
+
+def monthly_attendance_register(request, company_id, company_staff_id):
+    company = get_object_or_404(Company, id=company_id)
+    staff = get_object_or_404(CompanyStaff, id=company_staff_id, company=company)
+
+    import calendar
+    today = timezone.localdate()
+
+    period = request.GET.get('period', 'monthly')
+    try:
+        month = int(request.GET.get('month', today.month))
+        if month < 1 or month > 12:
+            month = today.month
+    except Exception:
+        month = today.month
+
+    try:
+        year = int(request.GET.get('year', today.year))
+        if year < 2000 or year > 2100:
+            year = today.year
+    except Exception:
+        year = today.year
+
+    dept_id = request.GET.get('dept', 'all')
+    status_filter = request.GET.get('status', 'all')
+    search_query = request.GET.get('q', '').strip()
+
+    data = _get_attendance_register_data(
+        company=company,
+        month=month,
+        year=year,
+        dept_id=dept_id,
+        status_filter=status_filter,
+        search_query=search_query
+    )
+
+    months_list = [(m, calendar.month_name[m]) for m in range(1, 13)]
+    years_list = [y for y in range(today.year - 3, today.year + 2)]
+
+    is_admin = bool(staff and (staff.is_company_admin or staff.role in [CompanyStaff.ROLE_ADMIN, CompanyStaff.ROLE_SUPERADMIN]))
+
+    context = {
+        'company': company,
+        'staff': staff,
+        'is_admin': is_admin,
+        'company_id': company_id,
+        'company_staff_id': company_staff_id,
+        'period': period,
+        'current_month': month,
+        'current_month_name': calendar.month_name[month],
+        'current_year': year,
+        'dept_id': dept_id,
+        'status_filter': status_filter,
+        'search_query': search_query,
+        'months_list': months_list,
+        'years_list': years_list,
+        'days_meta': data['days_meta'],
+        'matrix_rows': data['matrix_rows'],
+        'departments': data['departments'],
+        'kpi': data['kpi'],
+    }
+    return render(request, 'account/attendance_register.html', context)
+
+
+def export_attendance_register(request, company_id, company_staff_id):
+    company = get_object_or_404(Company, id=company_id)
+    staff = get_object_or_404(CompanyStaff, id=company_staff_id, company=company)
+
+    import calendar
+    today = timezone.localdate()
+
+    try:
+        month = int(request.GET.get('month', today.month))
+    except Exception:
+        month = today.month
+
+    try:
+        year = int(request.GET.get('year', today.year))
+    except Exception:
+        year = today.year
+
+    dept_id = request.GET.get('dept', 'all')
+    status_filter = request.GET.get('status', 'all')
+    search_query = request.GET.get('q', '').strip()
+    export_format = request.GET.get('format', 'excel')
+
+    data = _get_attendance_register_data(
+        company=company,
+        month=month,
+        year=year,
+        dept_id=dept_id,
+        status_filter=status_filter,
+        search_query=search_query
+    )
+
+    month_name = calendar.month_name[month]
+    filename = f"Attendance_Register_{month_name}_{year}"
+
+    if export_format == 'csv':
+        import csv
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="{filename}.csv"'
+        writer = csv.writer(response)
+
+        header = ['#', 'Employee Name', 'Emp ID', 'Bio ID', 'Department']
+        for dm in data['days_meta']:
+            header.append(f"{dm['day']} ({dm['weekday_name']})")
+        header.extend(['Present (P)', 'Absent (A)', 'Late (L)', 'Holiday (H)', 'Leave (LV)', 'Total Payable Days'])
+        writer.writerow(header)
+
+        for row in data['matrix_rows']:
+            emp = row['employee']
+            emp_name = f"{emp.employee_first_name} {emp.employee_last_name}".strip()
+            dept_name = emp.employee_department.department_name if emp.employee_department else '-'
+            row_data = [
+                row['index'],
+                emp_name,
+                emp.formatted_employee_id if hasattr(emp, 'formatted_employee_id') else emp.employee_id,
+                emp.biometric_id or '-',
+                dept_name,
+            ]
+            for d in row['days']:
+                row_data.append(d['status'])
+            row_data.extend([
+                row['total_present'],
+                row['total_absent'],
+                row['total_late'],
+                row['total_holiday'],
+                row['total_leave'],
+                row['total_payable'],
+            ])
+            writer.writerow(row_data)
+        return response
+
+    # Default: Excel .xlsx export with styling
+    try:
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+        from io import BytesIO
+
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = f"{month_name} {year}"
+
+        # Title block
+        ws.merge_cells('A1:G1')
+        title_cell = ws['A1']
+        title_cell.value = f"MONTHLY ATTENDANCE REGISTER - {month_name.upper()} {year}"
+        title_cell.font = Font(name='Calibri', size=14, bold=True, color='FFFFFF')
+        title_cell.fill = PatternFill(start_color='1B2A4A', end_color='1B2A4A', fill_type='solid')
+        title_cell.alignment = Alignment(horizontal='left', vertical='center')
+
+        # Company info
+        ws['A2'] = f"Company: {company.company_name or 'Eagle In Cloud'} | Exported On: {timezone.now().strftime('%d %b %Y, %I:%M %p')}"
+        ws['A2'].font = Font(name='Calibri', size=10, italic=True, color='555555')
+
+        # Headers
+        headers = ['#', 'Employee Name', 'Emp ID', 'Bio ID', 'Department']
+        for dm in data['days_meta']:
+            headers.append(f"{dm['day']}\n{dm['weekday_name']}")
+        headers.extend(['P', 'A', 'L', 'H', 'LV', 'Payable Days'])
+
+        ws.append([]) # Row 3 blank
+        ws.append(headers) # Row 4 headers
+
+        header_fill = PatternFill(start_color='2C3E50', end_color='2C3E50', fill_type='solid')
+        header_font = Font(name='Calibri', size=10, bold=True, color='FFFFFF')
+        thin_border = Border(
+            left=Side(style='thin', color='DDDDDD'),
+            right=Side(style='thin', color='DDDDDD'),
+            top=Side(style='thin', color='DDDDDD'),
+            bottom=Side(style='thin', color='DDDDDD')
+        )
+
+        for col_num in range(1, len(headers) + 1):
+            cell = ws.cell(row=4, column=col_num)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+            cell.border = thin_border
+
+        # Fills for status codes
+        fill_present = PatternFill(start_color='D4EDDA', end_color='D4EDDA', fill_type='solid') # Soft Green
+        fill_absent = PatternFill(start_color='F8D7DA', end_color='F8D7DA', fill_type='solid') # Soft Red
+        fill_late = PatternFill(start_color='FFF3CD', end_color='FFF3CD', fill_type='solid') # Soft Yellow
+        fill_holiday = PatternFill(start_color='D1ECF1', end_color='D1ECF1', fill_type='solid') # Soft Blue
+        fill_leave = PatternFill(start_color='E2D9F3', end_color='E2D9F3', fill_type='solid') # Soft Purple
+        fill_future = PatternFill(start_color='F8F9FA', end_color='F8F9FA', fill_type='solid') # Grey
+
+        # Populate rows
+        current_row = 5
+        for row in data['matrix_rows']:
+            emp = row['employee']
+            emp_name = f"{emp.employee_first_name} {emp.employee_last_name}".strip()
+            dept_name = emp.employee_department.department_name if emp.employee_department else '-'
+            emp_id_display = emp.formatted_employee_id if hasattr(emp, 'formatted_employee_id') else emp.employee_id
+
+            row_cells = [
+                row['index'],
+                emp_name,
+                emp_id_display,
+                emp.biometric_id or '-',
+                dept_name,
+            ]
+            for d in row['days']:
+                row_cells.append(d['status'])
+            row_cells.extend([
+                row['total_present'],
+                row['total_absent'],
+                row['total_late'],
+                row['total_holiday'],
+                row['total_leave'],
+                row['total_payable'],
+            ])
+            ws.append(row_cells)
+
+            # Style the newly added row
+            for col_idx, val in enumerate(row_cells, start=1):
+                c = ws.cell(row=current_row, column=col_idx)
+                c.border = thin_border
+                c.font = Font(name='Calibri', size=10)
+                if col_idx in [1, 3, 4]:
+                    c.alignment = Alignment(horizontal='center', vertical='center')
+                elif col_idx == 2 or col_idx == 5:
+                    c.alignment = Alignment(horizontal='left', vertical='center')
+                else:
+                    c.alignment = Alignment(horizontal='center', vertical='center')
+
+                # Apply color coding to day cells
+                if 6 <= col_idx <= 5 + len(data['days_meta']):
+                    if str(val) in ['P', 'HD']:
+                        c.fill = fill_present
+                        c.font = Font(name='Calibri', size=10, bold=True, color='155724')
+                    elif str(val) == 'A':
+                        c.fill = fill_absent
+                        c.font = Font(name='Calibri', size=10, bold=True, color='721C24')
+                    elif str(val) == 'L':
+                        c.fill = fill_late
+                        c.font = Font(name='Calibri', size=10, bold=True, color='856404')
+                    elif str(val) == 'H':
+                        c.fill = fill_holiday
+                        c.font = Font(name='Calibri', size=10, bold=True, color='0C5460')
+                    elif str(val) == 'LV':
+                        c.fill = fill_leave
+                        c.font = Font(name='Calibri', size=10, bold=True, color='381E72')
+                    elif str(val) == '-':
+                        c.fill = fill_future
+                        c.font = Font(name='Calibri', size=10, color='888888')
+
+            current_row += 1
+
+        # Auto adjust column widths
+        ws.column_dimensions['A'].width = 6
+        ws.column_dimensions['B'].width = 24
+        ws.column_dimensions['C'].width = 14
+        ws.column_dimensions['D'].width = 10
+        ws.column_dimensions['E'].width = 18
+        for col_idx in range(6, 6 + len(data['days_meta'])):
+            col_letter = openpyxl.utils.get_column_letter(col_idx)
+            ws.column_dimensions[col_letter].width = 6
+        for col_idx in range(6 + len(data['days_meta']), len(headers) + 1):
+            col_letter = openpyxl.utils.get_column_letter(col_idx)
+            ws.column_dimensions[col_letter].width = 12
+
+        output = BytesIO()
+        wb.save(output)
+        output.seek(0)
+
+        response = HttpResponse(
+            output.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = f'attachment; filename="{filename}.xlsx"'
+        return response
+    except Exception as e:
+        # Fallback to CSV if openpyxl encountered an issue
+        import csv
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="{filename}.csv"'
+        writer = csv.writer(response)
+        writer.writerow(['Error generating Excel, fallback to CSV', str(e)])
+        return response
+
+
 
 

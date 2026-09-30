@@ -1,0 +1,502 @@
+{% load static %}
+{% include "administration/header.html" %}
+{% include "administration/sidebar.html" %}
+{% include "administration/topbar.html" %}
+
+<style>
+  /* Attendance Register Matrix Styling */
+  .attendance-matrix-container {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+    border: 1px solid #edf2f7;
+    overflow: hidden;
+  }
+  .matrix-table-wrapper {
+    overflow-x: auto;
+    position: relative;
+    max-height: 720px;
+  }
+  .matrix-table {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+    margin-bottom: 0;
+    font-size: 0.82rem;
+  }
+  .matrix-table thead th {
+    position: sticky;
+    top: 0;
+    background: #1B2A4A;
+    color: #ffffff;
+    font-weight: 600;
+    text-align: center;
+    vertical-align: middle;
+    padding: 8px 4px;
+    border: 1px solid #2d3f63;
+    z-index: 10;
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+  .matrix-table thead th.th-sticky-1 {
+    position: sticky;
+    left: 0;
+    z-index: 20;
+    background: #152238;
+    min-width: 45px;
+    max-width: 45px;
+  }
+  .matrix-table thead th.th-sticky-2 {
+    position: sticky;
+    left: 45px;
+    z-index: 20;
+    background: #152238;
+    min-width: 220px;
+    text-align: left;
+    padding-left: 12px;
+  }
+  .matrix-table tbody td {
+    padding: 6px 3px;
+    text-align: center;
+    vertical-align: middle;
+    border: 1px solid #edf2f7;
+    font-weight: 500;
+  }
+  .matrix-table tbody td.td-sticky-1 {
+    position: sticky;
+    left: 0;
+    background: #ffffff;
+    z-index: 5;
+    font-weight: 600;
+    color: #64748b;
+    border-right: 1px solid #e2e8f0;
+  }
+  .matrix-table tbody td.td-sticky-2 {
+    position: sticky;
+    left: 45px;
+    background: #ffffff;
+    z-index: 5;
+    text-align: left;
+    padding-left: 12px;
+    border-right: 2px solid #cbd5e1;
+    white-space: nowrap;
+  }
+  .matrix-table tbody tr:hover td {
+    background-color: #f8fafc;
+  }
+  .matrix-table tbody tr:hover td.td-sticky-1,
+  .matrix-table tbody tr:hover td.td-sticky-2 {
+    background-color: #f1f5f9;
+  }
+
+  /* Status Badges */
+  .att-badge {
+    display: inline-block;
+    width: 26px;
+    height: 26px;
+    line-height: 26px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 0.72rem;
+    text-align: center;
+    cursor: default;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .att-badge:hover {
+    transform: scale(1.18);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    z-index: 2;
+  }
+
+  .badge-present { background-color: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+  .badge-absent { background-color: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+  .badge-late { background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+  .badge-holiday { background-color: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; }
+  .badge-leave { background-color: #f3e8ff; color: #6b21a8; border: 1px solid #e9d5ff; }
+  .badge-halfday { background-color: #ffedd5; color: #9a3412; border: 1px solid #fed7aa; }
+  .badge-future { background-color: #f8fafc; color: #94a3b8; border: 1px dashed #cbd5e1; font-weight: normal; }
+
+  /* Sunday / Weekend Column Highlight */
+  .col-sunday-th { background: #0f172a !important; color: #93c5fd !important; }
+  .col-sunday-td { background-color: #f8fafc; }
+  .col-today-th { background: #1d4ed8 !important; color: #ffffff !important; border: 2px solid #60a5fa !important; }
+
+  /* KPI Summary Card Styling */
+  .kpi-card {
+    border-radius: 12px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border: none;
+  }
+  .kpi-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.08);
+  }
+
+  /* Period Pill Filter */
+  .period-pill {
+    padding: 6px 18px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    border-radius: 20px;
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    color: #475569;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+  .period-pill:hover, .period-pill.active {
+    background: #1B2A4A;
+    color: #ffffff;
+    border-color: #1B2A4A;
+    box-shadow: 0 2px 8px rgba(27, 42, 74, 0.25);
+  }
+
+  /* Legend pill */
+  .legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #475569;
+    background: #f8fafc;
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+  }
+</style>
+
+<div class="page_wrapper">
+  <div class="page-content">
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        <strong>Message: </strong> {{ message }}
+      </div>
+    {% endfor %}
+
+    <!-- Top Breadcrumb & Page Title -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
+      <div>
+        <h4 class="mb-1 fw-bold text-dark">
+          <i class='bx bx-calendar-check text-primary me-2'></i> Monthly Attendance Register
+        </h4>
+        <small class="text-muted">
+          Comprehensive employee attendance matrix, punch history, and automated payroll calculations
+        </small>
+      </div>
+      <div class="d-flex gap-2 mt-2 mt-md-0">
+        <a href="{% if is_admin %}{% url 'admin_dashboard' company_id=company_id company_staff_id=company_staff_id %}{% else %}{% url 'hr_dashboard' company_id=company_id company_staff_id=company_staff_id %}{% endif %}" class="btn btn-outline-secondary btn-sm rounded-3">
+          <i class='bx bx-arrow-back me-1'></i> Dashboard
+        </a>
+        <a href="{% url 'hr_biometric_monitor' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-outline-primary btn-sm rounded-3">
+          <i class='bx bx-fingerprint me-1'></i> Live Biometric Monitor
+        </a>
+      </div>
+    </div>
+
+    <!-- Filter Control Card -->
+    <div class="card radius-10 border-0 shadow-sm mb-4">
+      <div class="card-body p-3">
+        <form method="GET" action="" id="attendanceFilterForm" class="row g-3 align-items-end">
+          
+          <!-- Period Filter Pills -->
+          <div class="col-12 col-lg-3">
+            <label class="form-label text-muted small fw-bold mb-2">PERIOD FILTER</label>
+            <div class="d-flex gap-1">
+              <a href="?period=daily&month={{ current_month }}&year={{ current_year }}&dept={{ dept_id }}&status={{ status_filter }}" class="period-pill {% if period == 'daily' %}active{% endif %}">DAILY</a>
+              <a href="?period=monthly&month={{ current_month }}&year={{ current_year }}&dept={{ dept_id }}&status={{ status_filter }}" class="period-pill {% if period == 'monthly' or not period %}active{% endif %}">MONTHLY</a>
+              <a href="?period=yearly&month={{ current_month }}&year={{ current_year }}&dept={{ dept_id }}&status={{ status_filter }}" class="period-pill {% if period == 'yearly' %}active{% endif %}">YEARLY</a>
+            </div>
+            <input type="hidden" name="period" value="{{ period|default:'monthly' }}">
+          </div>
+
+          <!-- Month Selector -->
+          <div class="col-6 col-md-3 col-lg-2">
+            <label class="form-label text-muted small fw-bold mb-1">MONTH</label>
+            <select name="month" class="form-select form-select-sm rounded-3 fw-semibold" onchange="document.getElementById('attendanceFilterForm').submit();">
+              {% for m_num, m_name in months_list %}
+                <option value="{{ m_num }}" {% if m_num == current_month %}selected{% endif %}>{{ m_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Year Selector -->
+          <div class="col-6 col-md-3 col-lg-2">
+            <label class="form-label text-muted small fw-bold mb-1">YEAR</label>
+            <select name="year" class="form-select form-select-sm rounded-3 fw-semibold" onchange="document.getElementById('attendanceFilterForm').submit();">
+              {% for y in years_list %}
+                <option value="{{ y }}" {% if y == current_year %}selected{% endif %}>{{ y }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Department Filter -->
+          <div class="col-6 col-md-3 col-lg-2">
+            <label class="form-label text-muted small fw-bold mb-1">DEPARTMENT</label>
+            <select name="dept" class="form-select form-select-sm rounded-3" onchange="document.getElementById('attendanceFilterForm').submit();">
+              <option value="all" {% if dept_id == 'all' or not dept_id %}selected{% endif %}>All Departments</option>
+              {% for d in departments %}
+                <option value="{{ d.id }}" {% if dept_id == d.id|stringformat:"s" %}selected{% endif %}>{{ d.department_name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Status Filter -->
+          <div class="col-6 col-md-3 col-lg-1">
+            <label class="form-label text-muted small fw-bold mb-1">STATUS</label>
+            <select name="status" class="form-select form-select-sm rounded-3" onchange="document.getElementById('attendanceFilterForm').submit();">
+              <option value="all" {% if status_filter == 'all' or not status_filter %}selected{% endif %}>All</option>
+              <option value="present" {% if status_filter == 'present' %}selected{% endif %}>Present</option>
+              <option value="absent" {% if status_filter == 'absent' %}selected{% endif %}>Absent</option>
+              <option value="late" {% if status_filter == 'late' %}selected{% endif %}>Late</option>
+              <option value="leave" {% if status_filter == 'leave' %}selected{% endif %}>Leave</option>
+            </select>
+          </div>
+
+          <!-- Action Buttons: Export & Print -->
+          <div class="col-12 col-lg-2 d-flex gap-1 justify-content-lg-end">
+            <a href="{% url 'export_attendance_register' company_id=company_id company_staff_id=company_staff_id %}?format=excel&month={{ current_month }}&year={{ current_year }}&dept={{ dept_id }}&status={{ status_filter }}&q={{ search_query }}" class="btn btn-sm btn-success rounded-3 fw-semibold px-2 py-1 shadow-sm" title="Export Formatted Excel Spreadsheet">
+              <i class='bx bx-file me-1'></i> Excel
+            </a>
+            <a href="{% url 'export_attendance_register' company_id=company_id company_staff_id=company_staff_id %}?format=csv&month={{ current_month }}&year={{ current_year }}&dept={{ dept_id }}&status={{ status_filter }}&q={{ search_query }}" class="btn btn-sm btn-outline-secondary rounded-3 fw-semibold px-2 py-1" title="Download CSV">
+              <i class='bx bx-download me-1'></i> CSV
+            </a>
+            <button type="button" onclick="window.print()" class="btn btn-sm btn-outline-dark rounded-3 px-2 py-1" title="Print Register">
+              <i class='bx bx-printer'></i>
+            </button>
+          </div>
+        </form>
+
+        <!-- Quick Live Search Box -->
+        <div class="mt-3 pt-3 border-top d-flex justify-content-between align-items-center">
+          <div class="input-group input-group-sm" style="max-width: 380px;">
+            <span class="input-group-text bg-light border-end-0"><i class='bx bx-search'></i></span>
+            <input type="text" id="matrixSearchInput" class="form-control bg-light border-start-0" placeholder="Filter employee by name, Emp ID, or Bio ID..." onkeyup="filterMatrixTable();" value="{{ search_query }}">
+          </div>
+          <div class="small text-muted">
+            Showing <strong class="text-dark">{{ kpi.filtered_employees }}</strong> of {{ kpi.total_employees }} Employees for <strong>{{ current_month_name }} {{ current_year }}</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top KPI Stats Summary Cards (Matching Reference Image) -->
+    <div class="row row-cols-2 row-cols-md-3 row-cols-lg-6 g-3 mb-4">
+      <!-- Total Employees -->
+      <div class="col">
+        <div class="card kpi-card bg-white shadow-sm border-0 h-100 p-3">
+          <div class="d-flex align-items-center justify-content-between">
+            <div>
+              <span class="text-muted d-block small fw-bold">EMPLOYEES</span>
+              <h3 class="mb-0 fw-bold text-dark mt-1">{{ kpi.total_employees }}</h3>
+            </div>
+            <div class="p-2 rounded-circle" style="background: #eef2ff; color: #4f46e5; font-size: 1.4rem;">
+              <i class='bx bxs-user-detail'></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Total Working Records -->
+      <div class="col">
+        <div class="card kpi-card bg-white shadow-sm border-0 h-100 p-3">
+          <div class="d-flex align-items-center justify-content-between">
+            <div>
+              <span class="text-muted d-block small fw-bold">TOTAL LOGS</span>
+              <h3 class="mb-0 fw-bold text-primary mt-1">{{ kpi.total_records }}</h3>
+            </div>
+            <div class="p-2 rounded-circle" style="background: #e0f2fe; color: #0284c7; font-size: 1.4rem;">
+              <i class='bx bx-bar-chart-alt-2'></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Present -->
+      <div class="col">
+        <div class="card kpi-card bg-white shadow-sm border-0 h-100 p-3">
+          <div class="d-flex align-items-center justify-content-between">
+            <div>
+              <span class="text-muted d-block small fw-bold text-success">PRESENT</span>
+              <h3 class="mb-0 fw-bold text-success mt-1">{{ kpi.present }}</h3>
+            </div>
+            <div class="p-2 rounded-circle" style="background: #dcfce7; color: #16a34a; font-size: 1.4rem;">
+              <i class='bx bx-user-check'></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Absent -->
+      <div class="col">
+        <div class="card kpi-card bg-white shadow-sm border-0 h-100 p-3">
+          <div class="d-flex align-items-center justify-content-between">
+            <div>
+              <span class="text-muted d-block small fw-bold text-danger">ABSENT</span>
+              <h3 class="mb-0 fw-bold text-danger mt-1">{{ kpi.absent }}</h3>
+            </div>
+            <div class="p-2 rounded-circle" style="background: #fee2e2; color: #dc2626; font-size: 1.4rem;">
+              <i class='bx bx-user-x'></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Late Arrivals -->
+      <div class="col">
+        <div class="card kpi-card bg-white shadow-sm border-0 h-100 p-3">
+          <div class="d-flex align-items-center justify-content-between">
+            <div>
+              <span class="text-muted d-block small fw-bold text-warning">LATE</span>
+              <h3 class="mb-0 fw-bold text-warning mt-1">{{ kpi.late }}</h3>
+            </div>
+            <div class="p-2 rounded-circle" style="background: #fef3c7; color: #d97706; font-size: 1.4rem;">
+              <i class='bx bx-time-five'></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Approved Leaves -->
+      <div class="col">
+        <div class="card kpi-card bg-white shadow-sm border-0 h-100 p-3">
+          <div class="d-flex align-items-center justify-content-between">
+            <div>
+              <span class="text-muted d-block small fw-bold" style="color: #9333ea;">ON LEAVE</span>
+              <h3 class="mb-0 fw-bold mt-1" style="color: #9333ea;">{{ kpi.leave }}</h3>
+            </div>
+            <div class="p-2 rounded-circle" style="background: #f3e8ff; color: #9333ea; font-size: 1.4rem;">
+              <i class='bx bx-sun'></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Monthly Attendance Register Matrix Card -->
+    <div class="attendance-matrix-container mb-4">
+      <div class="p-3 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div>
+          <h5 class="mb-1 fw-bold text-dark">
+            <i class='bx bx-table text-primary me-1'></i> Monthly Attendance Register
+          </h5>
+          <small class="text-muted">{{ current_month_name }} {{ current_year }} &bull; {{ kpi.filtered_employees }} Employees</small>
+        </div>
+
+        <!-- Legend Badges Bar -->
+        <div class="d-flex flex-wrap gap-2">
+          <span class="legend-item"><span class="att-badge badge-present" style="width:18px;height:18px;line-height:18px;">P</span> Present</span>
+          <span class="legend-item"><span class="att-badge badge-absent" style="width:18px;height:18px;line-height:18px;">A</span> Absent</span>
+          <span class="legend-item"><span class="att-badge badge-late" style="width:18px;height:18px;line-height:18px;">L</span> Late</span>
+          <span class="legend-item"><span class="att-badge badge-holiday" style="width:18px;height:18px;line-height:18px;">H</span> Holiday</span>
+          <span class="legend-item"><span class="att-badge badge-leave" style="width:18px;height:18px;line-height:18px;">LV</span> Leave</span>
+          <span class="legend-item"><span class="att-badge badge-halfday" style="width:18px;height:18px;line-height:18px;">HD</span> Half Day</span>
+          <span class="legend-item"><span class="att-badge badge-future" style="width:18px;height:18px;line-height:18px;">-</span> Future</span>
+        </div>
+      </div>
+
+      <!-- Matrix Table Scroll Wrapper -->
+      <div class="matrix-table-wrapper">
+        <table class="table matrix-table" id="attendanceMatrixTable">
+          <thead>
+            <tr>
+              <th class="th-sticky-1">#</th>
+              <th class="th-sticky-2">EMPLOYEE NAME</th>
+              <th style="min-width: 90px; text-align: center;">EMP ID</th>
+              <th style="min-width: 75px; text-align: center;">BIO ID</th>
+              
+              <!-- Days Header 1 to N -->
+              {% for dm in days_meta %}
+                <th style="min-width: 32px;" class="{% if dm.is_today %}col-today-th{% elif dm.is_sunday %}col-sunday-th{% endif %}" title="{{ dm.date|date:'l, d F Y' }}">
+                  <div>{{ dm.day }}</div>
+                  <div style="font-size: 0.65rem; opacity: 0.85;">{{ dm.weekday_name|slice:":1" }}</div>
+                </th>
+              {% endfor %}
+
+              <!-- Summary Columns -->
+              <th style="min-width: 38px; background: #065f46;" title="Total Present Days">P</th>
+              <th style="min-width: 38px; background: #991b1b;" title="Total Absent Days">A</th>
+              <th style="min-width: 38px; background: #92400e;" title="Total Late Days">L</th>
+              <th style="min-width: 38px; background: #0369a1;" title="Total Holidays / Sundays">H</th>
+              <th style="min-width: 38px; background: #6b21a8;" title="Total Approved Leaves">LV</th>
+              <th style="min-width: 60px; background: #166534;" title="Total Payable Days (P + H + LV)">PAYABLE</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in matrix_rows %}
+              <tr class="matrix-row" data-empname="{{ row.employee.get_full_name|lower }}" data-empid="{{ row.employee.employee_id|lower }}" data-bioid="{{ row.employee.biometric_id|default:''|lower }}">
+                <td class="td-sticky-1">{{ row.index }}</td>
+                <td class="td-sticky-2">
+                  <div class="d-flex align-items-center">
+                    <img src="{{ row.employee.avatar_url }}" alt="avatar" class="rounded-circle me-2" style="width: 28px; height: 28px; object-fit: cover; border: 1px solid #cbd5e1;">
+                    <div>
+                      <strong class="text-dark d-block" style="font-size: 0.82rem; line-height: 1.2;">{{ row.employee.get_full_name }}</strong>
+                      <small class="text-muted" style="font-size: 0.7rem;">{{ row.employee.employee_department.department_name|default:"General" }}</small>
+                    </div>
+                  </div>
+                </td>
+                <td class="text-center"><span class="badge bg-light text-dark border">{{ row.employee.formatted_employee_id }}</span></td>
+                <td class="text-center text-muted small">{{ row.employee.biometric_id|default:"-" }}</td>
+
+                <!-- Days 1 to N Status Badges -->
+                {% for d in row.days %}
+                  <td class="{% if d.is_sunday %}col-sunday-td{% endif %}" title="{{ d.title }}">
+                    <span class="att-badge {{ d.class }}" data-bs-toggle="tooltip" data-bs-placement="top" title="Day {{ d.day }}: {{ d.title }} {% if d.worked != '-' %}| Worked: {{ d.worked }}{% endif %}">
+                      {{ d.status }}
+                    </span>
+                  </td>
+                {% endfor %}
+
+                <!-- Summary Values -->
+                <td class="fw-bold text-success" style="background-color: #f0fdf4;">{{ row.total_present }}</td>
+                <td class="fw-bold text-danger" style="background-color: #fef2f2;">{{ row.total_absent }}</td>
+                <td class="fw-bold text-warning" style="background-color: #fffbeb;">{{ row.total_late }}</td>
+                <td class="fw-bold text-info" style="background-color: #f0f9ff;">{{ row.total_holiday }}</td>
+                <td class="fw-bold" style="color: #9333ea; background-color: #faf5ff;">{{ row.total_leave }}</td>
+                <td class="fw-bold text-dark text-center" style="background-color: #dcfce7; font-size: 0.88rem;">{{ row.total_payable }}</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="{{ days_meta|length|add:10 }}" class="text-center py-5 text-muted">
+                  <i class='bx bx-info-circle fs-2 d-block mb-2 text-secondary'></i>
+                  No employee attendance records found matching the current filters.
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% include "administration/footer.html" %}
+
+<script>
+  // Instant Real-Time Client Search Filter for the Matrix Table
+  function filterMatrixTable() {
+    var input = document.getElementById("matrixSearchInput");
+    var filter = input.value.toLowerCase().trim();
+    var rows = document.querySelectorAll("#attendanceMatrixTable tbody tr.matrix-row");
+
+    rows.forEach(function(row) {
+      var empName = row.getAttribute("data-empname") || "";
+      var empId = row.getAttribute("data-empid") || "";
+      var bioId = row.getAttribute("data-bioid") || "";
+
+      if (empName.includes(filter) || empId.includes(filter) || bioId.includes(filter)) {
+        row.style.display = "";
+      } else {
+        row.style.display = "none";
+      }
+    });
+  }
+
+  // Initialize Bootstrap Tooltips
+  document.addEventListener("DOMContentLoaded", function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+  });
+</script>

@@ -120,6 +120,12 @@
                             Attendance List
                           </a>
                         </li>
+                        <li>
+                          <a href="{% url 'hr_attendance_register' company_id=company_id company_staff_id=company_staff_id %}" class="{% if url_name == 'hr_attendance_register' or url_name == 'admin_attendance_register' %}active{% endif %}">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Attendance Register
+                          </a>
+                        </li>
                         {% if not company_staff_is_hr and not staff.role == 'hr' and not staff.is_hr %}
                         <li>
                           <a href="{% url 'biometric_machines' company_id=company_id company_staff_id=company_staff_id %}" class="{% if url_name == 'biometric_machines' %}active{% endif %}">
