@@ -3,6 +3,17 @@
 {% include "administration/sidebar.html" %}
 {% include "administration/topbar.html" %}
 
+<script>
+  (function() {
+    var p = document.getElementById("preloader");
+    if (p) p.style.display = "none";
+  })();
+  document.addEventListener('DOMContentLoaded', function() {
+    var p = document.getElementById("preloader");
+    if (p) p.style.display = "none";
+  });
+</script>
+
       <div class="page_wrapper">
         <div class="page-content">
           <div class="page-breadcrumb d-sm-flex align-items-center mb-3">
@@ -61,7 +72,7 @@
                         </tr>
                       </thead>
                       <tbody>
-                               {% for i in attendance %}
+                        {% for i in attendance %}
                         <tr>
                           <td>{{ i.manager.formatted_manager_id }}</td>
                           <td>{{i.manager.manager_email}}</td>
@@ -84,7 +95,7 @@
                             </a>
                             <ul class="dropdown-menu dropdown-menu-end">
                               <li>
-                                <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#updateModal" id="editBtn"  onclick="attendance_id_fetch('{{i.pk}}')">
+                                <button type="button" class="dropdown-item" data-bs-toggle="modal" data-bs-target="#updateModal" id="editBtn" onclick="attendance_id_fetch('{{i.pk}}')">
                                   Update
                                 </button>                              
                               </li>
@@ -94,58 +105,65 @@
                                 </button>                              
                               </li>
                             </ul>
-                            <div class="modal" id="updateModal">
-                              <div class="modal-dialog w-80">
-                                <div class="modal-content">
-                                  <div class="modal-header">
-                                    <h5 class="modal-title" id="exampleModalLabel">Update Attendance</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                  </div>
-                                  <div class="modal-body">
-                                    <form method="post" action="{% url 'mattendanceEdit' company_id=company_id company_staff_id=company_staff_id %}" enctype="multipart/form-data">
-                                        {% csrf_token %}
-                                      <input type="hidden" name="id" id="attendance_id_heading">
-                                      <div class="row mb-2">
-                                        <div class="col">
-                                          <label for="check-in" class="form-label">Check In <span class="text-danger">*</span></label>
-                                          <input type="datetime-local" class="form-control datetimepicker"  id="check_in_heading_edit" name="check_in"  required>
-                                        </div>
-                                        <div class="col">
-                                          <label for="check-out" class="form-label">Check Out</label>
-                                          <input type="datetime-local" class="form-control datetimepicker" id="check_out_heading_edit" name="check_out">
-                                        </div>
-                                      </div>
-                                      <div class="mt-4 mb-2 button-right">
-                                        <button type="submit" class="btn btn-outline-orangeyellow">Submit</button>
-                                      </div>
-                                    </form>
-                                  </div>                                
-                                </div>
-                              </div>
-                            </div>
-                            <div class="modal" id="deleteModal">
-                              <div class="modal-dialog">
-                                <div class="modal-content">
-                                  <div class="modal-header">
-                                    <h5 class="modal-title" id="exampleModalLabel">Delete Manager</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                  </div>
-                                  <div class="modal-body text-center">                                  
-                                    <p>Are you sure want to delete?</p>
-                                    <div class="col-12">
-                                  <a href="javascript:void(0);"  id="delete" class="btn btn-outline-orangeyellow w-100 mb-2">Delete</a>
-                                   </div>
-                                    <button type="button" class="btn btn-outline-orangeyellow w-100" data-bs-dismiss="modal">Cancel</button>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
                           </td>
                         </tr>
-                             {% endfor %}
+                        {% endfor %}
                       </tbody>
                     </table>
                   </div>
+
+                  <!-- Modals placed ONCE outside the loop for fast rendering -->
+                  <div class="modal fade" id="updateModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog w-80">
+                      <div class="modal-content">
+                        <div class="modal-header">
+                          <h5 class="modal-title" id="exampleModalLabel">Update Attendance</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                          <form method="post" action="{% url 'mattendanceEdit' company_id=company_id company_staff_id=company_staff_id %}" enctype="multipart/form-data">
+                              {% csrf_token %}
+                            <input type="hidden" name="id" id="attendance_id_heading">
+                            <div class="row mb-2">
+                              <div class="col">
+                                <label for="check-in" class="form-label">Check In <span class="text-danger">*</span></label>
+                                <input type="datetime-local" class="form-control datetimepicker" id="check_in_heading_edit" name="check_in" required>
+                              </div>
+                              <div class="col">
+                                <label for="check-out" class="form-label">Check Out</label>
+                                <input type="datetime-local" class="form-control datetimepicker" id="check_out_heading_edit" name="check_out">
+                              </div>
+                            </div>
+                            <div class="mt-4 mb-2 button-right">
+                              <button type="submit" class="btn btn-outline-orangeyellow">Submit</button>
+                            </div>
+                          </form>
+                        </div>                                
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog">
+                      <div class="modal-content">
+                        <div class="modal-header">
+                          <h5 class="modal-title" id="exampleModalLabel2">Delete Manager</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body text-center">                                  
+                          <p>Are you sure want to delete?</p>
+                          <div class="col-12">
+                            <form method="post" id="deleteForm" style="display: inline;">
+                              {% csrf_token %}
+                              <button type="submit" id="delete" class="btn btn-outline-orangeyellow w-100 mb-2">Delete</button>
+                            </form>
+                          </div>
+                          <button type="button" class="btn btn-outline-orangeyellow w-100" data-bs-dismiss="modal">Cancel</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                 </div>
               </div>
             </div>
@@ -161,21 +179,10 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/simplebar@latest/dist/simplebar.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/metisMenu/3.0.7/metisMenu.min.js"></script>
-    <script src="https://unpkg.com/boxicons@2.1.2/dist/boxicons.js"></script>
-    <script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/js/all.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.5.3/jspdf.debug.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.8.0/html2pdf.bundle.js"></script>
-    <script src="{% static 'asets/js/jquery.sparkline.min.js' %}"></script>
-    <script src="{% static 'asets/js/Chart.min.js' %}"></script>
-    <script src="{% static 'asets/js/Chart.extension.js' %}"></script>
     <script src="{% static 'asets/js/script.js' %}"></script>
 
-      <script>
-
+    <script>
       function attendance_id_fetch(id){
-
         var attendance_id_heading = document.getElementById("attendance_id_heading");
         var check_in_heading_edit = document.getElementById("check_in_heading_edit");
         var check_out_heading_edit = document.getElementById("check_out_heading_edit");
@@ -187,30 +194,21 @@
           data: {'id': id},
           dataType: "json",
           success: function(res){
-            check_in_heading_edit.value = res['check_in']
-            check_out_heading_edit.value = res['check_out']
-
+            check_in_heading_edit.value = res['check_in'] || '';
+            check_out_heading_edit.value = res['check_out'] || '';
           },
           error: function(xhr, status, error){
             console.log(error);
-            console.log(status);
-            console.log(xhr);
           }
-        })
+        });
       }
 
-   </script>
- <script>
-
-  	function getId(id) {
-		// alert(id)
-		var a =document.getElementById('delete');
-		a.href = "/administration/mattendance_remove/{{company_id}}/{{company_staff_id}}/"+id;
-	}
-
-   </script>
-
-
-    
+      function getId(id) {
+        var form = document.getElementById('deleteForm');
+        if (form) {
+          form.action = "/administration/mattendance_remove/{{company_id}}/{{company_staff_id}}/" + id;
+        }
+      }
+    </script>
   </body>
 </html>
