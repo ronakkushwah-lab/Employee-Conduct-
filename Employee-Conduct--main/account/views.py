@@ -22,7 +22,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.hashers import check_password
 import sweetify
-from django.core.mail import EmailMessage
+from django.core.mail import EmailMessage, EmailMultiAlternatives
 import random
 
 
@@ -510,44 +510,104 @@ def reset_password(request):
     logger = logging.getLogger(__name__)
     email_address = request.GET.get("email", "").strip()
     if not email_address:
-        return JsonResponse({"status": "failed"})
+        return JsonResponse({"status": "failed", "message": "Email address is required."})
     try:
-        user = get_object_or_404(CompanyStaff, email=email_address)
-        
+        user = CompanyStaff.objects.filter(email__iexact=email_address).first()
+        if not user:
+            # Generic response to prevent user enumeration
+            return JsonResponse({"status": "sent", "email": email_address})
+
         uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
         token = staff_token_generator.make_token(user)
         reset_path = reverse('reset_password_confirm_staff', kwargs={'uidb64': uidb64, 'token': token})
         reset_link = request.build_absolute_uri(reset_path)
 
-        msz = (
-            f"Dear {user.email},\n\n"
-            f"You requested a password reset for your HRMS account.\n\n"
-            f"Click the link below to reset your password:\n"
+        plain_text = (
+            f"Hello,\n\n"
+            f"We received a request to reset your password for your Eagle In Cloud HRMS account ({user.email}).\n\n"
+            f"Click the link below to set a new password:\n"
             f"{reset_link}\n\n"
-            f"This link is valid for one-time use only.\n"
-            f"If you did not request this password reset, please ignore this email.\n\n"
-            f"Thanks & Regards,\nHRMS Portal"
+            f"Security Notice:\n"
+            f"- This link is valid for one-time use only.\n"
+            f"- If you did not request this password reset, you can safely ignore this email.\n\n"
+            f"Thanks & Regards,\n"
+            f"Eagle In Cloud Team"
         )
+
+        html_content = f"""
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Password Reset</title>
+</head>
+<body style="font-family: 'Segoe UI', Arial, sans-serif; background-color: #f1f5f9; margin: 0; padding: 30px 15px; color: #1e293b;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 580px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.06); border: 1px solid #e2e8f0;">
+    <!-- Header -->
+    <tr>
+      <td style="background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%); padding: 32px 24px; text-align: center;">
+        <h1 style="margin: 0; color: #ffffff; font-size: 22px; font-weight: 700; letter-spacing: 0.5px;">Eagle In Cloud HRMS</h1>
+        <p style="margin: 6px 0 0; color: #93c5fd; font-size: 13px; text-transform: uppercase; letter-spacing: 1px;">Account Security</p>
+      </td>
+    </tr>
+    <!-- Content -->
+    <tr>
+      <td style="padding: 36px 32px;">
+        <h2 style="margin: 0 0 16px; font-size: 18px; color: #0f172a; font-weight: 600;">Password Reset Request</h2>
+        <p style="margin: 0 0 20px; font-size: 14px; line-height: 1.6; color: #475569;">
+          Hello, we received a request to reset the password for your account associated with <strong style="color: #0f172a;">{user.email}</strong>.
+        </p>
+        <div style="text-align: center; margin: 32px 0;">
+          <a href="{reset_link}" target="_blank" style="background: #2563eb; color: #ffffff; text-decoration: none; padding: 14px 36px; border-radius: 8px; font-weight: 600; font-size: 15px; display: inline-block; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);">
+            Reset My Password
+          </a>
+        </div>
+        <div style="background-color: #f8fafc; border-left: 4px solid #f59e0b; padding: 14px 16px; border-radius: 4px; margin: 28px 0 20px;">
+          <p style="margin: 0; font-size: 13px; color: #64748b; line-height: 1.5;">
+            <strong style="color: #b45309;">Important:</strong> This link is valid for <strong>one-time use only</strong>. If you did not make this request, your account is still secure and you can safely ignore this email.
+          </p>
+        </div>
+        <p style="margin: 20px 0 0; font-size: 12px; color: #94a3b8; line-height: 1.5; word-break: break-all;">
+          If the button doesn't work, copy and paste this link into your browser:<br>
+          <a href="{reset_link}" style="color: #2563eb; text-decoration: underline;">{reset_link}</a>
+        </p>
+      </td>
+    </tr>
+    <!-- Footer -->
+    <tr>
+      <td style="background-color: #f8fafc; padding: 20px 32px; text-align: center; border-top: 1px solid #e2e8f0;">
+        <p style="margin: 0; font-size: 12px; color: #94a3b8;">
+          &copy; Eagle In Cloud. All rights reserved. &bull; Automated Security Dispatch
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+"""
+
         from_email = (getattr(settings, 'DEFAULT_FROM_EMAIL', None) or getattr(settings, 'EMAIL_HOST_USER', None) or 'noreply@eagleincloud.io').strip()
         if not from_email:
             from_email = 'noreply@eagleincloud.io'
+
         try:
-            msg = EmailMessage(
-                subject="Password Reset - HRMS Portal",
-                body=msz,
+            msg = EmailMultiAlternatives(
+                subject="Password Reset - Eagle In Cloud HRMS",
+                body=plain_text,
                 from_email=from_email,
                 to=[user.email],
             )
+            msg.attach_alternative(html_content, "text/html")
             msg.send(fail_silently=False)
             logger.info("Password reset email successfully sent to %s", user.email)
         except Exception as e:
             logger.exception("Failed to send reset email to %s: %s", user.email, e)
             logger.info("Reset Link generated for %s: %s", user.email, reset_link)
 
-        # Secure Option 1: Never expose reset token or link in public HTTP response
         return JsonResponse({"status": "sent", "email": user.email})
-    except Exception:
-        # Generic response to prevent user enumeration
+    except Exception as e:
+        logger.exception("Unexpected error in reset_password: %s", e)
         return JsonResponse({"status": "sent", "email": email_address})
 
 

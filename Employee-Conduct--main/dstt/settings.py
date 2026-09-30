@@ -268,14 +268,14 @@ GMAIL_IMAP_PORT = 993
 GMAIL_EMAIL = os.environ.get('GMAIL_EMAIL', '')
 GMAIL_APP_PASSWORD = os.environ.get('GMAIL_APP_PASSWORD', '')
 
-# Outgoing email backend disabled in favor of in-app notifications
-EMAIL_BACKEND = 'django.core.mail.backends.dummy.EmailBackend'
+# Gmail SMTP Configuration
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend' if (GMAIL_EMAIL and GMAIL_APP_PASSWORD) else 'django.core.mail.backends.dummy.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_HOST_USER = GMAIL_EMAIL
 EMAIL_HOST_PASSWORD = GMAIL_APP_PASSWORD
 EMAIL_USE_TLS = True
-DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL') or GMAIL_EMAIL or 'noreply@eagleincloud.io'
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL') or f'Eagle In Cloud Contact <{GMAIL_EMAIL}>' if GMAIL_EMAIL else 'noreply@eagleincloud.io'
 EMAIL_TIMEOUT = 10
 
 # Logging - so leave/email notification logs show in console
