@@ -8,7 +8,7 @@
       <div class="page_wrapper">
         <div class="page-content">
           <div class="page-breadcrumb d-sm-flex align-items-center mb-3">
-            <div class="breadcrumb-title pe-3">Salary</div>
+            <div class="breadcrumb-title pe-3">Salary & Payslips</div>
             <div class="ps-3">
               <nav aria-label="breadcrumb">
                 <ol class="breadcrumb mb-0 p-0">
@@ -17,126 +17,198 @@
                       <i class="bx bx-home"></i>
                     </a>
                   </li>
-                  <li class="breadcrumb-item active" aria-current="page">Salary</li>
+                  <li class="breadcrumb-item active" aria-current="page">Month-Wise Payslips</li>
                 </ol>
               </nav>
             </div>
+            {% if available_years %}
+            <div class="ms-auto">
+              <form method="GET" class="d-flex align-items-center">
+                <label class="form-label me-2 mb-0 small text-secondary fw-bold text-nowrap">Filter Year:</label>
+                <select name="year" class="form-select form-select-sm" onchange="this.form.submit()" style="min-width: 120px;">
+                  <option value="" {% if not selected_year %}selected{% endif %}>All Years</option>
+                  {% for yr in available_years %}
+                    <option value="{{ yr }}" {% if selected_year == yr %}selected{% endif %}>{{ yr }}</option>
+                  {% endfor %}
+                </select>
+              </form>
+            </div>
+            {% endif %}
           </div>
           <hr>
-          <div class="row mt-3" style="display: none;">
-            <div class="col-12">
-              <div class="card">
-                <div class="card-body" id="print-salary">
-                  <h5 class="text-center text-uppercase">Payslip for the Month of {{ object.month|date:"F Y " }}</h5>
-                  <div class="d-flex align-items-center mt-5 mb-5">
-                    <div class="logo">
-                      <img src="{% static 'asets/images/eagle_in_cloud_logo.svg' %}?v=4" alt="Eagle in Cloud Logo" class="img-fluid" style="max-width: 200px; height: auto;">
+
+          <!-- Top Summary Cards Strip -->
+          <div class="row row-cols-1 row-cols-md-2 row-cols-xl-4 g-3 mb-4">
+            <div class="col">
+              <div class="card radius-10 border-start border-0 border-3 border-danger shadow-sm mb-0 h-100">
+                <div class="card-body p-3">
+                  <div class="d-flex align-items-center">
+                    <div>
+                      <p class="mb-0 text-secondary small fw-bold text-uppercase">Latest Net Salary</p>
+                      <h4 class="my-1 text-danger fw-bold">₹{{ latest_net_pay|intcomma }}</h4>
+                      <span class="badge bg-light-danger text-danger small">{% if latest_salary %}{{ latest_salary.month|date:"M Y" }}{% else %}N/A{% endif %}</span>
                     </div>
-                    <div class="ms-auto">
-                      <h6 class="mb-0 text-right">PAYSLIP #{{object.id}}</h6>
-                      <span class="font-14">Salary Month: {{ object.month|date:"F Y " }}</span>
+                    <div class="widgets-icons-2 rounded-circle bg-light-danger text-danger ms-auto">
+                      <i class="bx bx-wallet"></i>
                     </div>
-                  </div>
-                  <div class="align-items-center employee-details mb-5">
-                    <h6 class="name">{{ object.employee.employee_first_name}} {{ object.employee.employee_last_name}}</h6>
-                    <span class="role">{{ object.employee.employee_department}}</span><br>
-                    <span class="employee-id">Employee ID: {{ object.employee.employee_id}}</span><br>
-                    <span class="joining-date">Joining Date: {{ object.employee.employee_joining_date}}</span>
-                  </div>
-                  <div class="salary-details">
-                    <div class="row">
-                      <div class="col">
-                        <span>Earnings</span>
-                        <table class="table table-bordered mt-2">
-                          <tbody>
-                            <tr>
-                              <th>Basic Salary</th>
-                              <td>{{ object.basic }}</td>
-                            </tr>
-                            <tr>
-                              <th>House Rent Allowance (H.R.A.)</th>
-                              <td>{{ object.hra_percent }}</td>
-                            </tr>
-                            <tr>
-                              <th>Bounce</th>
-                              <td>{{ object.medical_allowance }}</td>
-                            </tr>
-                            <tr>
-                              <th>Medical Allowance</th>
-                              <td>{{ object.medical_allowance }}</td>
-                            </tr>
-                            <tr>
-                              <th>Total Earning</th>
-                              <th>{{ object.total_earnings|intcomma}}</th>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                      <div class="col">
-                        <span>Deductions</span>
-                        <table class="table table-bordered mt-2">
-                          <tbody>
-                            <tr>
-                              <th>Tax Deducted at Source (T.D.S.)</th>
-                              <td>{{ object.tds|intcomma}}</td>
-                            </tr>
-                            <tr>
-                              <th>Provident Fund</th>
-                              <td>{{ object.providence_fund|intcomma}}</td>
-                            </tr>
-                            <tr>
-                              <th>ESI</th>
-                              <td>{{ object.esi|intcomma}}</td>
-                            </tr>
-                            <tr>
-                              <th>Leave</th>
-                              <td>{{ object.leave|intcomma}}</td>
-                            </tr>
-                            <tr>
-                              <th>Total Deductions</th>
-                              <tH>{{ object.total_deductions|intcomma}}</th>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="net-salary mt-3">
-                    <h6>Net Salary: {{ object.net_pay|intcomma}}</h6>
                   </div>
                 </div>
-              </div>              
+              </div>
+            </div>
+            <div class="col">
+              <div class="card radius-10 border-start border-0 border-3 border-success shadow-sm mb-0 h-100">
+                <div class="card-body p-3">
+                  <div class="d-flex align-items-center">
+                    <div>
+                      <p class="mb-0 text-secondary small fw-bold text-uppercase">Total Gross Earnings</p>
+                      <h4 class="my-1 text-success fw-bold">₹{{ total_earnings_ytd|intcomma }}</h4>
+                      <p class="mb-0 font-13 text-secondary small">Total accumulated</p>
+                    </div>
+                    <div class="widgets-icons-2 rounded-circle bg-light-success text-success ms-auto">
+                      <i class="bx bx-trending-up"></i>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="card radius-10 border-start border-0 border-3 border-warning shadow-sm mb-0 h-100">
+                <div class="card-body p-3">
+                  <div class="d-flex align-items-center">
+                    <div>
+                      <p class="mb-0 text-secondary small fw-bold text-uppercase">Total Deductions</p>
+                      <h4 class="my-1 text-warning fw-bold">₹{{ total_deductions_ytd|intcomma }}</h4>
+                      <p class="mb-0 font-13 text-secondary small">PF, Tax, ESI & LOP</p>
+                    </div>
+                    <div class="widgets-icons-2 rounded-circle bg-light-warning text-warning ms-auto">
+                      <i class="bx bx-pie-chart-alt-2"></i>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col">
+              <div class="card radius-10 border-start border-0 border-3 border-info shadow-sm mb-0 h-100">
+                <div class="card-body p-3">
+                  <div class="d-flex align-items-center">
+                    <div>
+                      <p class="mb-0 text-secondary small fw-bold text-uppercase">Total Net Paid</p>
+                      <h4 class="my-1 text-info fw-bold">₹{{ total_net_ytd|intcomma }}</h4>
+                      <span class="badge bg-light-info text-info small">{{ total_slips }} Payslip{{ total_slips|pluralize }}</span>
+                    </div>
+                    <div class="widgets-icons-2 rounded-circle bg-light-info text-info ms-auto">
+                      <i class="bx bx-receipt"></i>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-          <div class="row mt-3">
-            <div class="col">
+
+          <!-- Month-Wise Payslip List -->
+          <div class="row">
+            <div class="col-12">
               <div class="card shadow-none border radius-15">
-                <div class="card-body">                  
+                <div class="card-header bg-transparent border-bottom py-3">
+                  <div class="d-flex align-items-center">
+                    <div>
+                      <h5 class="mb-0 fw-bold"><i class="bx bx-calendar me-2 text-danger"></i> Month-Wise Payslip Records</h5>
+                      <p class="text-muted small mb-0">Review your monthly earnings, statutory deductions, and download official payslips.</p>
+                    </div>
+                  </div>
+                </div>
+                <div class="card-body p-3">
+                  {% for message in messages %}
+                  <div class="alert {% if message.tags == 'success' %}alert-success{% else %}alert-danger{% endif %} alert-dismissible fade show py-2 small" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                  </div>
+                  {% endfor %}
+
                   <div class="table-responsive">
-                    <table class="table table-fluid" id="myTable">
-                      <thead>
+                    <table class="table table-hover align-middle mb-0" id="myTable">
+                      <thead class="table-light">
                         <tr>
-                          <th>Employee ID</th>
-                          <th>Email</th>
-                          <th>Joining Date</th>
-                          <th>Role</th>
                           <th>Salary Month</th>
-                          <th>Salary</th>
-                          <th class="no-sort">Download Slip</th>
+                          <th>Basic Pay</th>
+                          <th>Gross Earnings</th>
+                          <th>Total Deductions</th>
+                          <th>Net Take-Home Pay</th>
+                          <th>Status</th>
+                          <th class="text-center no-sort">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
-                          {% for item in salary  %}
+                        {% for item in salary %}
                         <tr>
-                          <td>{{ item.employee.employee_id}}</td>
-                          <td>{{ item.employee.employee_email}}</td>
-                          <td>{{ item.employee.employee_joining_date}}</td>
-                          <td>{{ item.employee.employee_department}} </td>
-                          <td>{{ item.month|date:"F Y " }}</td>
-                          <td>{{ item.basic|intcomma}}</td>
-                          <td><a class="btn btn-outline-orangeyellow" href="{% url 'salary-download' company_id=company_id company_staff_id=company_staff_id id=item.id %}" target="_blank">Download Slip</a></td>
+                          <td>
+                            <div class="d-flex align-items-center">
+                              <div class="avatar-sm bg-light-danger text-danger rounded-circle p-2 me-2 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                                <i class="bx bx-calendar-check fs-5"></i>
+                              </div>
+                              <div>
+                                <span class="fw-bold d-block">{{ item.month|date:"F Y" }}</span>
+                                <small class="text-muted" style="font-size: 0.75rem;">Slip #EIC-PAY-{{ item.id }}</small>
+                              </div>
+                            </div>
+                          </td>
+                          <td class="fw-semibold">₹{{ item.basic|intcomma }}</td>
+                          <td class="text-success fw-semibold">₹{{ item.total_earnings|intcomma }}</td>
+                          <td class="text-danger fw-semibold">₹{{ item.total_deductions|intcomma }}</td>
+                          <td>
+                            <span class="badge bg-success px-3 py-2 fs-6">₹{{ item.net_pay|intcomma }}</span>
+                          </td>
+                          <td>
+                            <span class="badge bg-light-success text-success border border-success border-opacity-25 px-2 py-1">
+                              <i class="bx bx-check-circle me-1"></i> Paid
+                            </span>
+                          </td>
+                          <td class="text-center">
+                            <div class="btn-group">
+                              <button type="button" class="btn btn-sm btn-outline-dark" 
+                                onclick="openPayslipModal(
+                                  '{{ item.month|date:"F Y" }}',
+                                  'EIC-PAY-{{ item.id }}',
+                                  '{{ item.employee.employee_first_name }} {{ item.employee.employee_last_name }}',
+                                  '{{ item.employee.employee_id }}',
+                                  '{{ item.employee.employee_department }}',
+                                  '{{ item.employee.employee_designation }}',
+                                  '{{ item.employee.employee_joining_date }}',
+                                  '{{ item.basic|intcomma }}',
+                                  '{{ item.hra_percent|intcomma }}',
+                                  '{{ item.conveyance|intcomma }}',
+                                  '{{ item.allowance|intcomma }}',
+                                  '{{ item.medical_allowance|intcomma }}',
+                                  '{{ item.bonuses|intcomma }}',
+                                  '{{ item.total_earnings|intcomma }}',
+                                  '{{ item.tds|intcomma }}',
+                                  '{{ item.providence_fund|intcomma }}',
+                                  '{{ item.esi|intcomma }}',
+                                  '{{ item.tax|intcomma }}',
+                                  '{{ item.leave|intcomma }}',
+                                  '{{ item.others|intcomma }}',
+                                  '{{ item.total_deductions|intcomma }}',
+                                  '{{ item.net_pay|intcomma }}',
+                                  '{% url "salary-download" company_id=company_id company_staff_id=company_staff_id id=item.id %}'
+                                )"
+                                title="View detailed breakdown">
+                                <i class="bx bx-show me-1"></i> View Slip
+                              </button>
+                              <a class="btn btn-sm btn-danger px-2" href="{% url 'salary-download' company_id=company_id company_staff_id=company_staff_id id=item.id %}" target="_blank" title="Download Official PDF">
+                                <i class="bx bx-download me-1"></i> PDF
+                              </a>
+                            </div>
+                          </td>
                         </tr>
-                       {% endfor %}
+                        {% empty %}
+                        <tr>
+                          <td colspan="7" class="text-center py-5 text-muted">
+                            <i class="bx bx-receipt fs-1 d-block mb-2 text-secondary"></i>
+                            <h6>No payslips found for the selected period</h6>
+                            <p class="small mb-0">Your monthly payslips will appear here automatically on the 10th of each month.</p>
+                          </td>
+                        </tr>
+                        {% endfor %}
                       </tbody>
                     </table>
                   </div>
@@ -151,6 +223,112 @@
       </div>
     </div>
 
+    <!-- Payslip Breakdown Modal -->
+    <div class="modal fade" id="payslipDetailModal" tabindex="-1" aria-labelledby="payslipModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+          <div class="modal-header bg-dark text-white py-3">
+            <div class="d-flex align-items-center">
+              <img src="{% static 'asets/images/eagle_in_cloud_logo.svg' %}?v=4" alt="Eagle in Cloud Logo" style="height: 28px; filter: brightness(0) invert(1);" class="me-2">
+              <h5 class="modal-title text-white mb-0 fs-6" id="payslipModalTitle">Salary Slip Breakdown</h5>
+            </div>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body p-4 bg-light">
+            <!-- Staff Summary Banner -->
+            <div class="card border-0 shadow-sm rounded-3 mb-3">
+              <div class="card-body p-3">
+                <div class="row g-2 text-secondary small">
+                  <div class="col-6 col-md-3">
+                    <span class="text-muted d-block" style="font-size: 0.75rem;">EMPLOYEE NAME</span>
+                    <strong class="text-dark" id="modalEmpName">-</strong>
+                  </div>
+                  <div class="col-6 col-md-3">
+                    <span class="text-muted d-block" style="font-size: 0.75rem;">EMPLOYEE ID</span>
+                    <strong class="text-dark" id="modalEmpId">-</strong>
+                  </div>
+                  <div class="col-6 col-md-3">
+                    <span class="text-muted d-block" style="font-size: 0.75rem;">DEPARTMENT</span>
+                    <strong class="text-dark" id="modalEmpDept">-</strong>
+                  </div>
+                  <div class="col-6 col-md-3">
+                    <span class="text-muted d-block" style="font-size: 0.75rem;">PAY PERIOD</span>
+                    <strong class="text-danger" id="modalPayPeriod">-</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Two Column Breakdown -->
+            <div class="row g-3 mb-3">
+              <!-- Earnings -->
+              <div class="col-md-6">
+                <div class="card border-0 shadow-sm h-100 rounded-3">
+                  <div class="card-header bg-white border-bottom py-2">
+                    <span class="fw-bold text-success"><i class="bx bx-plus-circle me-1"></i> Earnings (Gross)</span>
+                  </div>
+                  <div class="card-body p-0">
+                    <table class="table table-sm mb-0 small">
+                      <tbody>
+                        <tr><td class="text-muted ps-3 py-2">Basic Salary</td><td class="text-end pe-3 py-2 fw-semibold" id="mBasic">₹0</td></tr>
+                        <tr><td class="text-muted ps-3 py-2">House Rent Allowance (HRA)</td><td class="text-end pe-3 py-2 fw-semibold" id="mHra">₹0</td></tr>
+                        <tr><td class="text-muted ps-3 py-2">Conveyance Allowance</td><td class="text-end pe-3 py-2 fw-semibold" id="mConveyance">₹0</td></tr>
+                        <tr><td class="text-muted ps-3 py-2">Special Allowance</td><td class="text-end pe-3 py-2 fw-semibold" id="mAllowance">₹0</td></tr>
+                        <tr><td class="text-muted ps-3 py-2">Medical Allowance</td><td class="text-end pe-3 py-2 fw-semibold" id="mMedical">₹0</td></tr>
+                        <tr><td class="text-muted ps-3 py-2">Bonuses / Incentives</td><td class="text-end pe-3 py-2 fw-semibold" id="mBonus">₹0</td></tr>
+                        <tr class="table-light"><td class="ps-3 py-2 fw-bold text-dark">Total Gross Earnings</td><td class="text-end pe-3 py-2 fw-bold text-success" id="mTotalEarnings">₹0</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Deductions -->
+              <div class="col-md-6">
+                <div class="card border-0 shadow-sm h-100 rounded-3">
+                  <div class="card-header bg-white border-bottom py-2">
+                    <span class="fw-bold text-danger"><i class="bx bx-minus-circle me-1"></i> Deductions</span>
+                  </div>
+                  <div class="card-body p-0">
+                    <table class="table table-sm mb-0 small">
+                      <tbody>
+                        <tr><td class="text-muted ps-3 py-2">Provident Fund (PF)</td><td class="text-end pe-3 py-2 fw-semibold" id="mPf">₹0</td></tr>
+                        <tr><td class="text-muted ps-3 py-2">Tax Deducted at Source (TDS)</td><td class="text-end pe-3 py-2 fw-semibold" id="mTds">₹0</td></tr>
+                        <tr><td class="text-muted ps-3 py-2">ESI Deduction</td><td class="text-end pe-3 py-2 fw-semibold" id="mEsi">₹0</td></tr>
+                        <tr><td class="text-muted ps-3 py-2">Professional Tax</td><td class="text-end pe-3 py-2 fw-semibold" id="mTax">₹0</td></tr>
+                        <tr><td class="text-muted ps-3 py-2">Loss of Pay / Leave</td><td class="text-end pe-3 py-2 fw-semibold" id="mLeave">₹0</td></tr>
+                        <tr><td class="text-muted ps-3 py-2">Other Deductions</td><td class="text-end pe-3 py-2 fw-semibold" id="mOthers">₹0</td></tr>
+                        <tr class="table-light"><td class="ps-3 py-2 fw-bold text-dark">Total Deductions</td><td class="text-end pe-3 py-2 fw-bold text-danger" id="mTotalDeductions">₹0</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Net Pay Highlight -->
+            <div class="card border-0 shadow-sm bg-white rounded-3">
+              <div class="card-body p-3 d-flex align-items-center justify-content-between">
+                <div>
+                  <span class="text-muted small text-uppercase fw-bold d-block">Net Take-Home Salary</span>
+                  <small class="text-muted">Credited to registered salary account</small>
+                </div>
+                <div class="text-end">
+                  <h3 class="text-danger fw-bold mb-0" id="mNetPay">₹0</h3>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer bg-white border-top py-2">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+            <a id="modalDownloadBtn" href="#" target="_blank" class="btn btn-danger btn-sm fw-bold px-3">
+              <i class="bx bx-download me-1"></i> Download Official PDF
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/simplebar@latest/dist/simplebar.min.js"></script>
@@ -158,13 +336,41 @@
     <script src="https://unpkg.com/boxicons@2.1.2/dist/boxicons.js"></script>
     <script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/js/all.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/1.5.3/jspdf.debug.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.8.0/html2pdf.bundle.js"></script>
     <script src="{% static 'asets/js/jquery.sparkline.min.js' %}"></script>
     <script src="{% static 'asets/js/Chart.min.js' %}"></script>
     <script src="{% static 'asets/js/Chart.extension.js' %}"></script>
     <script src="{% static 'asets/js/script.js' %}"></script>
     
+    <script>
+      function openPayslipModal(month, slipNo, name, empId, dept, designation, joinDate, basic, hra, conveyance, allowance, medical, bonus, totalEarn, tds, pf, esi, tax, leave, others, totalDed, netPay, downloadUrl) {
+        document.getElementById('payslipModalTitle').innerText = 'Payslip Breakdown - ' + month;
+        document.getElementById('modalEmpName').innerText = name || '-';
+        document.getElementById('modalEmpId').innerText = empId || '-';
+        document.getElementById('modalEmpDept').innerText = dept || designation || '-';
+        document.getElementById('modalPayPeriod').innerText = month || '-';
+
+        document.getElementById('mBasic').innerText = '₹' + (basic || '0');
+        document.getElementById('mHra').innerText = '₹' + (hra || '0');
+        document.getElementById('mConveyance').innerText = '₹' + (conveyance || '0');
+        document.getElementById('mAllowance').innerText = '₹' + (allowance || '0');
+        document.getElementById('mMedical').innerText = '₹' + (medical || '0');
+        document.getElementById('mBonus').innerText = '₹' + (bonus || '0');
+        document.getElementById('mTotalEarnings').innerText = '₹' + (totalEarn || '0');
+
+        document.getElementById('mPf').innerText = '₹' + (pf || '0');
+        document.getElementById('mTds').innerText = '₹' + (tds || '0');
+        document.getElementById('mEsi').innerText = '₹' + (esi || '0');
+        document.getElementById('mTax').innerText = '₹' + (tax || '0');
+        document.getElementById('mLeave').innerText = '₹' + (leave || '0');
+        document.getElementById('mOthers').innerText = '₹' + (others || '0');
+        document.getElementById('mTotalDeductions').innerText = '₹' + (totalDed || '0');
+
+        document.getElementById('mNetPay').innerText = '₹' + (netPay || '0');
+        document.getElementById('modalDownloadBtn').href = downloadUrl || '#';
+
+        var myModal = new bootstrap.Modal(document.getElementById('payslipDetailModal'));
+        myModal.show();
+      }
+    </script>
   </body>
 </html>

@@ -778,17 +778,57 @@ def attendance_grid_data(request,company_id, company_staff_id):
         return ajax_response(ctx)
 
 
-def SalaryListView(request,company_id, company_staff_id):
-    context ={}
+def SalaryListView(request, company_id, company_staff_id):
+    context = {}
+    try:
+        company_staff = CompanyStaff.objects.get(id=company_staff_id, company_id=company_id)
+    except CompanyStaff.DoesNotExist:
+        messages.error(request, 'Company staff not found.')
+        return redirect('/')
 
-    company_staff = CompanyStaff.objects.get(id=company_staff_id)
+    manager = getattr(company_staff, 'manager', None)
+    if not manager:
+        manager = Manager.objects.filter(user=company_staff).first()
 
-    queryset = Salary.objects.filter(manager=company_staff.manager)
-    print('queryset: ', queryset)
-    context['salary']= queryset
-    context['company_id']= company_id
-    context['company_staff_id']= company_staff_id
+    if not manager:
+        messages.error(request, 'Manager profile not found.')
+        context['salary'] = Salary.objects.none()
+        context['company_id'] = company_id
+        context['company_staff_id'] = company_staff_id
+        return render(request, 'managers/salary.html', context)
+
+    all_salaries = Salary.objects.filter(manager=manager).order_by('-month', '-id')
+    available_years = sorted(list(set(s.month.year for s in all_salaries if s.month)), reverse=True)
+
+    selected_year = request.GET.get('year', '').strip()
+    if selected_year and selected_year.isdigit():
+        queryset = all_salaries.filter(month__year=int(selected_year))
+        selected_year = int(selected_year)
+    else:
+        queryset = all_salaries
+        selected_year = ''
+
+    latest_salary = all_salaries.first()
+    latest_net_pay = latest_salary.net_pay() if latest_salary else 0
+    total_earnings_ytd = sum((s.total_earnings or 0) for s in queryset)
+    total_deductions_ytd = sum((s.total_deductions or 0) for s in queryset)
+    total_net_ytd = sum((s.net_pay() or 0) for s in queryset)
+    total_slips = queryset.count()
+
+    context['manager'] = manager
+    context['salary'] = queryset
+    context['latest_salary'] = latest_salary
+    context['latest_net_pay'] = latest_net_pay
+    context['total_earnings_ytd'] = total_earnings_ytd
+    context['total_deductions_ytd'] = total_deductions_ytd
+    context['total_net_ytd'] = total_net_ytd
+    context['total_slips'] = total_slips
+    context['available_years'] = available_years
+    context['selected_year'] = selected_year
+    context['company_id'] = company_id
+    context['company_staff_id'] = company_staff_id
     return render(request, 'managers/salary.html', context)
+
 
 
 def notifications(request,company_id, company_staff_id):
