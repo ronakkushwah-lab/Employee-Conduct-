@@ -1177,21 +1177,29 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
                 ci_local = timezone.localtime(first_p.check_in)
                 check_in_str = ci_local.strftime('%I:%M %p')
 
+                total_worked_sec = 0
                 if last_p.check_out:
                     co_local = timezone.localtime(last_p.check_out)
                     check_out_str = co_local.strftime('%I:%M %p')
                     diff_sec = int((co_local - ci_local).total_seconds())
                     if diff_sec > 0:
+                        total_worked_sec = diff_sec
                         worked_str = f"{diff_sec // 3600}h {(diff_sec % 3600) // 60}m"
                 elif first_p.check_in:
                     worked_str = "In Progress"
 
-                is_late = ci_local.time() > time(10, 15)
+                is_late_arrival = ci_local.time() > time(11, 0)
                 is_half_day = False
-                if last_p.check_out:
-                    diff_sec = int((timezone.localtime(last_p.check_out) - ci_local).total_seconds())
-                    if 0 < diff_sec < 16200:
+                is_full_day = False
+                is_short_hours = False
+
+                if last_p.check_out and total_worked_sec > 0:
+                    if total_worked_sec < 16200:  # < 4.5 hours
                         is_half_day = True
+                    elif total_worked_sec >= 30600:  # >= 8.5 hours
+                        is_full_day = True
+                    else:  # Between 4.5h and 8.5h
+                        is_short_hours = True
 
                 if is_half_day:
                     status_code = 'HD'
@@ -1199,9 +1207,14 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
                     status_class = 'badge-halfday'
                     kpi_halfday += 1
                     kpi_present += 1
-                elif is_late:
+                elif is_full_day:
+                    status_code = 'P'
+                    status_label = 'Present'
+                    status_class = 'badge-present'
+                    kpi_present += 1
+                elif is_short_hours or is_late_arrival:
                     status_code = 'L'
-                    status_label = 'Late'
+                    status_label = 'Late' if is_late_arrival else 'Short Hours'
                     status_class = 'badge-late'
                     kpi_late += 1
                     kpi_present += 1
@@ -1455,8 +1468,11 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
                 'check_in_str': ci_local.strftime('%I:%M %p'),
                 'check_out_str': '--:--',
                 'worked_str': 'In Progress',
-                'is_late': ci_local.time() > time(10, 15),
+                'is_late_arrival': ci_local.time() > time(11, 0),
+                'total_sec': 0,
                 'is_half_day': False,
+                'is_full_day': False,
+                'is_short_hours': False,
             }
 
         if att.check_out:
@@ -1465,9 +1481,14 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
             punch_summary_map[key]['check_out_str'] = co_local.strftime('%I:%M %p')
             diff_sec = int((co_local - punch_summary_map[key]['first_ci']).total_seconds())
             if diff_sec > 0:
+                punch_summary_map[key]['total_sec'] = diff_sec
                 punch_summary_map[key]['worked_str'] = f"{diff_sec // 3600}h {(diff_sec % 3600) // 60}m"
                 if diff_sec < 16200:
                     punch_summary_map[key]['is_half_day'] = True
+                elif diff_sec >= 30600:
+                    punch_summary_map[key]['is_full_day'] = True
+                else:
+                    punch_summary_map[key]['is_short_hours'] = True
 
     leave_qs = Leave.objects.filter(
         user__in=employees,
@@ -1533,15 +1554,27 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
                 if punch_info['is_half_day']:
                     cell_status = 'HD'
                     cell_class = 'badge-halfday'
-                    cell_title = f"Half Day ({check_in_str} - {check_out_str})"
+                    cell_title = f"Half Day ({check_in_str} - {check_out_str} · {worked_str})"
                     tot_hd += 1
                     tot_p += 1
                     kpi_halfday += 1
                     kpi_present += 1
-                elif punch_info['is_late']:
+                elif punch_info['is_full_day']:
+                    cell_status = 'P'
+                    cell_class = 'badge-present'
+                    if punch_info['is_late_arrival']:
+                        cell_title = f"Present ({check_in_str} - {check_out_str} · {worked_str} · Compensated)"
+                    else:
+                        cell_title = f"Present ({check_in_str} - {check_out_str} · {worked_str})"
+                    tot_p += 1
+                    kpi_present += 1
+                elif punch_info['is_short_hours'] or punch_info['is_late_arrival']:
                     cell_status = 'L'
                     cell_class = 'badge-late'
-                    cell_title = f"Late ({check_in_str})"
+                    if punch_info['is_short_hours']:
+                        cell_title = f"Short Hours ({check_in_str} - {check_out_str} · {worked_str})"
+                    else:
+                        cell_title = f"Late ({check_in_str} · {worked_str})"
                     tot_l += 1
                     tot_p += 1
                     kpi_late += 1
@@ -1549,7 +1582,7 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
                 else:
                     cell_status = 'P'
                     cell_class = 'badge-present'
-                    cell_title = f"Present ({check_in_str} - {check_out_str})"
+                    cell_title = f"Present ({check_in_str})"
                     tot_p += 1
                     kpi_present += 1
             elif is_on_leave:
