@@ -2088,26 +2088,43 @@ def All_document_Views(request,company_id, company_staff_id):
 def ChangePassword(request,company_id, company_staff_id):
     if company_id:
         if request.method == "POST":
-            password = request.POST["password"]
-            new_pas = request.POST["npwd"]
+            try:
+                password = request.POST.get("password")
+                new_pas = request.POST.get("npwd")
+                confirm_pas = request.POST.get("cpwd", "")
 
-            user = CompanyStaff.objects.get(id=company_staff_id)
-            un = user.email
-            # check = user.check_password(current)
-            check=check_password(password, user.password)
-            if check == True:
-                user.password=make_password(new_pas)
-                user.password_changed_at = timezone.now()
-                user.save()
+                if not all([password, new_pas]):
+                    messages.error(request, 'All password fields are required.')
+                    return render(request,"managers/change_password.html",{'company_id':company_id, 'company_staff_id':company_staff_id})
 
-                from account.models import User as AccountUser
-                dj_user = AccountUser.objects.filter(email=user.email).first()
-                if dj_user:
-                    dj_user.set_password(new_pas)
-                    dj_user.save()
+                if new_pas != confirm_pas:
+                    messages.error(request, 'New password and confirm password do not match.')
+                    return render(request,"managers/change_password.html",{'company_id':company_id, 'company_staff_id':company_staff_id})
 
-                messages.success(request, 'Password changed Successfully')
-                return redirect('/')
+                try:
+                    user = CompanyStaff.objects.get(id=company_staff_id, company_id=company_id)
+                except CompanyStaff.DoesNotExist:
+                    messages.error(request, 'User not found.')
+                    return redirect('/')
+
+                check = check_password(password, user.password)
+                if check == True:
+                    user.password = make_password(new_pas)
+                    user.password_changed_at = timezone.now()
+                    user.save()
+
+                    from account.models import User as AccountUser
+                    dj_user = AccountUser.objects.filter(email=user.email).first()
+                    if dj_user:
+                        dj_user.set_password(new_pas)
+                        dj_user.save()
+
+                    messages.success(request, 'Password changed successfully')
+                    return redirect('/')
+                else:
+                    messages.error(request, 'Current password is incorrect.')
+            except Exception as e:
+                messages.error(request, f'Error changing password: {str(e)}')
 
         return render(request,"managers/change_password.html",{'company_id':company_id, 'company_staff_id':company_staff_id})
 
