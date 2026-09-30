@@ -16,8 +16,7 @@ from django.utils.translation import gettext_lazy as _
 
 # -------------------------------Employee Model--------------------------------------------------------------------------------
 from account.models import Company,CompanyStaff
-# from managers.models import Manager
-# import managers.models.Manager
+from core.encryption import EncryptedCharField
 from django.db import models
 User = get_user_model()
 Gendar = (
@@ -101,12 +100,12 @@ class Employee(models.Model):
     employee_designation = models.CharField(max_length=100)
     employee_id = models.CharField(max_length=100)
     biometric_id = models.CharField(max_length=100, unique=True, null=True, blank=True)
-    employee_phone = models.CharField(max_length=100, null=True)
-    employee_salary = models.CharField(max_length=100, default=350000)
-    employee_birth_date = models.CharField(max_length=100, null=True)
+    employee_phone = EncryptedCharField(max_length=255, null=True, blank=True)
+    employee_salary = EncryptedCharField(max_length=255, default='350000', null=True, blank=True)
+    employee_birth_date = EncryptedCharField(max_length=255, null=True, blank=True)
     employee_gender = models.CharField(max_length=50, null=True, choices=Gendar)
-    employee_address = models.CharField(max_length=50, null=True)
-    employee_pin_code = models.CharField(max_length=50, null=True)
+    employee_address = EncryptedCharField(max_length=255, null=True, blank=True)
+    employee_pin_code = EncryptedCharField(max_length=255, null=True, blank=True)
     employee_state = models.CharField(max_length=50, null=True)
     employee_country = models.CharField(max_length=50, null=True)
     employee_reports_to = models.ForeignKey(
@@ -119,15 +118,15 @@ class Employee(models.Model):
     avatar_base64 = models.TextField(blank=True, null=True)
     employee_created_date = models.DateTimeField(auto_now=True)
     employee_status = models.CharField(max_length=32, choices=employee_status, default='Active')
-    employee_tel = models.CharField(max_length=50, null=True)
+    employee_tel = EncryptedCharField(max_length=255, null=True, blank=True)
     employee_nationality = models.CharField(max_length=50, null=True)
     employee_marital_status = models.CharField(max_length=50, null=True, choices=Marital)
     employee_father = models.CharField(max_length=50, null=True)
     employee_mother = models.CharField(max_length=50, null=True)
     employee_emergency_primary_name = models.CharField(max_length=50, null=True)
     employee_emergency_primary_relationship = models.CharField(max_length=50, null=True)
-    employee_emergency_primary_phone1 = models.CharField(max_length=50, null=True)
-    employee_emergency_primary_phone2 = models.CharField(max_length=50, null=True)
+    employee_emergency_primary_phone1 = EncryptedCharField(max_length=255, null=True, blank=True)
+    employee_emergency_primary_phone2 = EncryptedCharField(max_length=255, null=True, blank=True)
     employee_education_institution = models.CharField(max_length=50, null=True)
     employee_education_subject = models.CharField(max_length=50, null=True)
     employee_education_starting_date = models.CharField(max_length=50, null=True)

@@ -16,8 +16,7 @@ from django.shortcuts import HttpResponseRedirect, reverse
 
 # -------------------------------manager Model--------------------------------------------------------------------------------
 from account.models import CompanyStaff
-# from employee.models import Department
-# import employee.models.Department
+from core.encryption import EncryptedCharField
 from django.db import models
 
 from employee.models import Employee
@@ -82,28 +81,28 @@ class Manager(models.Model):
     manager_designation = models.CharField(max_length=100)
     manager_id = models.CharField(max_length=100)
     biometric_id = models.CharField(max_length=100, unique=True, null=True, blank=True)
-    manager_phone = models.CharField(max_length=100, null=True)
-    manager_salary = models.CharField(max_length=100, default=350000)
-    manager_birth_date = models.CharField(max_length=100, null=True)
+    manager_phone = EncryptedCharField(max_length=255, null=True, blank=True)
+    manager_salary = EncryptedCharField(max_length=255, default='350000', null=True, blank=True)
+    manager_birth_date = EncryptedCharField(max_length=255, null=True, blank=True)
     manager_gender = models.CharField(max_length=50, null=True, choices=Gendar)
     manager_father = models.CharField(max_length=100,null=True)
     manager_mother = models.CharField(max_length=100,null=True)
-    manager_address = models.CharField(max_length=50, null=True)
-    manager_pin_code = models.CharField(max_length=50, null=True)
+    manager_address = EncryptedCharField(max_length=255, null=True, blank=True)
+    manager_pin_code = EncryptedCharField(max_length=255, null=True, blank=True)
     manager_state = models.CharField(max_length=50, null=True)
     manager_country = models.CharField(max_length=50, null=True)
     manager_image = models.FileField(upload_to='media/', blank=True)
     avatar_base64 = models.TextField(blank=True, null=True)
     manager_created_date = models.DateTimeField(auto_now=True)
     manager_status = models.CharField(max_length=32, choices=manager_status, default='Active')
-    manager_tel = models.CharField(max_length=50, null=True)
+    manager_tel = EncryptedCharField(max_length=255, null=True, blank=True)
     manager_nationality = models.CharField(max_length=50, null=True)
     manager_religion = models.CharField(max_length=50, null=True)
     manager_marital_status = models.CharField(max_length=50, null=True)
     manager_emergency_primary_name = models.CharField(max_length=50, null=True)
     manager_emergency_primary_relationship = models.CharField(max_length=50, null=True)
-    manager_emergency_primary_phone1 = models.CharField(max_length=50, null=True)
-    manager_emergency_primary_phone2 = models.CharField(max_length=50, null=True)
+    manager_emergency_primary_phone1 = EncryptedCharField(max_length=255, null=True, blank=True)
+    manager_emergency_primary_phone2 = EncryptedCharField(max_length=255, null=True, blank=True)
     manager_education_institution = models.CharField(max_length=50, null=True)
     manager_education_subject = models.CharField(max_length=50, null=True)
     manager_education_starting_date = models.CharField(max_length=50, null=True)

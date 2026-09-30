@@ -38,6 +38,12 @@ ALLOWED_HOSTS = [
     ).split(',') if host.strip()
 ]
 
+# Master 256-bit encryption key for PII & Financial data
+FERNET_ENCRYPTION_KEY = os.environ.get(
+    'FERNET_ENCRYPTION_KEY',
+    'bNn5A3CtVw2wVtJVXxkPyk55FW5x_Z9wTnz1Eyodjmk=',
+)
+
 # CSRF Trusted Origins for domain, ngrok and other external origins
 CSRF_TRUSTED_ORIGINS = [
     'https://eagleinclouds.com',
@@ -95,6 +101,7 @@ INSTALLED_APPS = [
     'account.apps.AccountConfig',
     'management.apps.ManagementConfig',
     'employee.apps.EmployeeConfig',
+    'core',
    
     'crispy_forms',
     'crispy_bootstrap4',
