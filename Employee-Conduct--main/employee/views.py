@@ -221,12 +221,12 @@ def _attendance_month_context(attendance_queryset, request):
                     s_m = (s_sec % 3600) // 60
                     s_str = f"{s_h:02d}.{s_m:02d}"
                     s_hum = f"{s_h}h {s_m}m" if s_h > 0 and s_m > 0 else (f"{s_h}h" if s_h > 0 else f"{s_m}m")
-                    tooltip_title = f"{current_date.strftime('%d %b %Y')}&#10;🔴 Status: Short Hours (< 8.5 hrs)&#10;⏱️ Worked: {w_str} hrs&#10;⚠️ Short by: {s_str} hrs ({s_hum} short of 8.5h)&#10;🕒 In: {in_str} | Out: {out_str}"
+                    tooltip_title = f"{current_date.strftime('%d %b %Y')}&#10;🔴 Status: Short Hours&#10;⏱️ Worked: {w_str} hrs&#10;⚠️ Short by: {s_str} hrs ({s_hum})&#10;🕒 In: {in_str} | Out: {out_str}"
                 else:
                     status = 'present'
                     label = 'Present'
                     present_count += 1
-                    tooltip_title = f"{current_date.strftime('%d %b %Y')}&#10;🟢 Status: Present (Target Met)&#10;⏱️ Worked: {w_str} hrs&#10;🕒 In: {in_str} | Out: {out_str}"
+                    tooltip_title = f"{current_date.strftime('%d %b %Y')}&#10;🟢 Status: Present&#10;⏱️ Worked: {w_str} hrs&#10;🕒 In: {in_str} | Out: {out_str}"
             elif rec and rec.check_in and not rec.check_out:
                 status = 'present'
                 label = 'In Progress'
