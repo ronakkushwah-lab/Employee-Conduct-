@@ -213,7 +213,7 @@
   (function() {
     let lastKnownEventId = null;
     function checkLiveWebhookPunches() {
-      if (typeof $ === 'undefined') return;
+      if (typeof $ === 'undefined' || document.hidden) return;
       $.ajax({
         url: '/api/latest-events/',
         type: 'GET',
@@ -221,7 +221,6 @@
         success: function(response) {
           if (response && response.status === 'success') {
             if (lastKnownEventId !== null && response.latest_id !== lastKnownEventId) {
-              // New punch arrived! Refresh page automatically
               window.location.reload();
             } else if (lastKnownEventId === null) {
               lastKnownEventId = response.latest_id;
@@ -230,7 +229,10 @@
         }
       });
     }
-    setInterval(checkLiveWebhookPunches, 3000);
+    setInterval(checkLiveWebhookPunches, 10000);
+    document.addEventListener('visibilitychange', function() {
+      if (!document.hidden) checkLiveWebhookPunches();
+    });
   })();
    </script>
 

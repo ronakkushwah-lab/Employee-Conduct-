@@ -457,7 +457,7 @@
             (function() {
                 let lastKnownEventId = null;
                 function checkLiveBiometricPunch() {
-                    if (typeof $ === 'undefined') return;
+                    if (typeof $ === 'undefined' || document.hidden) return;
                     $.ajax({
                         url: '/api/latest-events/',
                         type: 'GET',
@@ -473,7 +473,10 @@
                         }
                     });
                 }
-                setInterval(checkLiveBiometricPunch, 3000);
+                setInterval(checkLiveBiometricPunch, 10000);
+                document.addEventListener('visibilitychange', function() {
+                    if (!document.hidden) checkLiveBiometricPunch();
+                });
             })();
         });
 
