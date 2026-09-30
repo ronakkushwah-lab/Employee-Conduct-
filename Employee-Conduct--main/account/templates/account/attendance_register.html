@@ -222,7 +222,7 @@
           <i class='bx bx-calendar-check text-primary me-2'></i> 
           {% if period == 'daily' %}Daily Attendance Roster
           {% elif period == 'yearly' %}Annual Attendance Summary
-          {% else %}Monthly Attendance Register Matrix{% endif %}
+          {% else %}Monthly Attendance Register{% endif %}
         </h4>
         <small class="text-muted">
           Comprehensive employee punch tracking, Saturday & Sunday weekly offs, approved leaves, and payroll records
@@ -628,7 +628,7 @@
         <div class="p-3 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
           <div>
             <h6 class="mb-0 fw-bold text-dark">
-              <i class='bx bx-grid-alt text-primary me-1'></i> Monthly Attendance Matrix
+              <i class='bx bx-calendar-check text-primary me-1'></i> Monthly Attendance Register
             </h6>
             <small class="text-muted">{{ current_month_name }} {{ current_year }} &bull; {{ kpi.filtered_employees }} Employees &bull; <span class="text-primary fw-semibold">Saturday & Sunday are Weekend Off</span></small>
           </div>

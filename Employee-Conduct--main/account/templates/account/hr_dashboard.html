@@ -35,7 +35,7 @@
                       <p class="mb-2">Manage employees, monitor real-time biometric attendance, track leaves and regularizations.</p>
                       <div class="d-flex flex-wrap gap-2 mt-2">
                         <a href="{% url 'hr_attendance_register' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-sm btn-primary rounded-3 shadow-sm fw-semibold">
-                          <i class="bx bx-calendar-check me-1"></i> Attendance Register Matrix
+                          <i class="bx bx-calendar-check me-1"></i> Attendance Register
                         </a>
                         <a href="{% url 'hr_biometric_monitor' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-sm btn-outline-dark rounded-3 shadow-sm fw-semibold">
                           <i class="bx bx-fingerprint me-1"></i> Live Biometric Monitor
@@ -128,8 +128,8 @@
                     <a href="{% url 'attendance' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-outline-secondary btn-xs small py-1 px-2" style="font-size: 0.78rem;" title="View Monthly Attendance Calendar">
                       <i class="bx bx-calendar me-1"></i>My Attendance
                     </a>
-                    <a href="{% url 'hr_attendance_register' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-outline-primary btn-xs small py-1 px-2" style="font-size: 0.78rem;" title="Monthly Attendance Register Matrix">
-                      <i class="bx bx-calendar-check me-1"></i>Register Matrix
+                    <a href="{% url 'hr_attendance_register' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-outline-primary btn-xs small py-1 px-2" style="font-size: 0.78rem;" title="Attendance Register">
+                      <i class="bx bx-calendar-check me-1"></i>Attendance Register
                     </a>
                   </div>
                 </div>
