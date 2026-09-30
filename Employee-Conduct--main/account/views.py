@@ -1000,7 +1000,7 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
         except Exception:
             selected_date = today
 
-    # Query employees in company
+    # Optimized Query: select_related department and user in 1 single SQL query
     emp_qs = Employee.objects.filter(
         Q(user__company=company) | Q(user__isnull=True)
     ).select_related('employee_department', 'user').order_by('employee_first_name', 'employee_last_name')
@@ -1021,10 +1021,36 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
     employees = list(emp_qs)
     departments = Department.objects.filter(company=company).order_by('department_name')
 
-    # Fetch official company holidays
-    company_holidays = holiday.objects.filter(company=company)
+    # Pre-cache employee display metadata to eliminate repeated disk/property queries
+    emp_meta = {}
+    for emp in employees:
+        is_female = bool(emp.employee_gender and str(emp.employee_gender).strip().lower() == 'female')
+        if emp.avatar_base64 and emp.avatar_base64.strip():
+            avatar_url = emp.avatar_base64.strip()
+        elif emp.employee_image:
+            avatar_url = f"/media/{emp.employee_image}"
+        elif is_female:
+            avatar_url = '/static/asets/images/dummy-woman.png'
+        else:
+            avatar_url = '/static/asets/images/dummy-man.png'
+
+        desig_str = str(emp.employee_designation).strip() if emp.employee_designation else 'Staff'
+
+        emp_meta[emp.id] = {
+            'id': emp.id,
+            'name': f"{emp.employee_first_name or ''} {emp.employee_last_name or ''}".strip() or (emp.employee_email or 'Staff'),
+            'emp_id_display': emp.formatted_employee_id if hasattr(emp, 'formatted_employee_id') else (emp.employee_id or '-'),
+            'bio_id': emp.biometric_id or '-',
+            'dept_name': emp.employee_department.department_name if emp.employee_department else '-',
+            'designation': desig_str,
+            'avatar_url': avatar_url,
+            'is_female': is_female,
+            'obj': emp,
+        }
+
+    # Fetch official company holidays in 1 query
     holiday_dates = set()
-    for h in company_holidays:
+    for h in holiday.objects.filter(company=company):
         try:
             import dateutil.parser
             h_dt = dateutil.parser.parse(str(h.date)).date()
@@ -1039,14 +1065,12 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
         day_start = timezone.make_aware(datetime(selected_date.year, selected_date.month, selected_date.day, 0, 0, 0), current_tz)
         day_end = timezone.make_aware(datetime(selected_date.year, selected_date.month, selected_date.day, 23, 59, 59, 999999), current_tz)
 
-        # Saturday (5) and Sunday (6) are Weekend Off
         is_saturday = selected_date.weekday() == 5
         is_sunday = selected_date.weekday() == 6
         is_weekend_day = is_saturday or is_sunday
         is_official_holiday = selected_date in holiday_dates
         is_non_working_day = is_weekend_day or is_official_holiday
 
-        # Attendance punches for this date
         attendance_qs = Attendance.objects.filter(
             employee__in=employees,
             check_in__gte=day_start,
@@ -1060,7 +1084,6 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
                 daily_punch_map[emp_id] = []
             daily_punch_map[emp_id].append(att)
 
-        # Approved leaves covering this date
         leave_qs = Leave.objects.filter(
             user__in=employees,
             status__in=['approved', 'Approved'],
@@ -1076,6 +1099,7 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
         kpi_leave = 0
 
         for idx, emp in enumerate(employees, start=1):
+            meta = emp_meta[emp.id]
             punches = daily_punch_map.get(emp.id, [])
             is_on_leave = emp.id in on_leave_emp_ids
 
@@ -1101,9 +1125,7 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
                 elif first_p.check_in:
                     worked_str = "In Progress"
 
-                # Check late arrival (after 10:15 AM)
                 is_late = ci_local.time() > time(10, 15)
-                # Check half day (< 4.5 hours)
                 is_half_day = False
                 if last_p.check_out:
                     diff_sec = int((timezone.localtime(last_p.check_out) - ci_local).total_seconds())
@@ -1146,7 +1168,6 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
                     status_class = 'badge-absent'
                     kpi_absent += 1
 
-            # Status Filter Application for Daily Mode
             include = True
             if status_filter == 'present' and status_code not in ['P', 'L', 'HD']:
                 include = False
@@ -1161,6 +1182,7 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
                 daily_rows.append({
                     'index': idx,
                     'employee': emp,
+                    'meta': meta,
                     'check_in': check_in_str,
                     'check_out': check_out_str,
                     'worked': worked_str,
@@ -1213,7 +1235,6 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
                 emp_year_punches[emp_id][m] = set()
             emp_year_punches[emp_id][m].add(d)
 
-        # Approved leaves in the year
         leave_qs = Leave.objects.filter(
             user__in=employees,
             status__in=['approved', 'Approved'],
@@ -1241,6 +1262,7 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
         tot_leaves_annual = 0
 
         for idx, emp in enumerate(employees, start=1):
+            meta = emp_meta[emp.id]
             months_data = []
             ann_p = 0
             ann_a = 0
@@ -1252,12 +1274,10 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
                 m_punches_days = len(emp_year_punches.get(emp.id, {}).get(m, set()))
                 m_leave_days = emp_year_leaves.get(emp.id, {}).get(m, 0)
 
-                # Count weekends (Saturdays and Sundays) in this month
                 m_weekends = sum(1 for d_num in range(1, m_days + 1) if date(year, m, d_num).weekday() in [5, 6])
                 m_holidays = sum(1 for d_num in range(1, m_days + 1) if date(year, m, d_num) in holiday_dates and date(year, m, d_num).weekday() not in [5, 6])
                 total_off = m_weekends + m_holidays
 
-                # Working days calculation
                 working_days = m_days - total_off
                 m_absent = max(0, working_days - m_punches_days - m_leave_days)
                 if date(year, m, 1) > today:
@@ -1296,6 +1316,7 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
                 yearly_rows.append({
                     'index': idx,
                     'employee': emp,
+                    'meta': meta,
                     'months': months_data,
                     'annual_present': ann_p,
                     'annual_absent': ann_a,
@@ -1324,7 +1345,6 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
     # ==========================================================================
     num_days = calendar.monthrange(year, month)[1]
 
-    # Days metadata list with Saturday & Sunday as Weekend Off
     days_meta = []
     for d in range(1, num_days + 1):
         d_date = date(year, month, d)
@@ -1354,15 +1374,34 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
         check_in__lte=month_end
     ).order_by('check_in')
 
-    attendance_map = {}
+    # Pre-aggregate punches by (emp_id, day) with formatted strings
+    punch_summary_map = {}
     for att in attendance_qs:
         emp_id = att.employee_id
-        if emp_id not in attendance_map:
-            attendance_map[emp_id] = {}
-        day_num = timezone.localtime(att.check_in).day
-        if day_num not in attendance_map[emp_id]:
-            attendance_map[emp_id][day_num] = []
-        attendance_map[emp_id][day_num].append(att)
+        ci_local = timezone.localtime(att.check_in)
+        day_num = ci_local.day
+        key = (emp_id, day_num)
+
+        if key not in punch_summary_map:
+            punch_summary_map[key] = {
+                'first_ci': ci_local,
+                'last_co': None,
+                'check_in_str': ci_local.strftime('%I:%M %p'),
+                'check_out_str': '--:--',
+                'worked_str': 'In Progress',
+                'is_late': ci_local.time() > time(10, 15),
+                'is_half_day': False,
+            }
+
+        if att.check_out:
+            co_local = timezone.localtime(att.check_out)
+            punch_summary_map[key]['last_co'] = co_local
+            punch_summary_map[key]['check_out_str'] = co_local.strftime('%I:%M %p')
+            diff_sec = int((co_local - punch_summary_map[key]['first_ci']).total_seconds())
+            if diff_sec > 0:
+                punch_summary_map[key]['worked_str'] = f"{diff_sec // 3600}h {(diff_sec % 3600) // 60}m"
+                if diff_sec < 16200:
+                    punch_summary_map[key]['is_half_day'] = True
 
     leave_qs = Leave.objects.filter(
         user__in=employees,
@@ -1387,9 +1426,10 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
     kpi_absent = 0
     kpi_late = 0
     kpi_leave = 0
-    kpi_total_records = 0
+    kpi_total_records = len(attendance_qs)
 
     for idx, emp in enumerate(employees, start=1):
+        meta = emp_meta[emp.id]
         emp_days = []
         tot_p = 0
         tot_a = 0
@@ -1403,10 +1443,9 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
             d_date = dm['date']
             is_future = dm['is_future']
             is_weekend = dm['is_weekend']
-            is_official_hol = dm['is_holiday']
-            is_holiday = is_weekend or is_official_hol
+            is_holiday = is_weekend or dm['is_holiday']
             is_on_leave = d_date in leave_map.get(emp.id, set())
-            punches = attendance_map.get(emp.id, {}).get(d, [])
+            punch_info = punch_summary_map.get((emp.id, d))
 
             cell_status = '-'
             cell_class = 'badge-future'
@@ -1419,36 +1458,19 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
                 cell_status = '-'
                 cell_class = 'badge-future'
                 cell_title = 'Future Date'
-            elif punches:
-                first_punch = punches[0]
-                last_punch = punches[-1]
-                ci_local = timezone.localtime(first_punch.check_in)
-                check_in_str = ci_local.strftime('%I:%M %p')
+            elif punch_info:
+                check_in_str = punch_info['check_in_str']
+                check_out_str = punch_info['check_out_str']
+                worked_str = punch_info['worked_str']
 
-                if last_punch.check_out:
-                    co_local = timezone.localtime(last_punch.check_out)
-                    check_out_str = co_local.strftime('%I:%M %p')
-                    diff_sec = int((co_local - ci_local).total_seconds())
-                    if diff_sec > 0:
-                        worked_str = f"{diff_sec // 3600}h {(diff_sec % 3600) // 60}m"
-                elif first_punch.check_in:
-                    worked_str = "In Progress"
-
-                is_late = ci_local.time() > time(10, 15)
-                is_half_day = False
-                if last_punch.check_out:
-                    diff_sec = int((timezone.localtime(last_punch.check_out) - ci_local).total_seconds())
-                    if 0 < diff_sec < 16200:
-                        is_half_day = True
-
-                if is_half_day:
+                if punch_info['is_half_day']:
                     cell_status = 'HD'
                     cell_class = 'badge-halfday'
                     cell_title = f"Half Day ({check_in_str} - {check_out_str})"
                     tot_hd += 1
                     tot_p += 1
                     kpi_present += 1
-                elif is_late:
+                elif punch_info['is_late']:
                     cell_status = 'L'
                     cell_class = 'badge-late'
                     cell_title = f"Late ({check_in_str})"
@@ -1462,16 +1484,13 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
                     cell_title = f"Present ({check_in_str} - {check_out_str})"
                     tot_p += 1
                     kpi_present += 1
-                kpi_total_records += 1
             elif is_on_leave:
                 cell_status = 'LV'
                 cell_class = 'badge-leave'
                 cell_title = "Approved Leave"
                 tot_lv += 1
                 kpi_leave += 1
-                kpi_total_records += 1
             elif is_holiday:
-                # Weekend Off (Saturday/Sunday) or Official Company Holiday
                 cell_status = 'H'
                 cell_class = 'badge-holiday'
                 cell_title = "Weekend Off (Sat/Sun)" if is_weekend else "Official Holiday"
@@ -1482,7 +1501,6 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
                 cell_title = "Absent"
                 tot_a += 1
                 kpi_absent += 1
-                kpi_total_records += 1
 
             emp_days.append({
                 'day': d,
@@ -1500,7 +1518,6 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
 
         tot_payable = tot_p + tot_h + tot_lv
 
-        # Status filtering for Monthly View
         include_emp = True
         if status_filter == 'present' and tot_p == 0:
             include_emp = False
@@ -1515,6 +1532,7 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
             matrix_rows.append({
                 'index': idx,
                 'employee': emp,
+                'meta': meta,
                 'days': emp_days,
                 'total_present': tot_p,
                 'total_absent': tot_a,

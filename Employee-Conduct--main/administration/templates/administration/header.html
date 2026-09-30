@@ -65,12 +65,15 @@
             setTimeout(function() { p.style.display = "none"; }, 200);
           }
         }
-        if (document.readyState === "complete") {
+        // Safety fallback timer: guarantee preloader is dismissed within 800ms max
+        setTimeout(hidePreloader, 800);
+
+        if (document.readyState === "complete" || document.readyState === "interactive") {
           hidePreloader();
         } else {
           window.addEventListener("load", hidePreloader);
           document.addEventListener("DOMContentLoaded", function() {
-            setTimeout(hidePreloader, 400);
+            setTimeout(hidePreloader, 150);
           });
         }
       })();

@@ -3,6 +3,16 @@
 {% include "administration/sidebar.html" %}
 {% include "administration/topbar.html" %}
 
+<script>
+  // Instantly dismiss preloader
+  (function() {
+    var p = document.getElementById("preloader");
+    if (p) {
+      p.style.display = "none";
+    }
+  })();
+</script>
+
 <style>
   /* Attendance Register Styling */
   .attendance-matrix-container {
@@ -497,26 +507,22 @@
             </thead>
             <tbody>
               {% for row in daily_rows %}
-                <tr class="matrix-row" data-empname="{{ row.employee.employee_first_name|lower }} {{ row.employee.employee_last_name|lower }}" data-empid="{{ row.employee.employee_id|lower }}" data-bioid="{{ row.employee.biometric_id|default:''|lower }}">
+                <tr class="matrix-row" data-empname="{{ row.meta.name|lower }}" data-empid="{{ row.meta.emp_id_display|lower }}" data-bioid="{{ row.meta.bio_id|lower }}">
                   <td class="text-center fw-bold text-muted">{{ row.index }}</td>
                   <td>
                     <div class="d-flex align-items-center">
                       <div class="avatar-box me-2">
-                        {% if row.employee.avatar_base64 or row.employee.employee_image %}
-                          <img src="{{ row.employee.avatar_url }}" class="rounded-circle shadow-sm" style="width: 32px; height: 32px; object-fit: cover;" onerror="this.onerror=null; this.src='{% if row.employee.employee_gender|lower == 'female' %}{% static 'asets/images/dummy-woman.png' %}{% else %}{% static 'asets/images/dummy-man.png' %}{% endif %}';">
-                        {% else %}
-                          <img src="{% if row.employee.employee_gender|lower == 'female' %}{% static 'asets/images/dummy-woman.png' %}{% else %}{% static 'asets/images/dummy-man.png' %}{% endif %}" class="rounded-circle shadow-sm" style="width: 32px; height: 32px; object-fit: cover;">
-                        {% endif %}
+                        <img src="{{ row.meta.avatar_url }}" class="rounded-circle shadow-sm" style="width: 32px; height: 32px; object-fit: cover;" onerror="this.onerror=null; this.src='{% if row.meta.is_female %}{% static 'asets/images/dummy-woman.png' %}{% else %}{% static 'asets/images/dummy-man.png' %}{% endif %}';">
                       </div>
                       <div>
-                        <div class="fw-bold text-dark">{{ row.employee.employee_first_name }} {{ row.employee.employee_last_name }}</div>
-                        <small class="text-muted">{{ row.employee.employee_designation.designation_name|default:'Staff' }}</small>
+                        <div class="fw-bold text-dark">{{ row.meta.name }}</div>
+                        <small class="text-muted">{{ row.meta.designation }}</small>
                       </div>
                     </div>
                   </td>
-                  <td><span class="badge bg-light text-dark border font-monospace">{{ row.employee.formatted_employee_id|default:row.employee.employee_id }}</span></td>
-                  <td><span class="text-muted fw-bold">{{ row.employee.biometric_id|default:'-' }}</span></td>
-                  <td>{{ row.employee.employee_department.department_name|default:'-' }}</td>
+                  <td><span class="badge bg-light text-dark border font-monospace">{{ row.meta.emp_id_display }}</span></td>
+                  <td><span class="text-muted fw-bold">{{ row.meta.bio_id }}</span></td>
+                  <td>{{ row.meta.dept_name }}</td>
                   <td class="text-center fw-bold {% if row.status_code == 'L' %}text-warning{% elif row.status_code == 'P' %}text-success{% else %}text-muted{% endif %}">{{ row.check_in }}</td>
                   <td class="text-center fw-bold text-dark">{{ row.check_out }}</td>
                   <td class="text-center fw-bold text-primary">{{ row.worked }}</td>
@@ -579,25 +585,21 @@
             </thead>
             <tbody>
               {% for row in yearly_rows %}
-                <tr class="matrix-row" data-empname="{{ row.employee.employee_first_name|lower }} {{ row.employee.employee_last_name|lower }}" data-empid="{{ row.employee.employee_id|lower }}" data-bioid="{{ row.employee.biometric_id|default:''|lower }}">
+                <tr class="matrix-row" data-empname="{{ row.meta.name|lower }}" data-empid="{{ row.meta.emp_id_display|lower }}" data-bioid="{{ row.meta.bio_id|lower }}">
                   <td class="td-sticky-1 text-center">{{ row.index }}</td>
                   <td class="td-sticky-2">
                     <div class="d-flex align-items-center">
                       <div class="avatar-box me-2">
-                        {% if row.employee.avatar_base64 or row.employee.employee_image %}
-                          <img src="{{ row.employee.avatar_url }}" class="rounded-circle shadow-sm" style="width: 26px; height: 26px; object-fit: cover;" onerror="this.onerror=null; this.src='{% if row.employee.employee_gender|lower == 'female' %}{% static 'asets/images/dummy-woman.png' %}{% else %}{% static 'asets/images/dummy-man.png' %}{% endif %}';">
-                        {% else %}
-                          <img src="{% if row.employee.employee_gender|lower == 'female' %}{% static 'asets/images/dummy-woman.png' %}{% else %}{% static 'asets/images/dummy-man.png' %}{% endif %}" class="rounded-circle shadow-sm" style="width: 26px; height: 26px; object-fit: cover;">
-                        {% endif %}
+                        <img src="{{ row.meta.avatar_url }}" class="rounded-circle shadow-sm" style="width: 26px; height: 26px; object-fit: cover;" onerror="this.onerror=null; this.src='{% if row.meta.is_female %}{% static 'asets/images/dummy-woman.png' %}{% else %}{% static 'asets/images/dummy-man.png' %}{% endif %}';">
                       </div>
                       <div>
-                        <div class="fw-bold text-dark">{{ row.employee.employee_first_name }} {{ row.employee.employee_last_name }}</div>
-                        <small class="text-muted" style="font-size: 0.70rem;">{{ row.employee.employee_designation.designation_name|default:'Staff' }}</small>
+                        <div class="fw-bold text-dark">{{ row.meta.name }}</div>
+                        <small class="text-muted" style="font-size: 0.70rem;">{{ row.meta.designation }}</small>
                       </div>
                     </div>
                   </td>
-                  <td><span class="badge bg-light text-dark border font-monospace">{{ row.employee.formatted_employee_id|default:row.employee.employee_id }}</span></td>
-                  <td>{{ row.employee.employee_department.department_name|default:'-' }}</td>
+                  <td><span class="badge bg-light text-dark border font-monospace">{{ row.meta.emp_id_display }}</span></td>
+                  <td>{{ row.meta.dept_name }}</td>
                   {% for m in row.months %}
                     <td class="text-center {% if m.is_future %}text-muted{% elif m.present > 0 %}fw-bold text-success{% endif %}">
                       {% if m.is_future %}-{% else %}{{ m.present }}{% endif %}
@@ -668,7 +670,7 @@
             </thead>
             <tbody>
               {% for row in matrix_rows %}
-                <tr class="matrix-row" data-empname="{{ row.employee.employee_first_name|lower }} {{ row.employee.employee_last_name|lower }}" data-empid="{{ row.employee.employee_id|lower }}" data-bioid="{{ row.employee.biometric_id|default:''|lower }}">
+                <tr class="matrix-row" data-empname="{{ row.meta.name|lower }}" data-empid="{{ row.meta.emp_id_display|lower }}" data-bioid="{{ row.meta.bio_id|lower }}">
                   
                   <!-- Sticky Column 1: Index -->
                   <td class="td-sticky-1">{{ row.index }}</td>
@@ -677,22 +679,18 @@
                   <td class="td-sticky-2">
                     <div class="d-flex align-items-center">
                       <div class="avatar-box me-2">
-                        {% if row.employee.avatar_base64 or row.employee.employee_image %}
-                          <img src="{{ row.employee.avatar_url }}" class="rounded-circle shadow-sm" style="width: 28px; height: 28px; object-fit: cover;" onerror="this.onerror=null; this.src='{% if row.employee.employee_gender|lower == 'female' %}{% static 'asets/images/dummy-woman.png' %}{% else %}{% static 'asets/images/dummy-man.png' %}{% endif %}';">
-                        {% else %}
-                          <img src="{% if row.employee.employee_gender|lower == 'female' %}{% static 'asets/images/dummy-woman.png' %}{% else %}{% static 'asets/images/dummy-man.png' %}{% endif %}" class="rounded-circle shadow-sm" style="width: 28px; height: 28px; object-fit: cover;">
-                        {% endif %}
+                        <img src="{{ row.meta.avatar_url }}" class="rounded-circle shadow-sm" style="width: 28px; height: 28px; object-fit: cover;" onerror="this.onerror=null; this.src='{% if row.meta.is_female %}{% static 'asets/images/dummy-woman.png' %}{% else %}{% static 'asets/images/dummy-man.png' %}{% endif %}';">
                       </div>
                       <div>
-                        <div class="fw-bold text-dark">{{ row.employee.employee_first_name }} {{ row.employee.employee_last_name }}</div>
-                        <small class="text-muted" style="font-size: 0.70rem;">{{ row.employee.employee_department.department_name|default:'-' }}</small>
+                        <div class="fw-bold text-dark">{{ row.meta.name }}</div>
+                        <small class="text-muted" style="font-size: 0.70rem;">{{ row.meta.dept_name }}</small>
                       </div>
                     </div>
                   </td>
 
                   <!-- Emp ID & Biometric ID -->
-                  <td><span class="badge bg-light text-dark border font-monospace" style="font-size: 0.70rem;">{{ row.employee.formatted_employee_id|default:row.employee.employee_id }}</span></td>
-                  <td><span class="text-muted fw-bold" style="font-size: 0.72rem;">{{ row.employee.biometric_id|default:'-' }}</span></td>
+                  <td><span class="badge bg-light text-dark border font-monospace" style="font-size: 0.70rem;">{{ row.meta.emp_id_display }}</span></td>
+                  <td><span class="text-muted fw-bold" style="font-size: 0.72rem;">{{ row.meta.bio_id }}</span></td>
 
                   <!-- 1 to 31 Daily Badges -->
                   {% for d in row.days %}
