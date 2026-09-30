@@ -153,7 +153,12 @@
             </div>
 
             {% for message in messages %}
-            {% if 'Incorrect' in message.message or 'Access Denied' in message.message or 'Registered' in message.message or 'password' in message.message|lower or 'credentials' in message.message|lower or 'inactive' in message.message|lower or 'error' in message.message|lower %}
+            {% if 'success' in message.tags or 'successfully' in message.message|lower %}
+            <div class="alert alert-success alert-dismissible fade show d-flex align-items-center" style="border-radius:10px; font-size:0.88rem; border: 1px solid #a7f3d0; background-color: #ecfdf5; color: #065f46;" role="alert">
+                <i class="bi bi-check-circle-fill me-2" style="color: #10b981; font-size: 1.1rem;"></i>
+                <div>{{ message }}</div>
+            </div>
+            {% elif 'Incorrect' in message.message or 'Access Denied' in message.message or 'Registered' in message.message or 'credentials' in message.message|lower or 'inactive' in message.message|lower or 'error' in message.message|lower or 'danger' in message.tags or 'error' in message.tags or 'info' in message.tags %}
             <div class="alert alert-danger alert-dismissible fade show" style="border-radius:10px; font-size:0.88rem; border: 1px solid var(--eic-soft-blush); background-color: var(--eic-soft-blush); color: var(--eic-dark-red);" role="alert">
                 {{ message }}
             </div>
