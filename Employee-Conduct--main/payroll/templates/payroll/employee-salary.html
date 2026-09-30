@@ -26,6 +26,44 @@
                 <button type="button" class="btn btn-outline-orangeyellow" data-bs-toggle="modal" data-bs-target="#addemployeesalaryModal" id="addemployeeBtn">
                   <i class="bx bx-plus"></i> Add Salary
                 </button>
+                <button type="button" class="btn btn-outline-danger ms-2" data-bs-toggle="modal" data-bs-target="#autoGeneratePayslipsModal" id="autoGenBtn">
+                  <i class="bx bx-bolt-circle"></i> Auto-Generate Payslips
+                </button>
+                <div class="modal fade" id="autoGeneratePayslipsModal" tabindex="-1" aria-hidden="true">
+                  <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content border-0 shadow">
+                      <div class="modal-header bg-dark text-white">
+                        <h5 class="modal-title text-white"><i class="bx bx-bolt-circle me-1 text-danger"></i> Auto-Generate Monthly Payslips</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                      </div>
+                      <form action="{% url 'auto_generate_payslips' company_id=company_id company_staff_id=company_staff_id %}" method="POST">
+                        {% csrf_token %}
+                        <div class="modal-body p-4">
+                          <p class="text-muted small mb-3">
+                            This tool automatically generates monthly payslips for all active employees by duplicating their latest configured salary structure and emailing them their pay slip summary.
+                          </p>
+                          <div class="mb-3">
+                            <label class="form-label fw-bold small text-secondary">Target Salary Month</label>
+                            <input type="month" class="form-control" name="target_month" id="auto_target_month" required>
+                            <small class="text-muted" style="font-size: 0.78rem;">Defaults to previous calendar month.</small>
+                          </div>
+                          <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" name="send_email" value="1" id="sendEmailSwitch" checked>
+                            <label class="form-check-label small fw-semibold" for="sendEmailSwitch">Send automated email notifications to employees</label>
+                          </div>
+                          <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" name="force" value="1" id="forceOverwriteSwitch">
+                            <label class="form-check-label small text-muted" for="forceOverwriteSwitch">Overwrite existing payslips if already generated for this month</label>
+                          </div>
+                        </div>
+                        <div class="modal-footer bg-light">
+                          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                          <button type="submit" class="btn btn-danger btn-sm fw-bold px-3"><i class="bx bx-check me-1"></i> Generate Payslips</button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                </div>
                 <div class="modal" id="addemployeesalaryModal">
                   <div class="modal-dialog w-80">
                     <div class="modal-content">
@@ -322,6 +360,16 @@
 		a.href = "/payroll/salary_remove/{{company_id}}/{{company_staff_id}}/"+id;
 	}
 
+    document.addEventListener("DOMContentLoaded", function() {
+      var targetInput = document.getElementById("auto_target_month");
+      if (targetInput) {
+        var d = new Date();
+        d.setMonth(d.getMonth() - 1);
+        var yyyy = d.getFullYear();
+        var mm = String(d.getMonth() + 1).padStart(2, '0');
+        targetInput.value = yyyy + '-' + mm;
+      }
+    });
    </script>
 
 

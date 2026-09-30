@@ -127,6 +127,33 @@ class GeneratePdf(View):
         # the HTML view and trigger the existing client-side html2pdf download.
         context['auto_download'] = True
         return render(request, "managerpayroll/manager-payslip.html", context)
+
+
+from payroll.auto_payslip_service import generate_monthly_payslips
+
+
+class AutoGenerateManagerPayslipsView(View):
+    def post(self, request, company_id, company_staff_id, *args, **kwargs):
+        target_month = request.POST.get('target_month')
+        send_email = request.POST.get('send_email', '1') == '1'
+        force = request.POST.get('force', '0') == '1'
+
+        try:
+            result = generate_monthly_payslips(
+                target_month=target_month if target_month else None,
+                company_id=company_id,
+                send_email=send_email,
+                force=force
+            )
+            msg = f"Payslips processed for {result['target_month_name']}! Managers created: {result['managers_created']}, Employees created: {result['employees_created']}. Emails sent: {result['emails_sent']}."
+            if result['managers_skipped'] > 0 or result['employees_skipped'] > 0:
+                msg += f" (Skipped {result['managers_skipped'] + result['employees_skipped']} existing records)."
+            messages.success(request, msg)
+        except Exception as e:
+            messages.error(request, f"Error generating payslips: {str(e)}")
+
+        return redirect(f'/managerpayroll/msalary/{company_id}/{company_staff_id}')
+
     
     
 

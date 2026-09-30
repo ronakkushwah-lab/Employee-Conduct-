@@ -177,7 +177,34 @@ class CreateSalaryView(generic.CreateView):
     success_url = ('/payroll/salary')
 
 
+from .auto_payslip_service import generate_monthly_payslips
+
+
+class AutoGeneratePayslipsView(View):
+    def post(self, request, company_id, company_staff_id, *args, **kwargs):
+        target_month = request.POST.get('target_month')
+        send_email = request.POST.get('send_email', '1') == '1'
+        force = request.POST.get('force', '0') == '1'
+
+        try:
+            result = generate_monthly_payslips(
+                target_month=target_month if target_month else None,
+                company_id=company_id,
+                send_email=send_email,
+                force=force
+            )
+            msg = f"Payslips processed for {result['target_month_name']}! Employees created: {result['employees_created']}, Managers created: {result['managers_created']}. Emails sent: {result['emails_sent']}."
+            if result['employees_skipped'] > 0 or result['managers_skipped'] > 0:
+                msg += f" (Skipped {result['employees_skipped'] + result['managers_skipped']} existing records)."
+            messages.success(request, msg)
+        except Exception as e:
+            messages.error(request, f"Error generating payslips: {str(e)}")
+
+        return redirect(f'/payroll/salary/{company_id}/{company_staff_id}')
+
+
 def All_Employee_List_View(request):
     AllEmployee = Employee.objects.filter(employee_status="Active")
     return render(request, "payroll/employee-salary.html", {'Employees': AllEmployee})
+
 

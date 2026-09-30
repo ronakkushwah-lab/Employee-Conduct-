@@ -338,6 +338,25 @@ def main():
     t4 = threading.Thread(target=run_pyzk_auto_scanner, daemon=True)
     t4.start()
 
+    # Start Monthly Auto-Payslip Scheduler (Runs automatically on the 10th of every month)
+    def _run_payslip_scheduler():
+        while True:
+            try:
+                from datetime import date
+                today = date.today()
+                if today.day >= 10:
+                    import django
+                    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'dstt.settings')
+                    django.setup()
+                    from payroll.auto_payslip_service import run_scheduled_payslip_check
+                    run_scheduled_payslip_check()
+            except Exception:
+                pass
+            time.sleep(3600)
+
+    t5 = threading.Thread(target=_run_payslip_scheduler, daemon=True)
+    t5.start()
+
     try:
         while True:
             time.sleep(1)

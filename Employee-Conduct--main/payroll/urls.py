@@ -14,6 +14,7 @@ urlpatterns = [
     path('salary-download/<int:company_id>/<int:company_staff_id>/<int:id>', views.GeneratePdf.as_view(), name='salary-download'),
 
     path('salary-create/', views.CreateSalaryView.as_view(), name='salary-create'),
+    path('auto-generate/<int:company_id>/<int:company_staff_id>/', AutoGeneratePayslipsView.as_view(), name='auto_generate_payslips'),
 
     # path('genrateSlartyslip/<int:pk>*<str:month>*<str:year>', views.GenrateSalarySlip.as_view(), name="genratesalary"),
 
