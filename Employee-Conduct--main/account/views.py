@@ -1096,6 +1096,7 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
         kpi_present = 0
         kpi_absent = 0
         kpi_late = 0
+        kpi_halfday = 0
         kpi_leave = 0
 
         for idx, emp in enumerate(employees, start=1):
@@ -1136,6 +1137,7 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
                     status_code = 'HD'
                     status_label = 'Half Day'
                     status_class = 'badge-halfday'
+                    kpi_halfday += 1
                     kpi_present += 1
                 elif is_late:
                     status_code = 'L'
@@ -1170,6 +1172,8 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
 
             include = True
             if status_filter == 'present' and status_code not in ['P', 'L', 'HD']:
+                include = False
+            elif status_filter == 'halfday' and status_code != 'HD':
                 include = False
             elif status_filter == 'absent' and status_code != 'A':
                 include = False
@@ -1207,6 +1211,7 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
                 'present': kpi_present,
                 'absent': kpi_absent,
                 'late': kpi_late,
+                'halfday': kpi_halfday,
                 'leave': kpi_leave,
             }
         }
@@ -1336,6 +1341,7 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
                 'present': tot_present_annual,
                 'absent': tot_absent_annual,
                 'late': 0,
+                'halfday': 0,
                 'leave': tot_leaves_annual,
             }
         }
@@ -1425,6 +1431,7 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
     kpi_present = 0
     kpi_absent = 0
     kpi_late = 0
+    kpi_halfday = 0
     kpi_leave = 0
     kpi_total_records = len(attendance_qs)
 
@@ -1469,6 +1476,7 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
                     cell_title = f"Half Day ({check_in_str} - {check_out_str})"
                     tot_hd += 1
                     tot_p += 1
+                    kpi_halfday += 1
                     kpi_present += 1
                 elif punch_info['is_late']:
                     cell_status = 'L'
@@ -1512,6 +1520,11 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
                     display_status = '-'
                     display_class = 'badge-future'
                     display_title = f"{cell_title} (Filtered out)"
+            elif status_filter == 'halfday':
+                if cell_status != 'HD':
+                    display_status = '-'
+                    display_class = 'badge-future'
+                    display_title = f"{cell_title} (Filtered out)"
             elif status_filter == 'absent':
                 if cell_status != 'A':
                     display_status = '-'
@@ -1548,6 +1561,8 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
         include_emp = True
         if status_filter == 'present' and tot_p == 0:
             include_emp = False
+        elif status_filter == 'halfday' and tot_hd == 0:
+            include_emp = False
         elif status_filter == 'absent' and tot_a == 0:
             include_emp = False
         elif status_filter == 'late' and tot_l == 0:
@@ -1583,6 +1598,7 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
             'present': kpi_present,
             'absent': kpi_absent,
             'late': kpi_late,
+            'halfday': kpi_halfday,
             'leave': kpi_leave,
         }
     }
@@ -1759,7 +1775,7 @@ def export_attendance_register(request, company_id, company_staff_id):
             for dm in data.get('days_meta', []):
                 tag = ' (Sat)' if dm['is_saturday'] else (' (Sun)' if dm['is_sunday'] else f" ({dm['weekday_name']})")
                 header.append(f"{dm['day']}{tag}")
-            header.extend(['Present (P)', 'Absent (A)', 'Late (L)', 'Holiday/Weekend (H)', 'Leave (LV)', 'Total Payable Days'])
+            header.extend(['Present (P)', 'Absent (A)', 'Late (L)', 'Half Day (HD)', 'Holiday/Weekend (H)', 'Leave (LV)', 'Total Payable Days'])
             writer.writerow(header)
 
             for row in data.get('matrix_rows', []):
@@ -1779,6 +1795,7 @@ def export_attendance_register(request, company_id, company_staff_id):
                     row['total_present'],
                     row['total_absent'],
                     row['total_late'],
+                    row['total_halfday'],
                     row['total_holiday'],
                     row['total_leave'],
                     row['total_payable'],
@@ -1807,6 +1824,7 @@ def export_attendance_register(request, company_id, company_staff_id):
         fill_present = PatternFill(start_color='D4EDDA', end_color='D4EDDA', fill_type='solid')
         fill_absent = PatternFill(start_color='F8D7DA', end_color='F8D7DA', fill_type='solid')
         fill_late = PatternFill(start_color='FFF3CD', end_color='FFF3CD', fill_type='solid')
+        fill_halfday = PatternFill(start_color='FFE8D6', end_color='FFE8D6', fill_type='solid')
         fill_holiday = PatternFill(start_color='E8F0FE', end_color='E8F0FE', fill_type='solid')
         fill_leave = PatternFill(start_color='E2D9F3', end_color='E2D9F3', fill_type='solid')
         fill_future = PatternFill(start_color='F8F9FA', end_color='F8F9FA', fill_type='solid')
@@ -1852,7 +1870,10 @@ def export_attendance_register(request, company_id, company_staff_id):
                     c.font = Font(name='Calibri', size=10)
                     c.alignment = Alignment(horizontal='center' if col_idx not in [2, 5] else 'left', vertical='center')
                     if col_idx == 9:
-                        if row['status_code'] in ['P', 'HD']:
+                        if row['status_code'] == 'HD':
+                            c.fill = fill_halfday
+                            c.font = Font(name='Calibri', size=10, bold=True, color='C2410C')
+                        elif row['status_code'] == 'P':
                             c.fill = fill_present
                         elif row['status_code'] == 'A':
                             c.fill = fill_absent
@@ -1925,7 +1946,7 @@ def export_attendance_register(request, company_id, company_staff_id):
             for dm in data.get('days_meta', []):
                 tag = '\nSat' if dm['is_saturday'] else ('\nSun' if dm['is_sunday'] else f"\n{dm['weekday_name']}")
                 headers.append(f"{dm['day']}{tag}")
-            headers.extend(['P', 'A', 'L', 'H', 'LV', 'Payable Days'])
+            headers.extend(['P', 'A', 'L', 'HD', 'H', 'LV', 'Payable Days'])
 
             ws.append([])
             ws.append(headers)
@@ -1957,6 +1978,7 @@ def export_attendance_register(request, company_id, company_staff_id):
                     row['total_present'],
                     row['total_absent'],
                     row['total_late'],
+                    row['total_halfday'],
                     row['total_holiday'],
                     row['total_leave'],
                     row['total_payable'],
@@ -1975,9 +1997,12 @@ def export_attendance_register(request, company_id, company_staff_id):
                         c.alignment = Alignment(horizontal='center', vertical='center')
 
                     if 6 <= col_idx <= 5 + len(data.get('days_meta', [])):
-                        if str(val) in ['P', 'HD']:
+                        if str(val) == 'P':
                             c.fill = fill_present
                             c.font = Font(name='Calibri', size=10, bold=True, color='155724')
+                        elif str(val) == 'HD':
+                            c.fill = fill_halfday
+                            c.font = Font(name='Calibri', size=10, bold=True, color='C2410C')
                         elif str(val) == 'A':
                             c.fill = fill_absent
                             c.font = Font(name='Calibri', size=10, bold=True, color='721C24')
