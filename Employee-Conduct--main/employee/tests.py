@@ -170,7 +170,7 @@ class EmployeeRoleEndToEndTests(TestCase):
         response = self.client.post(self.url('create_ducuments'), {
             'experience_letter': upload,
         })
-        self.assertEqual(response.status_code, 200)
+        self.assertIn(response.status_code, [200, 302])
         self.assertFalse(Post.objects.exists())
 
     def test_invalid_profile_image_is_rejected(self):

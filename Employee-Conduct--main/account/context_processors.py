@@ -41,11 +41,21 @@ def admin_company_staff(request):
     company_staff_is_admin = bool(company_staff_authenticated and (company_staff.is_company_admin or company_staff.role == CompanyStaff.ROLE_ADMIN))
     company_staff_is_hr = bool(company_staff_authenticated and (getattr(company_staff, 'is_hr', False) or getattr(company_staff, 'role', '') == 'hr'))
 
+    cid = None
+    if hasattr(request, "session"):
+        cid = request.session.get("company_id")
+    if not cid and getattr(request, "resolver_match", None):
+        cid = request.resolver_match.kwargs.get("company_id")
+    if not cid and company_staff and company_staff.company:
+        cid = company_staff.company.id
+
     context: Dict[str, Any] = {
         "staff": company_staff,
         "company_staff": company_staff,
         "company_staff_authenticated": company_staff_authenticated,
         "company_staff_is_admin": company_staff_is_admin,
         "company_staff_is_hr": company_staff_is_hr,
+        "company_id": cid or 1,
+        "company_staff_id": (company_staff.id if company_staff else (company_staff_id or 1)),
     }
     return context

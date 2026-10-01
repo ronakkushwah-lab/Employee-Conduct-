@@ -26,16 +26,22 @@ def strfdelta(tdelta, fmt="{hours}.{minutes}"):
 
 
 def getgriddatapaginated(request, rs, sort_column):
-    rows = int(request.GET['length'])
-    page = int(request.GET['start'])
+    try:
+        rows = int(request.GET.get('length', 10))
+    except (ValueError, TypeError):
+        rows = 10
+    try:
+        page = int(request.GET.get('start', 0))
+    except (ValueError, TypeError):
+        page = 0
     sort_by = 'id' if not sort_column else sort_column
-    sord = request.GET['order[0][dir]']
+    sord = request.GET.get('order[0][dir]', 'asc')
     end = rows + page
     tototal_records = rs.count()
     sortOn = "-" + sort_by if sord == "desc" else sort_by
     rs = rs.order_by(sortOn)[page: end]
     ctx = {}
-    ctx['draw'] = request.GET['draw']
+    ctx['draw'] = int(request.GET.get('draw', 1))
     ctx['recordsFiltered'] = tototal_records
     ctx['recordsTotal'] = tototal_records
     ctx['data'] = rs

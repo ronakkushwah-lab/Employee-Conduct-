@@ -235,13 +235,15 @@ class Employee(models.Model):
     @property
     def formatted_employee_id(self):
         """
-        Always show full employee ID with 'EIC-' prefix (e.g. EIC-001, EIC-002).
-        If employee_id is empty or only 'EIC-', fallback to EIC-{pk}.
+        Always show full employee ID with 'EIC-' or standard prefix (e.g. EIC-001, EIC/IDR/2726).
+        If employee_id is empty or only 'EIC-', fallback to EIC-{pk:03d}.
         """
         eid = (self.employee_id or "").strip()
-        if not eid or eid.upper() in ("EIC-", "EIC"):
+        if not eid or eid.upper() in ("EIC-", "EIC", "EIC/"):
             return f"EIC-{self.pk:03d}"
-        if eid.upper().startswith("EIC-"):
+        if eid.upper().startswith("EIC-") or eid.upper().startswith("EIC/"):
+            return eid
+        if eid.upper().startswith("EIC"):
             return eid
         return f"EIC-{eid}"
 

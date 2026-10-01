@@ -1,7 +1,7 @@
 {% load static %}
-{% include "administration/header.html" %}
-{% include "administration/sidebar.html" %}
-{% include "administration/topbar.html" %}
+{% include "managers/header.html" %}
+{% include "managers/sidebar.html" %}
+{% include "managers/topbar.html" %}
 
 <script>
   // Instantly dismiss preloader
@@ -233,22 +233,26 @@
     <!-- Top Breadcrumb & Page Title -->
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-3">
       <div>
-        <h4 class="mb-1 fw-bold text-dark">
-          <i class='bx bx-calendar-check text-primary me-2'></i> 
-          {% if period == 'daily' %}Daily Attendance Roster
-          {% elif period == 'yearly' %}Annual Attendance Summary
-          {% else %}Monthly Attendance Register{% endif %}
-        </h4>
+        <div class="d-flex align-items-center gap-2">
+          <h4 class="mb-1 fw-bold text-dark">
+            <i class='bx bx-calendar-check text-primary me-2'></i> 
+            {% if period == 'daily' %}Daily Attendance Roster
+            {% elif period == 'yearly' %}Annual Attendance Summary
+            {% else %}Monthly Attendance Register{% endif %}
+          </h4>
+          {% if manager and manager.manager_department %}
+            <span class="badge bg-primary bg-gradient px-2 py-1 rounded-pill" style="font-size: 0.75rem;">
+              <i class='bx bx-buildings me-1'></i>{{ manager.manager_department.department_name }}
+            </span>
+          {% endif %}
+        </div>
         <small class="text-muted">
-          Comprehensive employee punch tracking, Saturday & Sunday weekly offs, approved leaves, and payroll records
+          Department-scoped employee attendance matrix, weekend offs, approved leaves, and worked durations
         </small>
       </div>
       <div class="d-flex gap-2 mt-2 mt-md-0">
-        <a href="{% if is_admin %}{% url 'admin_dashboard' company_id=company_id company_staff_id=company_staff_id %}{% else %}{% url 'hr_dashboard' company_id=company_id company_staff_id=company_staff_id %}{% endif %}" class="btn btn-outline-secondary btn-sm rounded-3">
+        <a href="{% url 'dashboard' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-outline-secondary btn-sm rounded-3">
           <i class='bx bx-arrow-back me-1'></i> Dashboard
-        </a>
-        <a href="{% url 'hr_biometric_monitor' company_id=company_id company_staff_id=company_staff_id %}" class="btn btn-outline-primary btn-sm rounded-3">
-          <i class='bx bx-fingerprint me-1'></i> Live Biometric Monitor
         </a>
       </div>
     </div>
@@ -256,7 +260,7 @@
     <!-- Filter Control Card -->
     <div class="card radius-10 border-0 shadow-sm mb-4">
       <div class="card-body p-3">
-        <form method="GET" action="" id="attendanceFilterForm" class="row g-3 align-items-end">
+        <form method="GET" action="{% url 'manager_attendance_register' company_id=company_id company_staff_id=company_staff_id %}" id="attendanceFilterForm" class="row g-3 align-items-end">
           
           <!-- Period Filter Pills -->
           <div class="col-12 col-lg-3">
@@ -305,14 +309,17 @@
             </div>
           {% endif %}
 
-          <!-- Department Selector -->
+          <!-- Department Scope Display / Dropdown -->
           <div class="col-6 col-md-3 col-lg-2">
             <label class="form-label text-muted small fw-bold mb-1">DEPARTMENT</label>
             <select name="dept" class="form-select form-select-sm rounded-3 fw-semibold" onchange="document.getElementById('attendanceFilterForm').submit();">
-              <option value="all" {% if dept_id == 'all' %}selected{% endif %}>All Departments</option>
-              {% for dept in departments %}
-                <option value="{{ dept.id }}" {% if dept_id|stringformat:"s" == dept.id|stringformat:"s" %}selected{% endif %}>{{ dept.department_name }}</option>
-              {% endfor %}
+              {% if departments %}
+                {% for dept in departments %}
+                  <option value="{{ dept.id }}" selected>{{ dept.department_name }}</option>
+                {% endfor %}
+              {% else %}
+                <option value="all" selected>My Team / Reports</option>
+              {% endif %}
             </select>
           </div>
 
@@ -331,10 +338,10 @@
 
           <!-- Export Actions -->
           <div class="col-12 col-lg-auto ms-auto d-flex gap-2">
-            <a href="{% if is_admin %}{% url 'admin_attendance_register_export' company_id=company_id company_staff_id=company_staff_id %}{% else %}{% url 'hr_attendance_register_export' company_id=company_id company_staff_id=company_staff_id %}{% endif %}?period={{ period }}&date={{ selected_date_str }}&month={{ current_month }}&year={{ current_year }}&dept={{ dept_id }}&status={{ status_filter }}&format=excel" class="btn btn-sm btn-success rounded-3 px-3 shadow-sm fw-semibold">
+            <a href="{% url 'manager_export_attendance_register' company_id=company_id company_staff_id=company_staff_id %}?period={{ period }}&date={{ selected_date_str }}&month={{ current_month }}&year={{ current_year }}&dept={{ dept_id }}&status={{ status_filter }}&format=excel" class="btn btn-sm btn-success rounded-3 px-3 shadow-sm fw-semibold">
               <i class='bx bx-spreadsheet me-1'></i> Excel (.xlsx)
             </a>
-            <a href="{% if is_admin %}{% url 'admin_attendance_register_export' company_id=company_id company_staff_id=company_staff_id %}{% else %}{% url 'hr_attendance_register_export' company_id=company_id company_staff_id=company_staff_id %}{% endif %}?period={{ period }}&date={{ selected_date_str }}&month={{ current_month }}&year={{ current_year }}&dept={{ dept_id }}&status={{ status_filter }}&format=csv" class="btn btn-sm btn-outline-secondary rounded-3 px-2 shadow-sm" title="Download CSV">
+            <a href="{% url 'manager_export_attendance_register' company_id=company_id company_staff_id=company_staff_id %}?period={{ period }}&date={{ selected_date_str }}&month={{ current_month }}&year={{ current_year }}&dept={{ dept_id }}&status={{ status_filter }}&format=csv" class="btn btn-sm btn-outline-secondary rounded-3 px-2 shadow-sm" title="Download CSV">
               <i class='bx bx-file'></i> CSV
             </a>
             <button type="button" class="btn btn-sm btn-outline-dark rounded-3 px-2 shadow-sm" onclick="window.print();" title="Print View">
@@ -349,11 +356,11 @@
           <div class="col-12 col-md-6 col-lg-4">
             <div class="input-group input-group-sm">
               <span class="input-group-text bg-white border-end-0 text-muted"><i class='bx bx-search'></i></span>
-              <input type="text" id="matrixSearchInput" class="form-control border-start-0 ps-0" placeholder="Filter employee by name, Emp ID, or Bio ID..." onkeyup="filterMatrixTable();">
+              <input type="text" id="matrixSearchInput" class="form-control border-start-0 ps-0" placeholder="Filter team member by name, Emp ID, or Bio ID..." onkeyup="filterMatrixTable();">
             </div>
           </div>
           <div class="col-12 col-md-6 col-lg-8 text-md-end text-muted small mt-2 mt-md-0 d-flex align-items-center justify-content-md-end gap-2">
-            <span>Showing <strong class="text-dark">{{ kpi.filtered_employees|default:kpi.total_employees }}</strong> of {{ kpi.total_employees }} Employees</span>
+            <span>Showing <strong class="text-dark">{{ kpi.filtered_employees|default:kpi.total_employees }}</strong> of {{ kpi.total_employees }} Team Members</span>
             <span class="badge bg-light text-dark border">Sat & Sun: Weekly Off</span>
           </div>
         </div>
@@ -501,7 +508,7 @@
         <div class="p-3 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
           <div>
             <h6 class="mb-0 fw-bold text-dark"><i class='bx bx-list-check text-primary me-1'></i> Daily Attendance Roster: {{ selected_date|date:"l, d F Y" }}</h6>
-            <small class="text-muted">Detailed check-in, check-out, and worked duration</small>
+            <small class="text-muted">Detailed check-in, check-out, and worked duration for team members</small>
           </div>
           <div class="d-flex flex-wrap gap-2">
             <span class="legend-item"><span class="att-badge badge-present">P</span> Present (≥8.5h)</span>
@@ -655,7 +662,7 @@
             <h6 class="mb-0 fw-bold text-dark">
               <i class='bx bx-calendar-check text-primary me-1'></i> Monthly Attendance Register
             </h6>
-            <small class="text-muted">{{ current_month_name }} {{ current_year }} &bull; {{ kpi.filtered_employees }} Employees &bull; <span class="text-primary fw-semibold">Saturday & Sunday are Weekend Off</span></small>
+            <small class="text-muted">{{ current_month_name }} {{ current_year }} &bull; {{ kpi.filtered_employees }} Team Members &bull; <span class="text-primary fw-semibold">Saturday & Sunday are Weekend Off</span></small>
           </div>
           <div class="d-flex flex-wrap gap-2">
             <span class="legend-item"><span class="att-badge badge-present">P</span> Present</span>
@@ -738,7 +745,7 @@
                 <tr>
                   <td colspan="45" class="text-center py-5 text-muted">
                     <i class='bx bx-calendar-x fs-1 d-block mb-2'></i>
-                    No employees found matching the current filter.
+                    No employees found matching the current department filter.
                   </td>
                 </tr>
               {% endfor %}
@@ -750,13 +757,19 @@
     {% endif %}
 
   </div>
+  
+  <footer class="page-footer">
+    <p class="mb-0">Copyright © Eagle in Cloud. All rights reserved. (<a href="https://www.eagleinclouds.com" target="_blank" style="color: #FC0101; text-decoration: none; font-weight: 600;">www.eagleinclouds.com</a>)</p>
+  </footer>
 </div>
 </div> <!-- Close .wrapper opened in header.html -->
 
     <!-- Scripts (Optimized HRMS Core Setup) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/simplebar@latest/dist/simplebar.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/metisMenu/3.0.7/metisMenu.min.js"></script>
-    <script src="{% static '/asets/js/script.js' %}"></script>
+    <script src="https://unpkg.com/boxicons@2.1.2/dist/boxicons.js"></script>
+    <script src="{% static 'asets/js/script.js' %}"></script>
 
     <script>
       // Instantly dismiss preloader once DOM is ready

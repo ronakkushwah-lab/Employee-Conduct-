@@ -615,7 +615,7 @@ def Promote_Employee_To_Manager_View(request, company_id, company_staff_id):
 
 def All_Employee_List_View(request):
     AllEmployee = Employee.objects.filter(employee_status="Active")
-    return render(request, 'administration/employees_list.html', {'Employees': AllEmployee})
+    return render(request, 'administration/all-employees-list.html', {'Employees': AllEmployee})
 
 
 @custom_login_required
@@ -2743,12 +2743,18 @@ def uncancel_regularization(request, id):
     return redirect(request.META.get('HTTP_REFERER', '/'))
 
 
-def regularization_rejected_list(request):
+def regularization_rejected_list(request, company_id=None, company_staff_id=None):
     dataset = dict()
-    regularization = Regularization.objects.all_rejected_regularization()
+    if company_id:
+        regularization = Regularization.objects.filter(user__user__company_id=company_id, status='Rejected')
+    else:
+        regularization = Regularization.objects.all_rejected_regularization()
 
     dataset['regularization_list_rejected'] = regularization
-    return render(request, 'administration/rejected_regularization_list.html', dataset)
+    dataset['regularization_list_cancel'] = regularization
+    dataset['company_id'] = company_id
+    dataset['company_staff_id'] = company_staff_id
+    return render(request, 'administration/employee-cancelled-regularization.html', dataset)
 
 
 @require_POST

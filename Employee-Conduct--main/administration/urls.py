@@ -215,5 +215,16 @@ urlpatterns = [
         views.delete_employee_documents,
         name="delete_employee_documents"
     ),
-   
+    # Backward-compatible URL aliases for legacy routes
+    path('leaves/approve/all/<int:company_id>/<int:company_staff_id>', views.leaves_approved_list, name='leaves_approve_all_alias'),
+    path('leaves/reject/all/<int:company_id>/<int:company_staff_id>', views.leave_rejected_list, name='leaves_reject_all_alias'),
+    path('regularization/approve/all/<int:company_id>/<int:company_staff_id>', views.regularization_approved_list, name='reg_approve_all_alias'),
+    path('regularization/reject/all/<int:company_id>/<int:company_staff_id>', views.regularization_rejected_list, name='reg_reject_all_alias'),
+    path('resign/approve/all/<int:company_id>/<int:company_staff_id>', views.resign_approved_list, name='resign_approve_all_alias'),
+    path('resign/reject/all/<int:company_id>/<int:company_staff_id>', views.resign_rejected_list, name='resign_reject_all_alias'),
+    path('all_entry/<int:company_id>/<int:company_staff_id>', All_entry, name='all_entry_alias'),
+    path('holiday/<int:company_id>/<int:company_staff_id>', views.holiday_list, name='holiday_alias'),
+    path('project/<int:company_id>/<int:company_staff_id>', views.Project_list, name='project_alias'),
+    path('task/<int:company_id>/<int:company_staff_id>', views.TaskCreateView, name='task_alias'),
+    path('tasklist/<int:company_id>/<int:company_staff_id>', views.TaskCreateView, name='tasklist_alias'),
 ]

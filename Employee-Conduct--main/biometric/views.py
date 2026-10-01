@@ -16,11 +16,21 @@ def _is_valid_biometric_user_id(uid):
     uid = uid.strip()
     if not uid or len(uid) > 50:
         return False
+    # Reject multipart boundaries and delimiter markers
+    if uid.startswith('--') or uid.endswith('--') or 'boundary' in uid.lower():
+        return False
     # Must contain only valid characters (alphanumeric, dashes, underscores, dots)
     if not re.match(r'^[A-Za-z0-9_\-\.]{1,50}$', uid):
         return False
-    # Exclude device keywords / binary header signatures
-    if uid.upper() in ('FKDATAHS101', 'ATTLOG', 'OPERLOG', 'BIODATA', 'USER', 'PIN', 'TIME', 'STAMP', 'SN', 'TABLE'):
+    # Must contain at least one alphanumeric character
+    if not any(c.isalnum() for c in uid):
+        return False
+    # Exclude device keywords / binary header signatures / test corruptions
+    excluded_keywords = (
+        'FKDATAHS101', 'ATTLOG', 'OPERLOG', 'BIODATA', 'USER', 'PIN', 'TIME', 'STAMP', 'SN',
+        'TABLE', 'CORRUPT', 'NULL', 'UNDEFINED', 'NONE', 'UNKNOWN', 'ERROR', 'TEST'
+    )
+    if uid.upper() in excluded_keywords or any(kw in uid.upper() for kw in ('BOUNDARY', 'FKDATA', 'CORRUPT')):
         return False
     return True
 
@@ -249,7 +259,13 @@ def iclock_cdata(request):
 
     if request.method == 'POST':
         try:
-            body_text = request.body.decode('utf-8', errors='ignore')
+            try:
+                body_text = request.body.decode('utf-8', errors='ignore')
+            except Exception:
+                if request.POST:
+                    body_text = "\n".join([f"{k}={v}" for k, v in request.POST.items()])
+                else:
+                    body_text = ""
             print(f">>> [BIOMETRIC POST] Path={request.path}, Table={table}, SN={sn}, Body={repr(body_text[:300])}", flush=True)
             inserted_count = 0
 
@@ -449,6 +465,9 @@ def latest_events_api(request):
             status__in=[BiometricEventLog.STATUS_APPLIED, BiometricEventLog.STATUS_UNMATCHED]
         )
         .select_related('employee', 'manager')
+        .exclude(biometric_user_id__startswith='--')
+        .exclude(biometric_user_id__icontains='boundary')
+        .exclude(biometric_user_id__icontains='corrupt')
         .exclude(biometric_user_id__icontains='fk_name')
         .exclude(biometric_user_id__icontains='{')
         .order_by('-id')[:20]

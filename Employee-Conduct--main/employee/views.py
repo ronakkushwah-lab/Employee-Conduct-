@@ -464,11 +464,11 @@ def upload_profile_image(request, company_id, company_staff_id):
     if not profile:
         return JsonResponse({'error': 'Employee profile not found'}, status=404)
     
-    if 'employee_image' not in request.FILES:
+    uploaded_image = request.FILES.get('employee_image') or request.FILES.get('profile_image') or request.FILES.get('image')
+    if not uploaded_image:
         return JsonResponse({'error': 'No image file provided'}, status=400)
     
     try:
-        uploaded_image = request.FILES['employee_image']
         _validate_profile_image(uploaded_image)
         profile.employee_image = uploaded_image
         try:

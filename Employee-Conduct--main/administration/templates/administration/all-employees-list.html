@@ -21,7 +21,7 @@
             </div>
             <div class="ms-auto">
               <div class="btn-group">
-                <a href="{% url 'all_employee' %}" class="grid-view btn btn-link"><i class="bx bx-grid"></i></a>
+                <a href="{% url 'all_employee' company_id=company_id company_staff_id=company_staff_id %}" class="grid-view btn btn-link"><i class="bx bx-grid"></i></a>
                 <a href="{% url 'all_employee_list' %}" class="grid-list btn btn-link active"><i class="bx bx-list-ul"></i></a>
                 <button type="button" class="btn btn-outline-orangeyellow" data-bs-toggle="modal" data-bs-target="#addemployeeModal" id="addemployeeBtn">
                   <i class="bx bx-plus"></i> Add Employee
@@ -34,7 +34,7 @@
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                       </div>
                       <div class="modal-body">
-                         <form method="POST" action="{% url 'registeremployee' %}">
+                         <form method="POST" action="{% url 'registeremployee' company_id=company_id company_staff_id=company_staff_id %}">
 									{% csrf_token %}
                           <div class="row mb-2">
                             <div class="col-md-6">

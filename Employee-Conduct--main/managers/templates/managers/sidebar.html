@@ -39,7 +39,7 @@
                         </div>
                       </a>
                     </li>
-                    <li class="{% if request.resolver_match.url_name == 'attendanc' or request.resolver_match.url_name == 'mnattendancee' %}mm-active{% endif %}">
+                    <li class="{% if request.resolver_match.url_name == 'attendanc' or request.resolver_match.url_name == 'mnattendancee' or request.resolver_match.url_name == 'manager_attendance_register' %}mm-active{% endif %}">
                       <a class="has-arrow">
                         <div class="parent-icon">
                           <i class="bx bx-calendar-check"></i>
@@ -48,7 +48,13 @@
                           <span>Attendance</span>
                         </div>
                       </a>
-                      <ul class="mm-collapse {% if request.resolver_match.url_name == 'attendanc' or request.resolver_match.url_name == 'mnattendancee' %}mm-show{% endif %}">
+                      <ul class="mm-collapse {% if request.resolver_match.url_name == 'attendanc' or request.resolver_match.url_name == 'mnattendancee' or request.resolver_match.url_name == 'manager_attendance_register' %}mm-show{% endif %}">
+                        <li>
+                          <a href="{% url 'manager_attendance_register' company_id=company_id company_staff_id=company_staff_id %}" class="{% if request.resolver_match.url_name == 'manager_attendance_register' %}active{% endif %}">
+                            <i class='bx bx-right-arrow-alt'></i>
+                            Attendance Register
+                          </a>
+                        </li>
                         <li>
                           <a href="{% url 'attendanc' company_id=company_id company_staff_id=company_staff_id %}" class="{% if request.resolver_match.url_name == 'attendanc' %}active{% endif %}">
                             <i class='bx bx-right-arrow-alt'></i>

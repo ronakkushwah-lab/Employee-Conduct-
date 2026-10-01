@@ -15,6 +15,7 @@ https://docs.djangoproject.com/en/2.2/ref/settings/
 # """
 
 import os
+import sys
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -174,7 +175,7 @@ DATABASES = {
     }
 }
 
-if dj_database_url and os.environ.get('DATABASE_URL'):
+if dj_database_url and os.environ.get('DATABASE_URL') and 'test' not in sys.argv:
     DATABASES['default'] = dj_database_url.config(
         conn_max_age=0,
         conn_health_checks=True,
@@ -185,6 +186,11 @@ if dj_database_url and os.environ.get('DATABASE_URL'):
         'keepalives_idle': 30,
         'keepalives_interval': 10,
         'keepalives_count': 5,
+    }
+elif 'test' in sys.argv:
+    DATABASES['default'] = {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': ':memory:',
     }
 
 

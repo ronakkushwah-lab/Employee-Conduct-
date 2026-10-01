@@ -45,7 +45,7 @@
                   </div>
                   <ul class="metisMenu mm-show" id="menu">
                     <li class="mm-active">
-                      <a href="{% url 'index' %}">
+                      <a href="{% if company_id and company_staff_id %}{% url 'index' company_id=company_id company_staff_id=company_staff_id %}{% elif request.session.company_id and request.session.company_staff_id %}{% url 'index' company_id=request.session.company_id company_staff_id=request.session.company_staff_id %}{% else %}#{% endif %}">
                         <div class="parent-icon">
                           <i class="bx bxs-dashboard"></i>
                         </div>
@@ -66,19 +66,19 @@
                       </a>
                       <ul class="mm-collapse">
                         <li>
-                          <a href="{% url 'all_employee' %}">
+                          <a href="{% url 'all_employee' company_id=company_id company_staff_id=company_staff_id %}">
                             <i class='bx bx-right-arrow-alt'></i>
                             All Employees
                           </a>
                         </li>
                         <li>
-                          <a href="{% url 'attendancee' %}">
+                          <a href="{% url 'attendancee' company_id=company_id company_staff_id=company_staff_id %}">
                             <i class='bx bx-right-arrow-alt'></i>
                             Attendance List
                           </a>
                         </li>
                         <li>
-                          <a href="{% url 'salary' %}">
+                          <a href="{% url 'salary' company_id=company_id company_staff_id=company_staff_id %}">
                             <i class='bx bx-right-arrow-alt'></i>
                             Salary
                           </a>

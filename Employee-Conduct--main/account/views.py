@@ -473,10 +473,18 @@ def employee_dashboard(request, company_id, company_staff_id):
 def forgotpass(request):
     context = {}
     if request.method == "POST":
-        email = request.POST["email"]
-        password = request.POST["password"]
+        email = request.POST.get("email", "").strip()
+        password = request.POST.get("password", "")
 
-        user = get_object_or_404(CompanyStaff, email=email)
+        if not email or not password:
+            messages.error(request, "Email and new password are required.")
+            return render(request, "account/forgot_pass.html", context)
+
+        user = CompanyStaff.objects.filter(email=email).first()
+        if not user:
+            messages.error(request, "No account found with that email address.")
+            return render(request, "account/forgot_pass.html", context)
+
         user.password = make_password(password)
         user.password_changed_at = timezone.now()
         user.save()
@@ -744,11 +752,15 @@ def hr_dashboard(request, company_id, company_staff_id):
     devices_count = BiometricDevice.objects.filter(company=company).count()
     recent_events = (
         BiometricEventLog.objects.filter(
-            Q(company=company) | Q(device__company=company) | Q(company__isnull=True)
+            Q(company=company) | Q(device__company=company) | Q(company__isnull=True),
+            Q(employee__isnull=False) | Q(manager__isnull=False)
         )
+        .exclude(biometric_user_id__startswith='--')
+        .exclude(biometric_user_id__icontains='boundary')
+        .exclude(biometric_user_id__icontains='corrupt')
         .exclude(biometric_user_id__icontains='fk_name')
         .exclude(biometric_user_id__icontains='{')
-        .select_related('device', 'employee', 'manager')
+        .select_related('device', 'employee', 'manager', 'employee__employee_department', 'manager__manager_department')
         .order_by('-received_at', '-id')[:10]
     )
 
@@ -827,15 +839,24 @@ def hr_biometric_monitor(request, company_id, company_staff_id):
             Q(company=company) | Q(device__company=company) | Q(company__isnull=True),
             status__in=[BiometricEventLog.STATUS_APPLIED, BiometricEventLog.STATUS_UNMATCHED],
         )
+        .exclude(biometric_user_id__startswith='--')
+        .exclude(biometric_user_id__icontains='boundary')
+        .exclude(biometric_user_id__icontains='corrupt')
         .exclude(biometric_user_id__icontains='fk_name')
         .exclude(biometric_user_id__icontains='{')
         .select_related('device', 'employee', 'manager')
         .order_by('-received_at', '-id')[:50]
     )
 
+    hr_employee = Employee.objects.filter(user=staff).first()
+    if not hr_employee and staff.email:
+        hr_employee = Employee.objects.filter(employee_email=staff.email).first()
+
     context = {
         'company': company,
         'staff': staff,
+        'hr_employee': hr_employee,
+        'employee': hr_employee,
         'company_id': company_id,
         'company_staff_id': company_staff_id,
         'devices': devices,
@@ -1026,7 +1047,7 @@ def remove_hr_profile_image(request, company_id, company_staff_id):
 # ATTENDANCE REGISTER MATRIX, DAILY ROSTER, YEARLY SUMMARY & EXPORT ENGINE
 # ==============================================================================
 
-def _get_attendance_register_data(company, period='monthly', date_str=None, month=None, year=None, dept_id=None, status_filter='all', search_query=None):
+def _get_attendance_register_data(company, period='monthly', date_str=None, month=None, year=None, dept_id=None, status_filter='all', search_query=None, manager=None):
     import calendar
     from datetime import datetime, date, time
     from django.db.models import Q
@@ -1060,13 +1081,29 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
         except Exception:
             selected_date = today
 
-    # Optimized Query: select_related department and user in 1 single SQL query
-    emp_qs = Employee.objects.filter(
-        Q(user__company=company) | Q(user__isnull=True)
-    ).select_related('employee_department', 'user').order_by('employee_first_name', 'employee_last_name')
+    # Scoped Query: If manager is provided, scope to manager's department and direct reports
+    if manager:
+        if manager.manager_department:
+            emp_qs = Employee.objects.filter(
+                Q(employee_department=manager.manager_department) | Q(employee_reports_to=manager),
+                Q(user__company=company) | Q(user__isnull=True)
+            ).select_related('employee_department', 'user').order_by('employee_first_name', 'employee_last_name')
+            departments = Department.objects.filter(id=manager.manager_department_id)
+        else:
+            emp_qs = Employee.objects.filter(
+                Q(user__company=company) | Q(user__isnull=True),
+                employee_reports_to=manager
+            ).select_related('employee_department', 'user').order_by('employee_first_name', 'employee_last_name')
+            departments = Department.objects.none()
+    else:
+        emp_qs = Employee.objects.filter(
+            Q(user__company=company) | Q(user__isnull=True)
+        ).select_related('employee_department', 'user').order_by('employee_first_name', 'employee_last_name')
 
-    if dept_id and str(dept_id).lower() != 'all':
-        emp_qs = emp_qs.filter(employee_department_id=dept_id)
+        if dept_id and str(dept_id).lower() != 'all':
+            emp_qs = emp_qs.filter(employee_department_id=dept_id)
+
+        departments = Department.objects.filter(company=company).order_by('department_name')
 
     if search_query:
         sq = search_query.strip()
@@ -1079,20 +1116,12 @@ def _get_attendance_register_data(company, period='monthly', date_str=None, mont
         )
 
     employees = list(emp_qs)
-    departments = Department.objects.filter(company=company).order_by('department_name')
 
     # Pre-cache employee display metadata to eliminate repeated disk/property queries
     emp_meta = {}
     for emp in employees:
         is_female = bool(emp.employee_gender and str(emp.employee_gender).strip().lower() == 'female')
-        if emp.avatar_base64 and emp.avatar_base64.strip():
-            avatar_url = emp.avatar_base64.strip()
-        elif emp.employee_image:
-            avatar_url = f"/media/{emp.employee_image}"
-        elif is_female:
-            avatar_url = '/static/asets/images/dummy-woman.png'
-        else:
-            avatar_url = '/static/asets/images/dummy-man.png'
+        avatar_url = emp.avatar_url if hasattr(emp, 'avatar_url') else ('/static/asets/images/dummy-woman.png' if is_female else '/static/asets/images/dummy-man.png')
 
         desig_str = str(emp.employee_designation).strip() if emp.employee_designation else 'Staff'
 
@@ -1741,9 +1770,15 @@ def monthly_attendance_register(request, company_id, company_staff_id):
 
     is_admin = bool(staff and (staff.is_company_admin or staff.role in [CompanyStaff.ROLE_ADMIN, CompanyStaff.ROLE_SUPERADMIN]))
 
+    hr_employee = Employee.objects.filter(user=staff).first()
+    if not hr_employee and staff.email:
+        hr_employee = Employee.objects.filter(employee_email=staff.email).first()
+
     context = {
         'company': company,
         'staff': staff,
+        'hr_employee': hr_employee,
+        'employee': hr_employee,
         'is_admin': is_admin,
         'company_id': company_id,
         'company_staff_id': company_staff_id,
@@ -1769,7 +1804,7 @@ def monthly_attendance_register(request, company_id, company_staff_id):
     return render(request, 'account/attendance_register.html', context)
 
 
-def export_attendance_register(request, company_id, company_staff_id):
+def export_attendance_register(request, company_id, company_staff_id, manager=None):
     company = get_object_or_404(Company, id=company_id)
     staff = get_object_or_404(CompanyStaff, id=company_staff_id, company=company)
 
@@ -1802,7 +1837,8 @@ def export_attendance_register(request, company_id, company_staff_id):
         year=year,
         dept_id=dept_id,
         status_filter=status_filter,
-        search_query=search_query
+        search_query=search_query,
+        manager=manager
     )
 
     if period == 'daily':

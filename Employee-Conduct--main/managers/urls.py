@@ -47,6 +47,8 @@ urlpatterns = [
     path('mprojectlist/<int:company_id>/<int:company_staff_id>', views.Project_list, name='mprojectlist'),
     path('mproject_remove/<int:company_id>/<int:company_staff_id>/<id>', views.ProjectRemove.as_view(), name='mproject_remove'),
 
+    path('attendance_register/<int:company_id>/<int:company_staff_id>/', views.manager_attendance_register, name='manager_attendance_register'),
+    path('attendance_register/export/<int:company_id>/<int:company_staff_id>/', views.manager_export_attendance_register, name='manager_export_attendance_register'),
     path('mnattendancee/<int:company_id>/<int:company_staff_id>', views.attendanc, name='mnattendancee'),
     path('mnattendancee_edit/<int:company_id>/<int:company_staff_id>', views.mattendance_Edit_View, name='mnattendancee_edit'),
     path('mnattendance_remove/<int:company_id>/<int:company_staff_id>/<id>', views.AttendanceRemove.as_view(), name='mnattendance_remove'),
@@ -114,5 +116,17 @@ urlpatterns = [
     ),
     path("employeenotification/<int:company_id>/<int:company_staff_id>/", views.Employeenotifications, name="employeenotification"),
 
-
+    # Backward-compatible URL aliases for legacy manager routes
+    path('leaves/pending/all/<int:company_id>/<int:company_staff_id>', views.leave_list, name='mleaves_pending_alias'),
+    path('leaves/approve/all/<int:company_id>/<int:company_staff_id>', views.leaves_approved_list, name='mleaves_approve_alias'),
+    path('leaves/reject/all/<int:company_id>/<int:company_staff_id>', views.leave_rejected_list, name='mleaves_reject_alias'),
+    path('mregularization/view/table/<int:company_id>/<int:company_staff_id>', views.view_my_regularization_table, name='mreg_table_alias'),
+    path('mnregularization/approve/all/<int:company_id>/<int:company_staff_id>', views.regularization_approved_list, name='mreg_approve_alias'),
+    path('mnregularization/reject/all/<int:company_id>/<int:company_staff_id>', views.regularization_rejected_list, name='mreg_reject_alias'),
+    path('mresign/pending/all/<int:company_id>/<int:company_staff_id>', views.resign_list, name='mresign_pending_alias'),
+    path('mresign/approve/all/<int:company_id>/<int:company_staff_id>', views.resign_list, name='mresign_approve_alias'),
+    path('mresign/reject/all/<int:company_id>/<int:company_staff_id>', views.resign_list, name='mresign_reject_alias'),
+    path('mtasklist/<int:company_id>/<int:company_staff_id>', views.TaskListView, name='mtasklist_alias'),
+    path('all_document_Views/<int:company_id>/<int:company_staff_id>', views.All_document_Views, name='malldocs_alias'),
+    path('team_members/<int:company_id>/<int:company_staff_id>', views.ManagerDashboardView, name='team_members_alias'),
 ]

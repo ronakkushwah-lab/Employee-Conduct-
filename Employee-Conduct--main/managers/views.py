@@ -6,7 +6,7 @@ from django.contrib.auth import authenticate, login
 from django.shortcuts import redirect
 from django.views.generic import View
 
-from account.models import CompanyStaff
+from account.models import Company, CompanyStaff
 from administration.models import Task, notification, holiday, MTask, Asign, ManagerNotification
 from employee.models import Attendance, Entries, Employee, format_duration
 from leave.forms import LeaveCreationForm
@@ -755,9 +755,14 @@ def attendance_post(request, company_id, company_staff_id):
 def attendance_grid_data(request,company_id, company_staff_id):
     if company_id:
         grid_columns = ('check_in', 'check_out')
-        company_staff = CompanyStaff.objects.get(id=company_staff_id)
-        attendance_list = ManagerAttendance.objects.filter(manager=company_staff.manager)
-        sort_column = grid_columns[int(request.GET['order[0][column]'])]
+        company_staff = CompanyStaff.objects.filter(id=company_staff_id).first()
+        employee = Employee.objects.filter(user=company_staff).first() if company_staff else None
+        attendance_list = Attendance.objects.filter(employee=employee).order_by('-check_in') if employee else Attendance.objects.none()
+        order_col = request.GET.get('order[0][column]', '0')
+        try:
+            sort_column = grid_columns[int(order_col)] if int(order_col) < len(grid_columns) else grid_columns[0]
+        except (ValueError, TypeError, IndexError):
+            sort_column = grid_columns[0]
         ctx = getgriddatapaginated(request, attendance_list, sort_column)
         ctx['company_id'] = company_id
         ctx['company_staff_id'] = company_staff_id
@@ -1306,12 +1311,17 @@ def uncancel_regularization(request, id):
     return redirect('mncancelregularizationlist')
 
 
-def regularization_rejected_list(request):
+def regularization_rejected_list(request, company_id=None, company_staff_id=None):
     dataset = dict()
-    regularization = Regularization.objects.all_rejected_regularization()
+    if company_id:
+        regularization = Regularization.objects.filter(user__user__company_id=company_id, status='Rejected')
+    else:
+        regularization = Regularization.objects.all_rejected_regularization()
 
     dataset['regularization_list_rejected'] = regularization
-    return render(request, 'managers/rejected_regularization_list.html', dataset)
+    dataset['company_id'] = company_id
+    dataset['company_staff_id'] = company_staff_id
+    return render(request, 'managers/cancelled-regularization.html', dataset)
 
 
 def reject_regularization(request, id):
@@ -1943,7 +1953,7 @@ def leaves_approved_list(request,company_id, company_staff_id):
 
     if company_id:
         leaves = Leave.objects.all_approved_leaves().filter(user__user__company_id=company_id)  # approved leaves -> calling model manager method
-        return render(request, 'managers/approved-leaves.html',
+        return render(request, 'managers/employee-leaves.html',
                       {'leave_list': leaves, 'title': 'approved leave list','company_id':company_id, 'company_staff_id':company_staff_id})
 
 
@@ -2020,7 +2030,7 @@ def uncancel_leave(request, id):
     return redirect('leave_list')  # work on redirecting to instance leave - detail view
 
 
-def leave_rejected_list(request):
+def leave_rejected_list(request, company_id=None, company_staff_id=None):
     if request.method == "POST":
         data = json.loads(request.body.decode('utf-8'))
         leave_obj_id = data.get('id', None)
@@ -2028,10 +2038,15 @@ def leave_rejected_list(request):
         return JsonResponse(leave_obj.to_json())
 
     dataset = dict()
-    leave = Leave.objects.all_rejected_leaves()
+    if company_id:
+        leave = Leave.objects.filter(user__user__company_id=company_id, status='rejected')
+    else:
+        leave = Leave.objects.all_rejected_leaves()
 
     dataset['leave_list_rejected'] = leave
-    return render(request, 'managers/rejected-leaves.html', dataset)
+    dataset['company_id'] = company_id
+    dataset['company_staff_id'] = company_staff_id
+    return render(request, 'managers/employee-leaves.html', dataset)
 
 
 def reject_leave(request,company_id, company_staff_id, id):
@@ -2253,3 +2268,83 @@ def Employeenotifications(request,company_id, company_staff_id):
 
         else:
             return render(request,"managers/employeenotification.html",{'assigned':Employee.objects.filter(user__company__id=company_id),'company_id':company_id, 'company_staff_id':company_staff_id})
+
+
+def manager_attendance_register(request, company_id, company_staff_id):
+    company = get_object_or_404(Company, id=company_id)
+    staff = get_object_or_404(CompanyStaff, id=company_staff_id, company=company)
+    manager = Manager.objects.filter(user=staff).first() or Manager.objects.filter(manager_email=staff.email).first()
+
+    today = tz.localdate()
+    period = request.GET.get('period', 'monthly')
+    date_str = request.GET.get('date', today.strftime('%Y-%m-%d'))
+
+    try:
+        month = int(request.GET.get('month', today.month))
+        if month < 1 or month > 12:
+            month = today.month
+    except Exception:
+        month = today.month
+
+    try:
+        year = int(request.GET.get('year', today.year))
+        if year < 2000 or year > 2100:
+            year = today.year
+    except Exception:
+        year = today.year
+
+    status_filter = request.GET.get('status', 'all')
+    search_query = request.GET.get('q', '').strip()
+
+    from account.views import _get_attendance_register_data
+    data = _get_attendance_register_data(
+        company=company,
+        period=period,
+        date_str=date_str,
+        month=month,
+        year=year,
+        dept_id=None,
+        status_filter=status_filter,
+        search_query=search_query,
+        manager=manager
+    )
+
+    months_list = [(m, calendar.month_name[m]) for m in range(1, 13)]
+    years_list = [y for y in range(today.year - 3, today.year + 2)]
+
+    context = {
+        'company': company,
+        'staff': staff,
+        'manager': manager,
+        'company_id': company_id,
+        'company_staff_id': company_staff_id,
+        'period': period,
+        'selected_date_str': data.get('selected_date_str', date_str),
+        'selected_date': data.get('selected_date', today),
+        'is_weekend_day': data.get('is_weekend_day', False),
+        'current_month': month,
+        'current_month_name': calendar.month_name[month],
+        'current_year': year,
+        'dept_id': manager.manager_department.id if manager and manager.manager_department else 'all',
+        'status_filter': status_filter,
+        'search_query': search_query,
+        'months_list': months_list,
+        'years_list': years_list,
+        'days_meta': data.get('days_meta', []),
+        'matrix_rows': data.get('matrix_rows', []),
+        'daily_rows': data.get('daily_rows', []),
+        'yearly_rows': data.get('yearly_rows', []),
+        'departments': data.get('departments', []),
+        'kpi': data.get('kpi', {}),
+        'is_manager_portal': True,
+    }
+    return render(request, 'managers/attendance_register.html', context)
+
+
+def manager_export_attendance_register(request, company_id, company_staff_id):
+    company = get_object_or_404(Company, id=company_id)
+    staff = get_object_or_404(CompanyStaff, id=company_staff_id, company=company)
+    manager = Manager.objects.filter(user=staff).first() or Manager.objects.filter(manager_email=staff.email).first()
+
+    from account.views import export_attendance_register
+    return export_attendance_register(request, company_id, company_staff_id, manager=manager)
