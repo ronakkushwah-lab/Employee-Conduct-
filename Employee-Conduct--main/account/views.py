@@ -629,14 +629,24 @@ def reset_password_confirm(request, uidb64, token):
 
     if user is not None and staff_token_generator.check_token(user, token):
         if request.method == 'POST':
-            password = request.POST.get('password')
-            confirm_password = request.POST.get('confirm_password')
+            password = request.POST.get('password', '').strip()
+            confirm_password = request.POST.get('confirm_password', '').strip()
             if not password or password != confirm_password:
                 return render(request, 'account/password_reset_confirm.html', {
                     'validlink': True,
                     'error': 'Passwords do not match. Please try again.',
                     'email': user.email
                 })
+            
+            from core.validators import validate_password_strength
+            is_valid, err_msg = validate_password_strength(password)
+            if not is_valid:
+                return render(request, 'account/password_reset_confirm.html', {
+                    'validlink': True,
+                    'error': err_msg,
+                    'email': user.email
+                })
+
             user.password = make_password(password)
             user.password_changed_at = timezone.now()
             user.save()
@@ -649,7 +659,7 @@ def reset_password_confirm(request, uidb64, token):
 
             sweetify.success(request, 'Password Reset Successful', text='Your password has been changed. Please sign in.', persistent='OK')
             messages.success(request, "Your password has been reset successfully! Please sign in with your new password.")
-            return redirect('/hrms/')
+            return redirect('/login')
 
         return render(request, 'account/password_reset_confirm.html', {'validlink': True, 'email': user.email})
     else:
@@ -663,7 +673,7 @@ def expired_password_change(request):
     """
     company_staff_id = request.session.get('company_staff_id')
     if not company_staff_id:
-        return redirect('/hrms/')
+        return redirect('/login')
 
     staff = get_object_or_404(CompanyStaff, id=company_staff_id)
 
@@ -682,9 +692,11 @@ def expired_password_change(request):
             messages.error(request, 'New password and confirm password do not match.')
             return render(request, 'account/expired_password.html', {'staff': staff})
 
-        # 3. Validate new password length
-        if len(new_password) < 6:
-            messages.error(request, 'New password must be at least 6 characters long.')
+        # 3. Validate new password complexity
+        from core.validators import validate_password_strength
+        is_valid, err_msg = validate_password_strength(new_password)
+        if not is_valid:
+            messages.error(request, err_msg)
             return render(request, 'account/expired_password.html', {'staff': staff})
 
         # 4. Prevent reusing the same password

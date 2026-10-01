@@ -2312,11 +2312,11 @@ def ChangePassword(request,company_id, company_staff_id):
     if company_id:
         if request.method == "POST":
             try:
-                password = request.POST.get("password")
-                new_pas = request.POST.get("npwd")
-                confirm_pas = request.POST.get("cpwd", "")
+                password = request.POST.get("password", "").strip()
+                new_pas = request.POST.get("npwd", "").strip()
+                confirm_pas = request.POST.get("cpwd", "").strip()
 
-                if not all([password, new_pas]):
+                if not all([password, new_pas, confirm_pas]):
                     messages.error(request, 'All password fields are required.')
                     return render(request,"employee/change_password.html",{
                         'company_id':company_id, 
@@ -2330,11 +2330,20 @@ def ChangePassword(request,company_id, company_staff_id):
                         'company_staff_id':company_staff_id
                     })
 
+                from core.validators import validate_password_strength
+                is_valid, err_msg = validate_password_strength(new_pas)
+                if not is_valid:
+                    messages.error(request, err_msg)
+                    return render(request,"employee/change_password.html",{
+                        'company_id':company_id, 
+                        'company_staff_id':company_staff_id
+                    })
+
                 try:
                     user = CompanyStaff.objects.get(id=company_staff_id, company_id=company_id)
                 except CompanyStaff.DoesNotExist:
                     messages.error(request, 'User not found.')
-                    return redirect('/')
+                    return redirect('/login')
                 
                 check = check_password(password, user.password)
                 if check == True:
@@ -2348,8 +2357,12 @@ def ChangePassword(request,company_id, company_staff_id):
                         dj_user.set_password(new_pas)
                         dj_user.save()
 
-                    messages.success(request, 'Password changed Successfully')
-                    return redirect('/')
+                    messages.success(request, 'Password changed successfully!')
+                    return render(request, "employee/change_password.html", {
+                        'company_id': company_id, 
+                        'company_staff_id': company_staff_id,
+                        'success': True
+                    })
                 else:
                     messages.error(request, 'Current password is incorrect.')
             except Exception as e:

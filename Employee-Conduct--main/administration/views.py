@@ -1423,11 +1423,17 @@ def ChangePassword(request):
 
     if request.user.is_authenticated or company_staff:
         if request.method == 'POST':
-            current = request.POST.get("cpwd", "")
-            new_pas = request.POST.get("npwd", "")
+            current = request.POST.get("cpwd", "").strip()
+            new_pas = request.POST.get("npwd", "").strip()
 
             if not current or not new_pas:
                 messages.error(request, 'Please fill in all password fields.')
+                return render(request, "administration/setting_change_password.html")
+
+            from core.validators import validate_password_strength
+            is_valid, err_msg = validate_password_strength(new_pas)
+            if not is_valid:
+                messages.error(request, err_msg)
                 return render(request, "administration/setting_change_password.html")
 
             # Validate current password against CompanyStaff or User
@@ -1461,7 +1467,7 @@ def ChangePassword(request):
                 messages.error(request, 'Incorrect Current Password')
 
         return render(request, "administration/setting_change_password.html")
-    return redirect('/')
+    return redirect('/login')
 
 
 def All_entry(request,company_id, company_staff_id):
