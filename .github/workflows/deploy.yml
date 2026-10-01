@@ -1,0 +1,69 @@
+name: Auto Deploy to Production (EC2)
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy to EC2 Port 8001
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Copy Repository Files to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: 50.19.21.0
+          username: ec2-user
+          key: ${{ secrets.EMP_CON }}
+          port: 22
+          source: "."
+          target: "/home/ec2-user/employeeconduct"
+          rm: false
+
+      - name: Execute Remote Deployment Script on EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 50.19.21.0
+          username: ec2-user
+          key: ${{ secrets.EMP_CON }}
+          port: 22
+          script: |
+            echo "=== Starting Automated EC2 Deployment ==="
+            cd /home/ec2-user/employeeconduct
+            if [ -d "Employee-Conduct--main" ] && [ -f "Employee-Conduct--main/manage.py" ]; then
+              cd Employee-Conduct--main
+            fi
+            
+            # 1. Activate Python environment
+            if [ -f "/home/ec2-user/employeeconduct/venv/bin/activate" ]; then
+              source /home/ec2-user/employeeconduct/venv/bin/activate
+            elif [ -f "venv/bin/activate" ]; then
+              source venv/bin/activate
+            fi
+            
+            # 2. Install any new dependencies
+            if [ -f "requirements.txt" ]; then
+              pip install -r requirements.txt --quiet
+            fi
+            
+            # 3. Apply database migrations
+            python manage.py migrate --noinput
+            
+            # 4. Collect static files
+            python manage.py collectstatic --noinput || true
+            
+            # 5. Restart server on Port 8001 and Gunicorn if configured
+            sudo fuser -k 8001/tcp || true
+            nohup python -u manage.py runserver 0.0.0.0:8001 > django.log 2>&1 &
+            sudo systemctl restart gunicorn || true
+            sudo systemctl reload nginx || true
+            
+            # 6. Verify server is listening
+            sleep 3
+            sudo lsof -i :8001 || sudo netstat -tuln | grep 8001 || true
+            echo "=== Deployment to EC2 Port 8001 Completed Successfully ==="
