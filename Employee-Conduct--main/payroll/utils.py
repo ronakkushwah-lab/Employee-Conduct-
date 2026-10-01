@@ -22,7 +22,9 @@ def render_to_pdf(context=dict):
     # Add logo as base64 to context for PDF (before any pisa import so we can use context in fallback)
     # Try multiple possible logo locations - prioritize company logo (EAGLE IN CLOUD)
     logo_paths = [
-        os.path.join(BASE_DIR, 'payroll', 'static', 'asets', 'images', 'compny_logo.png'),  # EAGLE IN CLOUD logo
+        os.path.join(BASE_DIR, 'payroll', 'static', 'asets', 'images', 'eagle_in_cloud_logo.png'),
+        os.path.join(BASE_DIR, 'employee', 'static', 'asets', 'images', 'eagle_in_cloud_logo.png'),
+        os.path.join(BASE_DIR, 'payroll', 'static', 'asets', 'images', 'compny_logo.png'),
         os.path.join(BASE_DIR, 'employee', 'static', 'asets', 'images', 'compny_logo.png'),
         os.path.join(BASE_DIR, 'employee', 'static', 'asets', 'images', 'employee_conduct_logo.png'),
         os.path.join(BASE_DIR, 'payroll', 'static', 'asets', 'images', 'employee_conduct_logo.png'),
@@ -106,6 +108,8 @@ def render_to_pdf(context=dict):
 def render_slip_html(context):
     """Render salary slip as HTML only (no PDF). Used when opening slip in tab for view."""
     logo_paths = [
+        os.path.join(BASE_DIR, 'payroll', 'static', 'asets', 'images', 'eagle_in_cloud_logo.png'),
+        os.path.join(BASE_DIR, 'employee', 'static', 'asets', 'images', 'eagle_in_cloud_logo.png'),
         os.path.join(BASE_DIR, 'payroll', 'static', 'asets', 'images', 'compny_logo.png'),
         os.path.join(BASE_DIR, 'employee', 'static', 'asets', 'images', 'compny_logo.png'),
         os.path.join(BASE_DIR, 'employee', 'static', 'asets', 'images', 'employee_conduct_logo.png'),

@@ -153,16 +153,20 @@
             </div>
 
             {% for message in messages %}
-            {% if 'success' in message.tags or 'successfully' in message.message|lower %}
-            <div class="alert alert-success alert-dismissible fade show d-flex align-items-center" style="border-radius:10px; font-size:0.88rem; border: 1px solid #a7f3d0; background-color: #ecfdf5; color: #065f46;" role="alert">
-                <i class="bi bi-check-circle-fill me-2" style="color: #10b981; font-size: 1.1rem;"></i>
-                <div>{{ message }}</div>
-            </div>
-            {% elif 'Incorrect' in message.message or 'Access Denied' in message.message or 'Registered' in message.message or 'credentials' in message.message|lower or 'inactive' in message.message|lower or 'error' in message.message|lower or 'danger' in message.tags or 'error' in message.tags or 'info' in message.tags %}
-            <div class="alert alert-danger alert-dismissible fade show" style="border-radius:10px; font-size:0.88rem; border: 1px solid var(--eic-soft-blush); background-color: var(--eic-soft-blush); color: var(--eic-dark-red);" role="alert">
-                {{ message }}
-            </div>
+            {% with msg_lower=message.message|lower %}
+            {% if 'password' in msg_lower or 'reset' in msg_lower or 'logout' in msg_lower or 'logged out' in msg_lower or 'sign in' in msg_lower or 'login' in msg_lower or 'session' in msg_lower or 'inactive' in msg_lower or 'access denied' in msg_lower or 'incorrect' in msg_lower or 'credentials' in msg_lower %}
+                {% if 'success' in message.tags or 'successfully' in msg_lower or 'has been' in msg_lower %}
+                <div class="alert alert-success alert-dismissible fade show d-flex align-items-center" style="border-radius:10px; font-size:0.88rem; border: 1px solid #a7f3d0; background-color: #ecfdf5; color: #065f46;" role="alert">
+                    <i class="bi bi-check-circle-fill me-2" style="color: #10b981; font-size: 1.1rem;"></i>
+                    <div>{{ message }}</div>
+                </div>
+                {% else %}
+                <div class="alert alert-danger alert-dismissible fade show" style="border-radius:10px; font-size:0.88rem; border: 1px solid var(--eic-soft-blush); background-color: var(--eic-soft-blush); color: var(--eic-dark-red);" role="alert">
+                    {{ message }}
+                </div>
+                {% endif %}
             {% endif %}
+            {% endwith %}
             {% endfor %}
 
             <form action="{% url 'signin' %}" method="post">

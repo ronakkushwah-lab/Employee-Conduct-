@@ -231,4 +231,29 @@
 
     </nav>
   </div>
+
+  {% if messages %}
+  <div class="position-fixed top-0 end-0 p-3 global-toast-container" style="z-index: 99999; max-width: 440px; pointer-events: none;">
+    {% for message in messages %}
+    <div class="alert {% if message.tags == 'error' or 'error' in message.tags %}alert-danger{% elif message.tags == 'info' %}alert-info{% elif message.tags == 'warning' %}alert-warning{% else %}alert-success{% endif %} alert-dismissible fade show shadow-lg py-3 px-3 mb-2.5 d-flex align-items-center" role="alert" style="border-radius: 12px; pointer-events: auto; font-size: 0.88rem; font-weight: 600; border: 1.5px solid rgba(0,0,0,0.06); box-shadow: 0 10px 30px rgba(0,0,0,0.15) !important;">
+      <i class="{% if message.tags == 'error' or 'error' in message.tags %}fa fa-exclamation-circle text-danger{% elif message.tags == 'info' %}fa fa-info-circle text-info{% elif message.tags == 'warning' %}fa fa-exclamation-triangle text-warning{% else %}fa fa-check-circle text-success{% endif %} me-2" style="font-size: 1.25rem;"></i>
+      <div class="flex-grow-1 pe-2">{{ message }}</div>
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" style="padding: 0.8rem;"></button>
+    </div>
+    {% endfor %}
+  </div>
+  <script>
+    setTimeout(function() {
+      var alerts = document.querySelectorAll('.global-toast-container .alert');
+      alerts.forEach(function(a) {
+        try {
+          var bsAlert = bootstrap.Alert.getOrCreateInstance(a);
+          bsAlert.close();
+        } catch(e) {
+          a.style.display = 'none';
+        }
+      });
+    }, 5000);
+  </script>
+  {% endif %}
 </header> 

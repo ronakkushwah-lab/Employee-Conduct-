@@ -8,7 +8,8 @@ from django.views.generic import View, DetailView, UpdateView, TemplateView
 from django.http import HttpResponseRedirect
 from django.urls import reverse
 from django.contrib import messages
-from .utils import render_to_pdf
+from .utils import render_to_pdf, render_slip_html
+from payroll.helpers import number_to_words
 from django.http import HttpResponse
 from datetime import datetime
 from django.utils.decorators import method_decorator
@@ -95,12 +96,33 @@ class Update_salary_View(UpdateView):
 
 
 class GeneratePdf(View):
-    def get(self,request,company_id, company_staff_id,id=None,*args, **kwargs):
-        # getting the template
+    def get(self, request, company_id, company_staff_id, id=None, *args, **kwargs):
         salary = get_object_or_404(Salary, id=id, manager__user__company_id=company_id)
+
+        # Calculate payslip number (sequence starting from 001 for this manager)
+        manager_salaries = Salary.objects.filter(manager=salary.manager).order_by('month', 'id')
+        payslip_number = 1
+        for idx, sal in enumerate(manager_salaries, start=1):
+            if sal.id == salary.id:
+                payslip_number = idx
+                break
+
+        # Convert net pay to words
+        try:
+            net_pay_value = salary.net_pay if not callable(salary.net_pay) else salary.net_pay()
+            net_pay_words = number_to_words(net_pay_value) if net_pay_value else "Zero Only"
+        except Exception as e:
+            try:
+                net_pay_value = salary.net_pay if not callable(salary.net_pay) else salary.net_pay()
+            except Exception:
+                net_pay_value = 0
+            net_pay_words = "Zero Only"
+
         context = {
-            "id": salary.id,
-            "manager":salary.manager,
+            "object": salary,
+            "id": id,
+            "payslip_number": payslip_number,
+            "manager": salary.manager,
             "month": salary.month,
             "basic": salary.basic,
             "da_percent": salary.da_percent,
@@ -114,19 +136,26 @@ class GeneratePdf(View):
             "providence_fund": salary.providence_fund,
             "leave": salary.leave,
             "tax": salary.tax,
-            "total_earnings":salary.total_earnings,
-            "total_deductions":salary.total_deductions,
-            "net_pay":salary.net_pay,
+            "total_earnings": salary.total_earnings,
+            "total_deductions": salary.total_deductions,
+            "net_pay": net_pay_value,
+            "net_pay_words": net_pay_words,
             'company_id': company_id,
             'company_staff_id': company_staff_id,
-
         }
-        # NOTE:
-        # Server-side PDF generation (xhtml2pdf/reportlab) can fail on some Windows
-        # machines due to DLL load restrictions. For manager slips we always render
-        # the HTML view and trigger the existing client-side html2pdf download.
-        context['auto_download'] = True
-        return render(request, "managerpayroll/manager-payslip.html", context)
+
+        # View mode: open slip as HTML page in tab. Download mode: PDF attachment.
+        if request.GET.get('download') == '1':
+            pdf = render_to_pdf(context)
+            if pdf is None:
+                return HttpResponse("Error: Failed to generate PDF", status=500)
+            if pdf.get('Content-Type', '').startswith('application/pdf'):
+                pdf['Content-Disposition'] = 'attachment; filename="manager-salary-slip.pdf"'
+            return pdf
+
+        # Always return HTML so tab opens formatted slip; user clicks Download on page to get PDF
+        context['download_url'] = request.build_absolute_uri() + ('&' if request.GET else '?') + 'download=1'
+        return render_slip_html(context)
 
 
 from payroll.auto_payslip_service import generate_monthly_payslips

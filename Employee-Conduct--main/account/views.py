@@ -90,6 +90,12 @@ class LogoutView(View):
         # Also log out of Django's auth system (for safety, if ever used)
         logout(request)
 
+        # Flush all messages from storage on logout
+        from django.contrib.messages import get_messages
+        storage = get_messages(request)
+        for _ in storage:
+            pass
+
         return HttpResponseRedirect(settings.LOGIN_URL)
 
 
