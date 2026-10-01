@@ -6,6 +6,8 @@
 *.rar
 *.7z
 *.gz
+*.xlsx
+*.xls
 
 # Environments & Secrets
 .env
